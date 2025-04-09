@@ -19,7 +19,7 @@ export const defaultNodeOptions = {
 	},
 };
 
-export const StandardNode = ({ data, selected }: NodeProps) => {
+export const StandardNode = ({ data }: NodeProps) => {
 	const nodeData = data as { label: string };
 	return (
 		<>
@@ -27,7 +27,7 @@ export const StandardNode = ({ data, selected }: NodeProps) => {
 			<div
 				style={{
 					...defaultNodeOptions.style,
-					border: selected ? "1.5px solid #334155" : "1px solid #64748b",
+					border: "1px solid #64748b",
 				}}
 			>
 				{nodeData.label}

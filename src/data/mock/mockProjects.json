@@ -3,13 +3,13 @@
 		"name": "New design",
 		"createdAt": "2024-03-15T10:00:00.000Z",
 		"updatedAt": "2024-03-15T10:00:00.000Z",
-		"code": "print('Hello, world!')"
+		"code": "# Terminal (leaf) node: \\\"A\\\"\ndef make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\n# 4 A nodes: length\ndef make_length_container():\n    # Here we just return an A node.\n    return make_A_node(length=25)\n\n# 2 X₂ nodes: symmetry\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\n# 1 X₁: pTM, pLDDT\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )"
 	},
 	{
 		"name": "Symmetric dimer of 2-fold symmetry",
 		"createdAt": "2024-03-14T15:30:00.000Z",
 		"updatedAt": "2024-03-15T09:45:00.000Z",
-		"code": "print('Hello, world!')"
+		"code": "# Terminal (leaf) node: \\\"A\\\"\ndef make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\n# 4 A nodes: length\ndef make_length_container():\n    # Here we just return an A node.\n    return make_A_node(length=25)\n\n# 2 X₂ nodes: symmetry\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\n# 1 X₁: pTM, pLDDT\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )"
 	},
 	{
 		"name": "3-fold symmetric functional site scaffolding",

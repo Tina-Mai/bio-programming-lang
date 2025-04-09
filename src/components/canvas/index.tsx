@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Code, Folder, ParentChild, PlayFilledAlt } from "@carbon/icons-react";
+import { Code, Folder, ParentChild } from "@carbon/icons-react";
 import { useGlobal } from "@/context/GlobalContext";
 import BlockEditor from "@/components/canvas/BlockEditor";
 import CodeEditor from "@/components/canvas/CodeEditor";
 import ProjectTabs from "@/components/canvas/ProjectTabs";
 import { EditorView } from "@codemirror/view";
+import EnergyDialog from "@/components/energy/EnergyDialog";
 
 const Canvas = () => {
 	const { mode, setMode, currentProject } = useGlobal();
@@ -67,10 +68,7 @@ const Canvas = () => {
 						</div>
 					)}
 				</Button>
-				<Button variant="accent" className="z-50 absolute mt-12 bottom-3 right-3 w-min">
-					<PlayFilledAlt size={20} />
-					Compile
-				</Button>
+				<EnergyDialog />
 
 				<div className="relative h-full w-full">
 					{/* Block Editor with animation */}

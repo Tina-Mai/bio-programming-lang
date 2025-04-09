@@ -526,8 +526,8 @@
 				},
 				"position": { "x": 0, "y": 0 },
 				"style": {
-					"width": 700,
-					"height": 600,
+					"width": 800,
+					"height": 700,
 					"zIndex": 0
 				}
 			},
@@ -535,7 +535,7 @@
 				"id": "x1",
 				"type": "standard",
 				"data": { "label": "X₁" },
-				"position": { "x": 325, "y": 50 },
+				"position": { "x": 400, "y": 50 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"draggable": false,
@@ -552,8 +552,8 @@
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 500,
-					"height": 400,
+					"width": 600,
+					"height": 550,
 					"zIndex": 0
 				}
 			},
@@ -561,7 +561,7 @@
 				"id": "x2",
 				"type": "standard",
 				"data": { "label": "X₂" },
-				"position": { "x": 225, "y": 50 },
+				"position": { "x": 300, "y": 50 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"draggable": false,
@@ -571,15 +571,15 @@
 				"id": "container-a1",
 				"type": "container",
 				"data": {
-					"label": "A",
+					"label": "",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 50, "y": 120 },
+				"position": { "x": 40, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -590,12 +590,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 50, "y": 220 },
+				"position": { "x": 40, "y": 280 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -606,12 +606,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 50, "y": 320 },
+				"position": { "x": 40, "y": 440 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 120,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -619,7 +619,7 @@
 				"id": "a1",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-a1",
 				"extent": "parent",
 				"draggable": false,
@@ -629,7 +629,7 @@
 				"id": "b1",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-b1",
 				"extent": "parent",
 				"draggable": false,
@@ -639,7 +639,7 @@
 				"id": "c1",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 35, "y": 50 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-c1",
 				"extent": "parent",
 				"draggable": false,
@@ -650,15 +650,15 @@
 				"id": "container-a2",
 				"type": "container",
 				"data": {
-					"label": "A",
+					"label": "",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 200, "y": 120 },
+				"position": { "x": 220, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -669,12 +669,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 200, "y": 220 },
+				"position": { "x": 220, "y": 280 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -685,12 +685,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 200, "y": 320 },
+				"position": { "x": 220, "y": 440 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 120,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -698,7 +698,7 @@
 				"id": "a2",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-a2",
 				"extent": "parent",
 				"draggable": false,
@@ -708,7 +708,7 @@
 				"id": "b2",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-b2",
 				"extent": "parent",
 				"draggable": false,
@@ -718,7 +718,7 @@
 				"id": "c2",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 35, "y": 50 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-c2",
 				"extent": "parent",
 				"draggable": false,
@@ -729,15 +729,15 @@
 				"id": "container-a3",
 				"type": "container",
 				"data": {
-					"label": "A",
+					"label": "",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 120 },
+				"position": { "x": 400, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -748,12 +748,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 220 },
+				"position": { "x": 400, "y": 280 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 80,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -764,12 +764,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 320 },
+				"position": { "x": 400, "y": 440 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
-					"width": 100,
-					"height": 120,
+					"width": 160,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -777,7 +777,7 @@
 				"id": "a3",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-a3",
 				"extent": "parent",
 				"draggable": false,
@@ -787,7 +787,7 @@
 				"id": "b3",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 35, "y": 25 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-b3",
 				"extent": "parent",
 				"draggable": false,
@@ -797,7 +797,7 @@
 				"id": "c3",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 35, "y": 50 },
+				"position": { "x": 50, "y": 50 },
 				"parentId": "container-c3",
 				"extent": "parent",
 				"draggable": false,
@@ -934,8 +934,8 @@
 				},
 				"position": { "x": 0, "y": 0 },
 				"style": {
-					"width": 700,
-					"height": 600,
+					"width": 800,
+					"height": 650,
 					"zIndex": 0
 				}
 			},
@@ -943,7 +943,7 @@
 				"id": "x1",
 				"type": "standard",
 				"data": { "label": "X₁" },
-				"position": { "x": 325, "y": 50 },
+				"position": { "x": 400, "y": 50 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"draggable": false,
@@ -956,12 +956,12 @@
 					"label": "Symmetry",
 					"backgroundColor": "rgba(235, 244, 255, 0.5)"
 				},
-				"position": { "x": 15, "y": 150 },
+				"position": { "x": 75, "y": 120 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 250,
-					"height": 400,
+					"width": 300,
+					"height": 480,
 					"zIndex": 0
 				}
 			},
@@ -972,12 +972,12 @@
 					"label": "Symmetry",
 					"backgroundColor": "rgba(235, 244, 255, 0.5)"
 				},
-				"position": { "x": 375, "y": 120 },
+				"position": { "x": 425, "y": 120 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 250,
-					"height": 400,
+					"width": 300,
+					"height": 480,
 					"zIndex": 0
 				}
 			},
@@ -985,7 +985,7 @@
 				"id": "x2",
 				"type": "standard",
 				"data": { "label": "X₂" },
-				"position": { "x": 100, "y": 50 },
+				"position": { "x": 150, "y": 50 },
 				"parentId": "container-middle-left",
 				"extent": "parent",
 				"draggable": false,
@@ -995,7 +995,7 @@
 				"id": "x3",
 				"type": "standard",
 				"data": { "label": "X₃" },
-				"position": { "x": 100, "y": 50 },
+				"position": { "x": 150, "y": 50 },
 				"parentId": "container-middle-right",
 				"extent": "parent",
 				"draggable": false,
@@ -1008,12 +1008,12 @@
 					"label": "Symmetry, globularity, single chain",
 					"backgroundColor": "rgba(220, 240, 255, 0.5)"
 				},
-				"position": { "x": 25, "y": 150 },
+				"position": { "x": 50, "y": 120 },
 				"parentId": "container-middle-left",
 				"extent": "parent",
 				"style": {
-					"width": 200,
-					"height": 200,
+					"width": 220,
+					"height": 320,
 					"zIndex": 0
 				}
 			},
@@ -1024,12 +1024,12 @@
 					"label": "Symmetry, globularity, single chain",
 					"backgroundColor": "rgba(220, 240, 255, 0.5)"
 				},
-				"position": { "x": 25, "y": 150 },
+				"position": { "x": 50, "y": 120 },
 				"parentId": "container-middle-right",
 				"extent": "parent",
 				"style": {
-					"width": 200,
-					"height": 200,
+					"width": 220,
+					"height": 320,
 					"zIndex": 0
 				}
 			},
@@ -1037,7 +1037,7 @@
 				"id": "x4",
 				"type": "standard",
 				"data": { "label": "X₄" },
-				"position": { "x": 85, "y": 50 },
+				"position": { "x": 110, "y": 50 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"draggable": false,
@@ -1047,7 +1047,7 @@
 				"id": "x5",
 				"type": "standard",
 				"data": { "label": "X₅" },
-				"position": { "x": 85, "y": 50 },
+				"position": { "x": 110, "y": 50 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"draggable": false,
@@ -1060,12 +1060,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 25, "y": 120 },
+				"position": { "x": 15, "y": 140 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"style": {
-					"width": 120,
-					"height": 130,
+					"width": 90,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -1076,12 +1076,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 110, "y": 120 },
+				"position": { "x": 115, "y": 140 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"style": {
-					"width": 120,
-					"height": 130,
+					"width": 90,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -1092,12 +1092,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 25, "y": 120 },
+				"position": { "x": 15, "y": 140 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"style": {
-					"width": 120,
-					"height": 130,
+					"width": 90,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -1108,12 +1108,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 110, "y": 120 },
+				"position": { "x": 115, "y": 140 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"style": {
-					"width": 120,
-					"height": 130,
+					"width": 90,
+					"height": 140,
 					"zIndex": 0
 				}
 			},
@@ -1121,7 +1121,7 @@
 				"id": "a-left-1",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 25, "y": 50 },
+				"position": { "x": 45, "y": 60 },
 				"parentId": "container-a-left-1",
 				"extent": "parent",
 				"draggable": false,
@@ -1131,7 +1131,7 @@
 				"id": "a-left-2",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 25, "y": 50 },
+				"position": { "x": 45, "y": 60 },
 				"parentId": "container-a-left-2",
 				"extent": "parent",
 				"draggable": false,
@@ -1141,7 +1141,7 @@
 				"id": "b-right-1",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 25, "y": 50 },
+				"position": { "x": 45, "y": 60 },
 				"parentId": "container-b-right-1",
 				"extent": "parent",
 				"draggable": false,
@@ -1151,7 +1151,7 @@
 				"id": "b-right-2",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 25, "y": 50 },
+				"position": { "x": 45, "y": 60 },
 				"parentId": "container-b-right-2",
 				"extent": "parent",
 				"draggable": false,

@@ -14,18 +14,22 @@ export const ContainerNode = ({ data, selected }: NodeProps) => {
 
 	return (
 		<div
+			className="react-flow__node-custom"
 			style={{
 				width: "100%",
 				height: "100%",
 				borderRadius: 10,
 				backgroundColor: containerData.backgroundColor || "rgba(235, 244, 255, 0.5)",
-				border: selected ? "2px solid #1a192b" : "1px solid #ddd",
+				border: selected ? "1.5px solid #64748b" : "1px solid #CAD5E2",
+				boxShadow: "none",
 				zIndex: 0,
+				position: "relative",
+				outline: "none",
 			}}
 			onMouseDown={onMouseDown}
 			onClick={(event) => event.stopPropagation()}
 		>
-			{containerData.label && <div style={{ padding: 10 }}>{containerData.label}</div>}
+			{containerData.label && <div className="font-mono text-sm text-zinc-600 py-2 px-4">{containerData.label}</div>}
 		</div>
 	);
 };

@@ -36,6 +36,11 @@
 	--sidebar-accent-foreground: oklch(0.208 0.042 265.755);
 	--sidebar-border: oklch(0.929 0.013 255.508);
 	--sidebar-ring: oklch(0.704 0.04 256.788);
+
+	/* ReactFlow variable overrides */
+	--xy-node-boxshadow-selected-default: none !important;
+	--xy-node-boxshadow-hover-default: none !important;
+	--xy-node-border-default: none !important;
 }
 
 @theme inline {
@@ -131,4 +136,39 @@
 	.space-between {
 		@apply justify-between;
 	}
+}
+
+/* —————————————— REACTFLOW OVERRIDES —————————————— */
+
+/* Remove the extra outline/border from group nodes */
+.react-flow__node-group {
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+/* When selected, only use the custom border we defined */
+.react-flow__node-group.selected {
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+/* Custom node class to override ReactFlow styles */
+.react-flow__node-custom {
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+/* Target all group outlines, shadows and borders */
+.react-flow__node {
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+/* Override any selectable state */
+.react-flow__node.selectable,
+.react-flow__node.selectable.selected,
+.react-flow__node.selectable:focus,
+.react-flow__node.selectable:focus-visible {
+	box-shadow: none !important;
+	outline: none !important;
 }

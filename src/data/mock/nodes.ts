@@ -4,16 +4,16 @@ export const initialNodes: Node[] = [
 	// ===== LEVEL 1: Top container box (highest level) =====
 	{
 		id: "container-top",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\npTM, pLDDT",
+			label: "pTM, pLDDT",
 			backgroundColor: "rgba(255, 250, 227, 0.5)",
 		},
 		position: { x: 0, y: 0 },
 		style: {
 			width: 600,
 			height: 500,
-			borderRadius: 15,
+			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -33,9 +33,9 @@ export const initialNodes: Node[] = [
 	// ===== LEVEL 2: Middle containers (children of container-top) =====
 	{
 		id: "container-middle-left",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nSymmetry",
+			label: "Symmetry",
 			backgroundColor: "rgba(235, 244, 255, 0.5)",
 		},
 		position: { x: 50, y: 150 },
@@ -44,16 +44,16 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 200,
 			height: 300,
-			borderRadius: 15,
+			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
 
 	{
 		id: "container-middle-right",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nSymmetry",
+			label: "Symmetry",
 			backgroundColor: "rgba(235, 244, 255, 0.5)",
 		},
 		position: { x: 300, y: 150 },
@@ -62,7 +62,7 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 250,
 			height: 300,
-			borderRadius: 15,
+			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -95,9 +95,9 @@ export const initialNodes: Node[] = [
 	// Left side A node containers
 	{
 		id: "container-a-left-1",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nLength",
+			label: "Length",
 			backgroundColor: "rgba(226, 232, 240, 0.5)",
 		},
 		position: { x: 20, y: 150 },
@@ -112,9 +112,9 @@ export const initialNodes: Node[] = [
 	},
 	{
 		id: "container-a-left-2",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nLength",
+			label: "Length",
 			backgroundColor: "rgba(226, 232, 240, 0.5)",
 		},
 		position: { x: 100, y: 150 },
@@ -130,9 +130,9 @@ export const initialNodes: Node[] = [
 
 	{
 		id: "container-a-right-1",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nLength",
+			label: "Length",
 			backgroundColor: "rgba(226, 232, 240, 0.5)",
 		},
 		position: { x: 20, y: 150 },
@@ -147,9 +147,9 @@ export const initialNodes: Node[] = [
 	},
 	{
 		id: "container-a-right-2",
-		type: "group",
+		type: "container",
 		data: {
-			label: "Constraints:\nLength",
+			label: "Length",
 			backgroundColor: "rgba(226, 232, 240, 0.5)",
 		},
 		position: { x: 100, y: 150 },

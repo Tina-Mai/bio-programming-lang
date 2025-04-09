@@ -20,6 +20,7 @@ export const ContainerNode = ({ data, selected }: NodeProps) => {
 				borderRadius: 10,
 				backgroundColor: containerData.backgroundColor || "rgba(235, 244, 255, 0.5)",
 				border: selected ? "2px solid #1a192b" : "1px solid #ddd",
+				zIndex: 0,
 			}}
 			onMouseDown={onMouseDown}
 			onClick={(event) => event.stopPropagation()}

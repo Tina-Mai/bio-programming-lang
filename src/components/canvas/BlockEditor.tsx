@@ -3,7 +3,7 @@ import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Connection, NodeC
 import "@xyflow/react/dist/style.css";
 import { applyNodeChanges, applyEdgeChanges, addEdge } from "@xyflow/react";
 import { defaultEdgeOptions } from "@/components/canvas/blocks/Edge";
-import { nodeTypes } from "@/types";
+import { nodeTypes, edgeTypes } from "@/types";
 import { initialNodes } from "@/data/mock/nodes";
 import { initialEdges } from "@/data/mock/edges";
 
@@ -12,7 +12,7 @@ const BlockEditor = () => {
 	const [edges, setEdges] = useState<Edge[]>(initialEdges);
 	const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
 	const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
-	const onConnect = useCallback((connection: Connection) => setEdges((eds) => addEdge(connection, eds)), []);
+	const onConnect = useCallback((connection: Connection) => setEdges((eds) => addEdge({ ...connection, ...defaultEdgeOptions }, eds)), []);
 
 	return (
 		<div style={{ height: "100%" }}>
@@ -20,6 +20,7 @@ const BlockEditor = () => {
 				nodes={nodes}
 				edges={edges}
 				defaultEdgeOptions={defaultEdgeOptions}
+				edgeTypes={edgeTypes}
 				proOptions={{ hideAttribution: true }}
 				onNodesChange={onNodesChange}
 				onEdgesChange={onEdgesChange}

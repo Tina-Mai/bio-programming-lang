@@ -6,10 +6,11 @@ export const initialEdges: Edge[] = [
 		id: "x1-to-x2-left",
 		source: "x1",
 		target: "x2-left",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000, // High zIndex to ensure edges are visible above containers
+			zIndex: 2000,
 		},
 	},
 	// Connection from X₁ to right X₂
@@ -17,10 +18,11 @@ export const initialEdges: Edge[] = [
 		id: "x1-to-x2-right",
 		source: "x1",
 		target: "x2-right",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000,
+			zIndex: 2000,
 		},
 	},
 	// Connections from left X₂ to its A nodes
@@ -28,20 +30,22 @@ export const initialEdges: Edge[] = [
 		id: "x2-left-to-a-left-1",
 		source: "x2-left",
 		target: "a-left-1",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000,
+			zIndex: 2000,
 		},
 	},
 	{
 		id: "x2-left-to-a-left-2",
 		source: "x2-left",
 		target: "a-left-2",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000,
+			zIndex: 2000,
 		},
 	},
 	// Connections from right X₂ to its A nodes
@@ -49,20 +53,22 @@ export const initialEdges: Edge[] = [
 		id: "x2-right-to-a-right-1",
 		source: "x2-right",
 		target: "a-right-1",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000,
+			zIndex: 2000,
 		},
 	},
 	{
 		id: "x2-right-to-a-right-2",
 		source: "x2-right",
 		target: "a-right-2",
-		type: "bezier",
+		type: "custom",
 		style: {
+			stroke: "#94a3b8",
 			strokeWidth: 2,
-			zIndex: 1000,
+			zIndex: 2000,
 		},
 	},
 ];

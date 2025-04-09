@@ -85,7 +85,7 @@
 		@apply border-border outline-none ring-0;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground text-base;
 	}
 }
 

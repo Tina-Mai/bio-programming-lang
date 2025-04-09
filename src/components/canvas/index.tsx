@@ -3,9 +3,17 @@ import { Code, Folder, ParentChild, PlayFilledAlt } from "@carbon/icons-react";
 import { useGlobal } from "@/context/GlobalContext";
 import BlockEditor from "@/components/canvas/BlockEditor";
 import CodeEditor from "@/components/canvas/CodeEditor";
+import { useEffect } from "react";
 
 const Canvas = () => {
 	const { mode, setMode, currentProject } = useGlobal();
+
+	// Debug to check if currentProject contains nodes and edges
+	useEffect(() => {
+		console.log("Canvas - Current Project:", currentProject);
+		console.log("Canvas - Nodes available:", currentProject?.nodes?.length || 0);
+		console.log("Canvas - Edges available:", currentProject?.edges?.length || 0);
+	}, [currentProject]);
 
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
@@ -34,7 +42,7 @@ const Canvas = () => {
 					<PlayFilledAlt size={20} />
 					Compile
 				</Button>
-				{mode === "blocks" ? <BlockEditor /> : <CodeEditor />}
+				{mode === "blocks" ? <BlockEditor project={currentProject} /> : <CodeEditor />}
 			</div>
 		</div>
 	);

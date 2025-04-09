@@ -1,8 +1,12 @@
+import { Node, Edge } from "@xyflow/react";
+
 export interface Project {
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
 	code: string;
+	nodes?: Node[];
+	edges?: Edge[];
 }
 
 export interface ProjectJSON {
@@ -10,6 +14,8 @@ export interface ProjectJSON {
 	createdAt: string;
 	updatedAt: string;
 	code: string;
+	nodes?: Node[];
+	edges?: Edge[];
 }
 
 export function convertJSONToProject(json: ProjectJSON): Project {
@@ -18,6 +24,8 @@ export function convertJSONToProject(json: ProjectJSON): Project {
 		createdAt: new Date(json.createdAt),
 		updatedAt: new Date(json.updatedAt),
 		code: json.code,
+		nodes: json.nodes,
+		edges: json.edges,
 	};
 }
 

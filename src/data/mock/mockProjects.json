@@ -3,24 +3,528 @@
 		"name": "New design",
 		"createdAt": "2024-03-15T10:00:00.000Z",
 		"updatedAt": "2024-03-15T10:00:00.000Z",
-		"code": "# Terminal (leaf) node: \\\"A\\\"\ndef make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\n# 4 A nodes: length\ndef make_length_container():\n    # Here we just return an A node.\n    return make_A_node(length=25)\n\n# 2 X₂ nodes: symmetry\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\n# 1 X₁: pTM, pLDDT\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )"
+		"code": "def make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\ndef make_length_container():\n    return make_A_node(length=25)\n\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )",
+		"nodes": [
+			{
+				"id": "container-top",
+				"type": "container",
+				"data": {
+					"label": "pTM, pLDDT",
+					"backgroundColor": "rgba(255, 250, 227, 0.5)"
+				},
+				"position": { "x": 0, "y": 0 },
+				"style": {
+					"width": 600,
+					"height": 500,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x1",
+				"type": "standard",
+				"data": { "label": "X₁" },
+				"position": { "x": 270, "y": 50 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-middle-left",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 50, "y": 150 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 225,
+					"height": 300,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-middle-right",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 325, "y": 150 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 225,
+					"height": 300,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x2-left",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 82, "y": 50 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "x2-right",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 82, "y": 50 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-a-left-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 150 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-left-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 125, "y": 150 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-right-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 150 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-right-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 125, "y": 150 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a-left-1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-left-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-left-2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-left-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-right-1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-right-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-right-2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-right-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			}
+		],
+		"edges": [
+			{
+				"id": "x1-to-x2-left",
+				"source": "x1",
+				"target": "x2-left",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x1-to-x2-right",
+				"source": "x1",
+				"target": "x2-right",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-left-to-a-left-1",
+				"source": "x2-left",
+				"target": "a-left-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-left-to-a-left-2",
+				"source": "x2-left",
+				"target": "a-left-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-right-to-a-right-1",
+				"source": "x2-right",
+				"target": "a-right-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-right-to-a-right-2",
+				"source": "x2-right",
+				"target": "a-right-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			}
+		]
 	},
 	{
 		"name": "Symmetric dimer of 2-fold symmetry",
-		"createdAt": "2024-03-14T15:30:00.000Z",
-		"updatedAt": "2024-03-15T09:45:00.000Z",
-		"code": "# Terminal (leaf) node: \\\"A\\\"\ndef make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\n# 4 A nodes: length\ndef make_length_container():\n    # Here we just return an A node.\n    return make_A_node(length=25)\n\n# 2 X₂ nodes: symmetry\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\n# 1 X₁: pTM, pLDDT\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )"
+		"createdAt": "2024-03-15T10:00:00.000Z",
+		"updatedAt": "2024-03-15T10:00:00.000Z",
+		"code": "def make_A_node(length=25):\n    segment = FixedLengthSequenceSegment(length)\n    return ProgramNode(sequence_segment=segment)\n\ndef make_length_container():\n    return make_A_node(length=25)\n\ndef make_symmetry_node():\n    return ProgramNode(\n        energy_function_terms=[SymmetryRing()],  # enforce symmetry within this group\n        energy_function_weights=[1.0],\n        children=[make_length_container(), make_length_container()]\n    )\n\ndef build_protein_design_program():\n    return ProgramNode(\n        energy_function_terms=[MaximizePTM(), MaximizePLDDT()],  # overall confidence constraints\n        energy_function_weights=[1.0, 1.0],\n        children=[make_symmetry_node(), make_symmetry_node()]\n    )",
+		"nodes": [
+			{
+				"id": "container-top",
+				"type": "container",
+				"data": {
+					"label": "pTM, pLDDT",
+					"backgroundColor": "rgba(255, 250, 227, 0.5)"
+				},
+				"position": { "x": 0, "y": 0 },
+				"style": {
+					"width": 600,
+					"height": 500,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x1",
+				"type": "standard",
+				"data": { "label": "X₁" },
+				"position": { "x": 270, "y": 50 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-middle-left",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 50, "y": 150 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 225,
+					"height": 300,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-middle-right",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 325, "y": 150 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 225,
+					"height": 300,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x2-left",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 82, "y": 50 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "x2-right",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 82, "y": 50 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-a-left-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 150 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-left-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 125, "y": 150 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-right-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 150 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-right-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 125, "y": 150 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"style": {
+					"width": 90,
+					"height": 120,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a-left-1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-left-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-left-2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-left-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-right-1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-right-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-right-2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 50 },
+				"parentId": "container-a-right-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			}
+		],
+		"edges": [
+			{
+				"id": "x1-to-x2-left",
+				"source": "x1",
+				"target": "x2-left",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x1-to-x2-right",
+				"source": "x1",
+				"target": "x2-right",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-left-to-a-left-1",
+				"source": "x2-left",
+				"target": "a-left-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-left-to-a-left-2",
+				"source": "x2-left",
+				"target": "a-left-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-right-to-a-right-1",
+				"source": "x2-right",
+				"target": "a-right-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-right-to-a-right-2",
+				"source": "x2-right",
+				"target": "a-right-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			}
+		]
 	},
 	{
 		"name": "3-fold symmetric functional site scaffolding",
 		"createdAt": "2024-03-13T08:20:00.000Z",
 		"updatedAt": "2024-03-14T16:15:00.000Z",
-		"code": "print('Hello, world!')"
+		"code": "print('Hello, world!')",
+		"nodes": [],
+		"edges": []
 	},
 	{
 		"name": "Asymmetric complex of 2 dimers of 2-fold symmetry",
 		"createdAt": "2024-03-12T11:45:00.000Z",
 		"updatedAt": "2024-03-13T14:30:00.000Z",
-		"code": "print('Hello, world!')"
+		"code": "print('Hello, world!')",
+		"nodes": [],
+		"edges": []
 	}
 ]

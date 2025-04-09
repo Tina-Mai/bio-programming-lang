@@ -516,15 +516,737 @@
 		"createdAt": "2024-03-13T08:20:00.000Z",
 		"updatedAt": "2024-03-14T16:15:00.000Z",
 		"code": "print('Hello, world!')",
-		"nodes": [],
-		"edges": []
+		"nodes": [
+			{
+				"id": "container-top",
+				"type": "container",
+				"data": {
+					"label": "pTM, pLDDT, hydrophobics, symmetry, single chain",
+					"backgroundColor": "rgba(255, 250, 227, 0.5)"
+				},
+				"position": { "x": 0, "y": 0 },
+				"style": {
+					"width": 700,
+					"height": 600,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x1",
+				"type": "standard",
+				"data": { "label": "X₁" },
+				"position": { "x": 300, "y": 40 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-middle",
+				"type": "container",
+				"data": {
+					"label": "Symmetry, globularity",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 50, "y": 120 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 600,
+					"height": 400,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x2",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 270, "y": 20 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-a1",
+				"type": "container",
+				"data": {
+					"label": "A",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 10, "y": 80 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-b1",
+				"type": "container",
+				"data": {
+					"label": "All-atom coordination, surface exposure",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 10, "y": 180 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-c1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 10, "y": 280 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-a1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "b1",
+				"type": "standard",
+				"data": { "label": "B" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-b1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "c1",
+				"type": "standard",
+				"data": { "label": "C" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-c1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+
+			{
+				"id": "container-a2",
+				"type": "container",
+				"data": {
+					"label": "A",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 180, "y": 80 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-b2",
+				"type": "container",
+				"data": {
+					"label": "All-atom coordination, surface exposure",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 180, "y": 180 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-c2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 180, "y": 280 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-a2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "b2",
+				"type": "standard",
+				"data": { "label": "B" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-b2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "c2",
+				"type": "standard",
+				"data": { "label": "C" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-c2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+
+			{
+				"id": "container-a3",
+				"type": "container",
+				"data": {
+					"label": "A",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 350, "y": 80 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-b3",
+				"type": "container",
+				"data": {
+					"label": "All-atom coordination, surface exposure",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 350, "y": 180 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-c3",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 350, "y": 280 },
+				"parentId": "container-middle",
+				"extent": "parent",
+				"style": {
+					"width": 100,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a3",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-a3",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "b3",
+				"type": "standard",
+				"data": { "label": "B" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-b3",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "c3",
+				"type": "standard",
+				"data": { "label": "C" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-c3",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			}
+		],
+		"edges": [
+			{
+				"id": "x1-to-x2",
+				"source": "x1",
+				"target": "x2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-to-a1",
+				"source": "x2",
+				"target": "a1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-to-b1",
+				"source": "x2",
+				"target": "b1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "b1-to-c1",
+				"source": "b1",
+				"target": "c1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+
+			{
+				"id": "x2-to-a2",
+				"source": "x2",
+				"target": "a2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-to-b2",
+				"source": "x2",
+				"target": "b2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "b2-to-c2",
+				"source": "b2",
+				"target": "c2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+
+			{
+				"id": "x2-to-a3",
+				"source": "x2",
+				"target": "a3",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-to-b3",
+				"source": "x2",
+				"target": "b3",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "b3-to-c3",
+				"source": "b3",
+				"target": "c3",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			}
+		]
 	},
 	{
 		"name": "Asymmetric complex of 2 dimers of 2-fold symmetry",
 		"createdAt": "2024-03-12T11:45:00.000Z",
 		"updatedAt": "2024-03-13T14:30:00.000Z",
 		"code": "print('Hello, world!')",
-		"nodes": [],
-		"edges": []
+		"nodes": [
+			{
+				"id": "container-top",
+				"type": "container",
+				"data": {
+					"label": "pTM, pLDDT, hydrophobics",
+					"backgroundColor": "rgba(255, 250, 227, 0.5)"
+				},
+				"position": { "x": 0, "y": 0 },
+				"style": {
+					"width": 700,
+					"height": 600,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x1",
+				"type": "standard",
+				"data": { "label": "X₁" },
+				"position": { "x": 300, "y": 40 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-middle-left",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 50, "y": 120 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 275,
+					"height": 400,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-middle-right",
+				"type": "container",
+				"data": {
+					"label": "Symmetry",
+					"backgroundColor": "rgba(235, 244, 255, 0.5)"
+				},
+				"position": { "x": 375, "y": 120 },
+				"parentId": "container-top",
+				"extent": "parent",
+				"style": {
+					"width": 275,
+					"height": 400,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x2",
+				"type": "standard",
+				"data": { "label": "X₂" },
+				"position": { "x": 100, "y": 20 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "x3",
+				"type": "standard",
+				"data": { "label": "X₃" },
+				"position": { "x": 100, "y": 20 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-lower-left",
+				"type": "container",
+				"data": {
+					"label": "Symmetry, globularity, single chain",
+					"backgroundColor": "rgba(220, 240, 255, 0.5)"
+				},
+				"position": { "x": 20, "y": 120 },
+				"parentId": "container-middle-left",
+				"extent": "parent",
+				"style": {
+					"width": 230,
+					"height": 200,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-lower-right",
+				"type": "container",
+				"data": {
+					"label": "Symmetry, globularity, single chain",
+					"backgroundColor": "rgba(220, 240, 255, 0.5)"
+				},
+				"position": { "x": 20, "y": 120 },
+				"parentId": "container-middle-right",
+				"extent": "parent",
+				"style": {
+					"width": 230,
+					"height": 200,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "x4",
+				"type": "standard",
+				"data": { "label": "X₄" },
+				"position": { "x": 80, "y": 20 },
+				"parentId": "container-lower-left",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "x5",
+				"type": "standard",
+				"data": { "label": "X₅" },
+				"position": { "x": 80, "y": 20 },
+				"parentId": "container-lower-right",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "container-a-left-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 80 },
+				"parentId": "container-lower-left",
+				"extent": "parent",
+				"style": {
+					"width": 80,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-a-left-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 120, "y": 80 },
+				"parentId": "container-lower-left",
+				"extent": "parent",
+				"style": {
+					"width": 80,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-b-right-1",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 20, "y": 80 },
+				"parentId": "container-lower-right",
+				"extent": "parent",
+				"style": {
+					"width": 80,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "container-b-right-2",
+				"type": "container",
+				"data": {
+					"label": "Length",
+					"backgroundColor": "rgba(226, 232, 240, 0.5)"
+				},
+				"position": { "x": 120, "y": 80 },
+				"parentId": "container-lower-right",
+				"extent": "parent",
+				"style": {
+					"width": 80,
+					"height": 60,
+					"zIndex": 0
+				}
+			},
+			{
+				"id": "a-left-1",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-a-left-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "a-left-2",
+				"type": "standard",
+				"data": { "label": "A" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-a-left-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "b-right-1",
+				"type": "standard",
+				"data": { "label": "B" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-b-right-1",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			},
+			{
+				"id": "b-right-2",
+				"type": "standard",
+				"data": { "label": "B" },
+				"position": { "x": 15, "y": 15 },
+				"parentId": "container-b-right-2",
+				"extent": "parent",
+				"draggable": false,
+				"zIndex": 1000
+			}
+		],
+		"edges": [
+			{
+				"id": "x1-to-x2",
+				"source": "x1",
+				"target": "x2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x1-to-x3",
+				"source": "x1",
+				"target": "x3",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x2-to-x4",
+				"source": "x2",
+				"target": "x4",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x3-to-x5",
+				"source": "x3",
+				"target": "x5",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x4-to-a-left-1",
+				"source": "x4",
+				"target": "a-left-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x4-to-a-left-2",
+				"source": "x4",
+				"target": "a-left-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x5-to-b-right-1",
+				"source": "x5",
+				"target": "b-right-1",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			},
+			{
+				"id": "x5-to-b-right-2",
+				"source": "x5",
+				"target": "b-right-2",
+				"type": "custom",
+				"style": {
+					"stroke": "#94a3b8",
+					"strokeWidth": 2,
+					"zIndex": 2000
+				}
+			}
+		]
 	}
 ]

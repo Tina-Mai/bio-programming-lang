@@ -1,4 +1,6 @@
 import { NodeProps, Handle, Position } from "@xyflow/react";
+import { Add } from "@carbon/icons-react";
+import { Button } from "@/components/ui/button";
 
 export const defaultNodeOptions = {
 	style: {
@@ -31,6 +33,11 @@ export const StandardNode = ({ data, selected }: NodeProps) => {
 				{nodeData.label}
 			</div>
 			<Handle type="source" position={Position.Bottom} />
+			<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+				<Button size="icon" className="!px-0 !py-0 !size-4 !rounded-xs bg-slate-600" onClick={(e) => e.stopPropagation()}>
+					<Add size={4} />
+				</Button>
+			</div>
 		</>
 	);
 };

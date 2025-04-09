@@ -14,6 +14,7 @@
 		"@radix-ui/react-slot": "^1.2.0",
 		"@uiw/codemirror-theme-tokyo-night-day": "^4.23.10",
 		"@uiw/react-codemirror": "^4.23.10",
+		"@xyflow/react": "^12.5.5",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"lucide-react": "^0.487.0",

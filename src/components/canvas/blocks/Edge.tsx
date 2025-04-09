@@ -3,7 +3,7 @@ import { BezierEdge, EdgeProps } from "@xyflow/react";
 
 export const defaultEdgeOptions = {
 	style: {
-		stroke: "#334155",
+		stroke: "#1e293b",
 		strokeWidth: 2,
 		zIndex: 2000,
 	},
@@ -18,6 +18,7 @@ export const CustomEdge = (props: EdgeProps) => {
 			style={{
 				...defaultEdgeOptions.style,
 				...(props.style || {}),
+				stroke: "#1e293b",
 			}}
 		/>
 	);

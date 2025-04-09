@@ -14,24 +14,19 @@ const BlockEditor = ({ project }: BlockEditorProps) => {
 	const [nodes, setNodes] = useState<Node[]>([]);
 	const [edges, setEdges] = useState<Edge[]>([]);
 
-	// Initialize with project nodes and edges
+	// initialize with project nodes and edges
 	useEffect(() => {
 		console.log("Project received:", project);
-
 		if (project?.nodes && project.nodes.length > 0) {
-			console.log("Setting nodes:", project.nodes);
 			setNodes(project.nodes);
 		} else {
-			console.log("No nodes found in project");
-			setNodes([]); // Empty array if no nodes provided
+			setNodes([]);
 		}
 
 		if (project?.edges && project.edges.length > 0) {
-			console.log("Setting edges:", project.edges);
 			setEdges(project.edges);
 		} else {
-			console.log("No edges found in project");
-			setEdges([]); // Empty array if no edges provided
+			setEdges([]);
 		}
 	}, [project]);
 
@@ -69,7 +64,7 @@ const BlockEditor = ({ project }: BlockEditorProps) => {
 					zoomable
 					pannable
 					position="bottom-left"
-					style={{ width: 150, height: 100 }}
+					style={{ width: 125, height: 100 }}
 					nodeBorderRadius={2}
 					maskColor="oklch(92.9% 0.013 255.508 / 0.7)"
 				/>

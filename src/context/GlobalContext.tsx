@@ -9,17 +9,17 @@ type Mode = "blocks" | "code";
 interface GlobalContextType {
 	mode: Mode;
 	setMode: (mode: Mode) => void;
-	currentProject: Project | null;
-	setCurrentProject: (project: Project | null) => void;
+	currentProject: Project;
+	setCurrentProject: (project: Project) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
 	const [mode, setMode] = useState<Mode>("blocks");
-	const [currentProject, setCurrentProject] = useState<Project | null>(() => {
+	const [currentProject, setCurrentProject] = useState<Project>(() => {
 		const projects = convertJSONArrayToProjects(mockProjects as ProjectJSON[]);
-		return projects[0] || null;
+		return projects[0];
 	});
 
 	return (

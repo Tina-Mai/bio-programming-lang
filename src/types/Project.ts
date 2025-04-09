@@ -2,12 +2,14 @@ export interface Project {
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
+	code: string;
 }
 
 export interface ProjectJSON {
 	name: string;
 	createdAt: string;
 	updatedAt: string;
+	code: string;
 }
 
 export function convertJSONToProject(json: ProjectJSON): Project {
@@ -15,6 +17,7 @@ export function convertJSONToProject(json: ProjectJSON): Project {
 		name: json.name,
 		createdAt: new Date(json.createdAt),
 		updatedAt: new Date(json.updatedAt),
+		code: json.code,
 	};
 }
 

@@ -13,7 +13,7 @@ const projects: Project[] = convertJSONArrayToProjects(mockProjects as ProjectJS
 export default function Home() {
 	const { currentProject, setCurrentProject } = useGlobal();
 	return (
-		<div className="horizontal h-[calc(100vh)] items-start p-5 gap-5">
+		<div className="horizontal h-[calc(100vh)] items-start p-5 gap-5 overflow-hidden">
 			<div className="vertical gap-5 items-start max-w-52">
 				<Image src="/logo.svg" alt="Logo" width={50} height={50} className="mb-5" />
 				<Button variant="outline" size="sm" className="w-full text-slate-600">

@@ -3,10 +3,42 @@ import { Code, Folder, ParentChild, PlayFilledAlt } from "@carbon/icons-react";
 import { useGlobal } from "@/context/GlobalContext";
 import BlockEditor from "@/components/canvas/BlockEditor";
 import CodeEditor from "@/components/canvas/CodeEditor";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Canvas = () => {
 	const { mode, setMode, currentProject } = useGlobal();
+	const [showBlockEditor, setShowBlockEditor] = useState(mode === "blocks");
+	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
+	const [transitioning, setTransitioning] = useState(false);
+
+	// Handle mode switch animation
+	useEffect(() => {
+		if (mode === "blocks" && !showBlockEditor) {
+			// Switch to blocks from code
+			setTransitioning(true);
+
+			// First fade out the code editor
+			setShowCodeEditor(false);
+
+			// After a delay, show the block editor
+			setTimeout(() => {
+				setShowBlockEditor(true);
+				setTransitioning(false);
+			}, 300);
+		} else if (mode === "code" && !showCodeEditor) {
+			// Switch to code from blocks
+			setTransitioning(true);
+
+			// First fade out the block editor
+			setShowBlockEditor(false);
+
+			// After a delay, show the code editor
+			setTimeout(() => {
+				setShowCodeEditor(true);
+				setTransitioning(false);
+			}, 300);
+		}
+	}, [mode, showBlockEditor, showCodeEditor]);
 
 	// Debug to check if currentProject contains nodes and edges
 	useEffect(() => {
@@ -26,7 +58,7 @@ const Canvas = () => {
 			</div>
 
 			<div className="relative h-full w-full pt-11 overflow-y-auto">
-				<Button size="sm" className="z-50 absolute mt-11 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")}>
+				<Button size="sm" className="z-50 absolute mt-11 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")} disabled={transitioning}>
 					{mode === "blocks" ? (
 						<div className="horizontal items-center gap-2">
 							<Code />
@@ -42,7 +74,32 @@ const Canvas = () => {
 					<PlayFilledAlt size={20} />
 					Compile
 				</Button>
-				{mode === "blocks" ? <BlockEditor project={currentProject} /> : <CodeEditor />}
+
+				<div className="relative h-full w-full">
+					{/* Block Editor with animation */}
+					<div
+						className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+							${
+								showBlockEditor
+									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+							}`}
+					>
+						<BlockEditor project={currentProject} />
+					</div>
+
+					{/* Code Editor with animation */}
+					<div
+						className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+							${
+								showCodeEditor
+									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+							}`}
+					>
+						<CodeEditor />
+					</div>
+				</div>
 			</div>
 		</div>
 	);

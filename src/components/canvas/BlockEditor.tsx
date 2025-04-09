@@ -27,6 +27,7 @@ const BlockEditor = () => {
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
 				fitView
+				fitViewOptions={{ padding: 0.2 }}
 			>
 				<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />
 				<Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} />

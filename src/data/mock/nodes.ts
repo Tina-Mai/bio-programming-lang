@@ -13,7 +13,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 600,
 			height: 500,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -44,7 +43,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 225,
 			height: 300,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -62,7 +60,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 225,
 			height: 300,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -106,7 +103,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 90,
 			height: 120,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -123,7 +119,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 90,
 			height: 120,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -141,7 +136,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 90,
 			height: 120,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},
@@ -158,7 +152,6 @@ export const initialNodes: Node[] = [
 		style: {
 			width: 90,
 			height: 120,
-			borderRadius: 10,
 			zIndex: 0,
 		},
 	},

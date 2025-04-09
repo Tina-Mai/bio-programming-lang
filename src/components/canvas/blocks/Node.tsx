@@ -9,7 +9,7 @@ export const defaultNodeOptions = {
 		display: "flex",
 		justifyContent: "center",
 		alignItems: "center",
-		fontWeight: "bold",
+		fontWeight: 600,
 		fontSize: 20,
 		border: "1px solid #ddd",
 		zIndex: 1000,

@@ -13,12 +13,7 @@ export const defaultNodeOptions = {
 		fontSize: 20,
 		border: "1px solid #ddd",
 		zIndex: 1000,
-		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
 		transition: "all 0.2s ease",
-		"&:hover": {
-			boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
-			transform: "scale(1.02)",
-		},
 	},
 };
 
@@ -30,7 +25,7 @@ export const StandardNode = ({ data, selected }: NodeProps) => {
 			<div
 				style={{
 					...defaultNodeOptions.style,
-					border: selected ? "2px solid #1a192b" : "1px solid #ddd",
+					border: selected ? "1.5px solid #334155" : "1px solid #64748b",
 				}}
 			>
 				{nodeData.label}

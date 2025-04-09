@@ -29,7 +29,7 @@ export const ContainerNode = ({ data, selected }: NodeProps) => {
 			onMouseDown={onMouseDown}
 			onClick={(event) => event.stopPropagation()}
 		>
-			{containerData.label && <div className="font-mono text-sm text-zinc-600 py-2 px-4">{containerData.label}</div>}
+			{containerData.label && <div className="font-mono text-sm text-zinc-600 py-3 px-4">{containerData.label}</div>}
 		</div>
 	);
 };

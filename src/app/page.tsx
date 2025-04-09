@@ -29,8 +29,8 @@ export default function Home() {
 					{projects.map((project) => (
 						<div
 							key={project.name}
-							className={`horizontal items-center text-sm hover:bg-slate-200/80 rounded px-2.5 py-1.5 transition-all duration-300 gap-2 cursor-pointer ${
-								currentProject?.name === project.name ? "bg-slate-300/60" : ""
+							className={`horizontal items-center text-sm rounded px-2.5 py-1.5 transition-all duration-300 gap-2 cursor-pointer ${
+								currentProject?.name === project.name ? "bg-slate-300/60 text-foreground" : "hover:bg-slate-200/80 text-slate-700"
 							}`}
 							onClick={() => setCurrentProject(project)}
 						>

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Code, Folder, ParentChild } from "@carbon/icons-react";
+import { Code, Folder, ParentChild, PlayFilledAlt } from "@carbon/icons-react";
 import { useGlobal } from "@/context/GlobalContext";
 import BlockEditor from "@/components/canvas/BlockEditor";
 import CodeEditor from "@/components/canvas/CodeEditor";
@@ -18,7 +18,7 @@ const Canvas = () => {
 			</div>
 
 			<div className="relative h-full w-full pt-11 overflow-y-auto">
-				<Button className="z-50 absolute mt-11 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")}>
+				<Button size="sm" className="z-50 absolute mt-11 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")}>
 					{mode === "blocks" ? (
 						<div className="horizontal items-center gap-2">
 							<Code />
@@ -29,6 +29,10 @@ const Canvas = () => {
 							<ParentChild /> Show blocks
 						</div>
 					)}
+				</Button>
+				<Button variant="accent" className="z-50 absolute mt-11 bottom-3 right-3 w-min">
+					<PlayFilledAlt size={20} />
+					Compile
 				</Button>
 				{mode === "blocks" ? <BlockEditor /> : <CodeEditor />}
 			</div>

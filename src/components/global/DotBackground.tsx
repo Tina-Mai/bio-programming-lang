@@ -8,7 +8,7 @@ export function DotBackground() {
 				className={cn(
 					"absolute inset-0",
 					"[background-size:15px_15px]",
-					"[background-image:radial-gradient(#d4d4d8_1px,transparent_1px)]",
+					"[background-image:radial-gradient(#cbd5e1_1px,transparent_1px)]",
 					"dark:[background-image:radial-gradient(#404040_1px,transparent_1px)]"
 				)}
 			/>

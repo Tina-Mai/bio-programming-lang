@@ -535,7 +535,7 @@
 				"id": "x1",
 				"type": "standard",
 				"data": { "label": "X₁" },
-				"position": { "x": 300, "y": 40 },
+				"position": { "x": 325, "y": 50 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"draggable": false,
@@ -548,11 +548,11 @@
 					"label": "Symmetry, globularity",
 					"backgroundColor": "rgba(235, 244, 255, 0.5)"
 				},
-				"position": { "x": 50, "y": 120 },
+				"position": { "x": 100, "y": 120 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 600,
+					"width": 500,
 					"height": 400,
 					"zIndex": 0
 				}
@@ -561,7 +561,7 @@
 				"id": "x2",
 				"type": "standard",
 				"data": { "label": "X₂" },
-				"position": { "x": 270, "y": 20 },
+				"position": { "x": 225, "y": 50 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"draggable": false,
@@ -574,12 +574,12 @@
 					"label": "A",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 10, "y": 80 },
+				"position": { "x": 50, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -590,12 +590,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 10, "y": 180 },
+				"position": { "x": 50, "y": 220 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -606,12 +606,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 10, "y": 280 },
+				"position": { "x": 50, "y": 320 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -619,7 +619,7 @@
 				"id": "a1",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-a1",
 				"extent": "parent",
 				"draggable": false,
@@ -629,7 +629,7 @@
 				"id": "b1",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-b1",
 				"extent": "parent",
 				"draggable": false,
@@ -639,7 +639,7 @@
 				"id": "c1",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 50 },
 				"parentId": "container-c1",
 				"extent": "parent",
 				"draggable": false,
@@ -653,12 +653,12 @@
 					"label": "A",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 180, "y": 80 },
+				"position": { "x": 200, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -669,12 +669,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 180, "y": 180 },
+				"position": { "x": 200, "y": 220 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -685,12 +685,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 180, "y": 280 },
+				"position": { "x": 200, "y": 320 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -698,7 +698,7 @@
 				"id": "a2",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-a2",
 				"extent": "parent",
 				"draggable": false,
@@ -708,7 +708,7 @@
 				"id": "b2",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-b2",
 				"extent": "parent",
 				"draggable": false,
@@ -718,7 +718,7 @@
 				"id": "c2",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 50 },
 				"parentId": "container-c2",
 				"extent": "parent",
 				"draggable": false,
@@ -732,12 +732,12 @@
 					"label": "A",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 80 },
+				"position": { "x": 350, "y": 120 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -748,12 +748,12 @@
 					"label": "All-atom coordination, surface exposure",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 180 },
+				"position": { "x": 350, "y": 220 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 80,
 					"zIndex": 0
 				}
 			},
@@ -764,12 +764,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 350, "y": 280 },
+				"position": { "x": 350, "y": 320 },
 				"parentId": "container-middle",
 				"extent": "parent",
 				"style": {
 					"width": 100,
-					"height": 60,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -777,7 +777,7 @@
 				"id": "a3",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-a3",
 				"extent": "parent",
 				"draggable": false,
@@ -787,7 +787,7 @@
 				"id": "b3",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 25 },
 				"parentId": "container-b3",
 				"extent": "parent",
 				"draggable": false,
@@ -797,7 +797,7 @@
 				"id": "c3",
 				"type": "standard",
 				"data": { "label": "C" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 35, "y": 50 },
 				"parentId": "container-c3",
 				"extent": "parent",
 				"draggable": false,
@@ -943,7 +943,7 @@
 				"id": "x1",
 				"type": "standard",
 				"data": { "label": "X₁" },
-				"position": { "x": 300, "y": 40 },
+				"position": { "x": 325, "y": 50 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"draggable": false,
@@ -956,11 +956,11 @@
 					"label": "Symmetry",
 					"backgroundColor": "rgba(235, 244, 255, 0.5)"
 				},
-				"position": { "x": 50, "y": 120 },
+				"position": { "x": 75, "y": 120 },
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 275,
+					"width": 250,
 					"height": 400,
 					"zIndex": 0
 				}
@@ -976,7 +976,7 @@
 				"parentId": "container-top",
 				"extent": "parent",
 				"style": {
-					"width": 275,
+					"width": 250,
 					"height": 400,
 					"zIndex": 0
 				}
@@ -985,7 +985,7 @@
 				"id": "x2",
 				"type": "standard",
 				"data": { "label": "X₂" },
-				"position": { "x": 100, "y": 20 },
+				"position": { "x": 100, "y": 50 },
 				"parentId": "container-middle-left",
 				"extent": "parent",
 				"draggable": false,
@@ -995,7 +995,7 @@
 				"id": "x3",
 				"type": "standard",
 				"data": { "label": "X₃" },
-				"position": { "x": 100, "y": 20 },
+				"position": { "x": 100, "y": 50 },
 				"parentId": "container-middle-right",
 				"extent": "parent",
 				"draggable": false,
@@ -1008,11 +1008,11 @@
 					"label": "Symmetry, globularity, single chain",
 					"backgroundColor": "rgba(220, 240, 255, 0.5)"
 				},
-				"position": { "x": 20, "y": 120 },
+				"position": { "x": 25, "y": 150 },
 				"parentId": "container-middle-left",
 				"extent": "parent",
 				"style": {
-					"width": 230,
+					"width": 200,
 					"height": 200,
 					"zIndex": 0
 				}
@@ -1024,11 +1024,11 @@
 					"label": "Symmetry, globularity, single chain",
 					"backgroundColor": "rgba(220, 240, 255, 0.5)"
 				},
-				"position": { "x": 20, "y": 120 },
+				"position": { "x": 25, "y": 150 },
 				"parentId": "container-middle-right",
 				"extent": "parent",
 				"style": {
-					"width": 230,
+					"width": 200,
 					"height": 200,
 					"zIndex": 0
 				}
@@ -1037,7 +1037,7 @@
 				"id": "x4",
 				"type": "standard",
 				"data": { "label": "X₄" },
-				"position": { "x": 80, "y": 20 },
+				"position": { "x": 85, "y": 50 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"draggable": false,
@@ -1047,7 +1047,7 @@
 				"id": "x5",
 				"type": "standard",
 				"data": { "label": "X₅" },
-				"position": { "x": 80, "y": 20 },
+				"position": { "x": 85, "y": 50 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"draggable": false,
@@ -1060,12 +1060,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 20, "y": 80 },
+				"position": { "x": 25, "y": 120 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"style": {
-					"width": 80,
-					"height": 60,
+					"width": 70,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -1076,12 +1076,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 120, "y": 80 },
+				"position": { "x": 110, "y": 120 },
 				"parentId": "container-lower-left",
 				"extent": "parent",
 				"style": {
-					"width": 80,
-					"height": 60,
+					"width": 70,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -1092,12 +1092,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 20, "y": 80 },
+				"position": { "x": 25, "y": 120 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"style": {
-					"width": 80,
-					"height": 60,
+					"width": 70,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -1108,12 +1108,12 @@
 					"label": "Length",
 					"backgroundColor": "rgba(226, 232, 240, 0.5)"
 				},
-				"position": { "x": 120, "y": 80 },
+				"position": { "x": 110, "y": 120 },
 				"parentId": "container-lower-right",
 				"extent": "parent",
 				"style": {
-					"width": 80,
-					"height": 60,
+					"width": 70,
+					"height": 120,
 					"zIndex": 0
 				}
 			},
@@ -1121,7 +1121,7 @@
 				"id": "a-left-1",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 25, "y": 50 },
 				"parentId": "container-a-left-1",
 				"extent": "parent",
 				"draggable": false,
@@ -1131,7 +1131,7 @@
 				"id": "a-left-2",
 				"type": "standard",
 				"data": { "label": "A" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 25, "y": 50 },
 				"parentId": "container-a-left-2",
 				"extent": "parent",
 				"draggable": false,
@@ -1141,7 +1141,7 @@
 				"id": "b-right-1",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 25, "y": 50 },
 				"parentId": "container-b-right-1",
 				"extent": "parent",
 				"draggable": false,
@@ -1151,7 +1151,7 @@
 				"id": "b-right-2",
 				"type": "standard",
 				"data": { "label": "B" },
-				"position": { "x": 15, "y": 15 },
+				"position": { "x": 25, "y": 50 },
 				"parentId": "container-b-right-2",
 				"extent": "parent",
 				"draggable": false,

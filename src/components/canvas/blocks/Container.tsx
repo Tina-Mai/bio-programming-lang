@@ -1,9 +1,9 @@
-import React, { MouseEvent } from "react";
+import React, { useState, MouseEvent } from "react";
 import { ContainerData } from "@/types";
 import { NodeProps } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Add, OverflowMenuHorizontal } from "@carbon/icons-react";
+import AddConstraint from "./AddConstraint";
+import { OverflowMenuHorizontal } from "@carbon/icons-react";
 
 export const ContainerNode = ({ data, id, parentId, selected }: NodeProps) => {
 	const containerData = data as ContainerData;
@@ -19,6 +19,7 @@ export const ContainerNode = ({ data, id, parentId, selected }: NodeProps) => {
 
 	// Add console.log to debug
 	console.log("Container ID:", data.id);
+	const [constraints, setConstraints] = useState<string[]>(containerData.label?.split(", ") || []);
 
 	return (
 		<div
@@ -43,15 +44,13 @@ export const ContainerNode = ({ data, id, parentId, selected }: NodeProps) => {
 						<OverflowMenuHorizontal className="stroke-1 stroke-zinc-600" />
 					</Badge>
 				)}
-				{containerData.label &&
-					containerData.label.split(", ").map((label, index) => (
+				{constraints &&
+					constraints.map((label, index) => (
 						<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
 							{label}
 						</Badge>
 					))}
-				<Button size="icon" variant="outline" className="!px-0 !py-0 !size-5 !rounded-xs" onClick={(e) => e.stopPropagation()}>
-					<Add size={4} />
-				</Button>
+				<AddConstraint constraints={constraints} setConstraints={setConstraints} />
 			</div>
 		</div>
 	);

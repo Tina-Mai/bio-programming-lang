@@ -2,7 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Folder, Settings, AddLarge, Information } from "@carbon/icons-react";
+import { Folder, Settings, AddLarge, Information, Book } from "@carbon/icons-react";
 import mockProjects from "@/data/mock/mockProjects.json";
 import Canvas from "@/components/canvas";
 import { Project, ProjectJSON, convertJSONArrayToProjects } from "@/types";
@@ -44,6 +44,10 @@ export default function Home() {
 					<div className="horizontal items-center gap-2 hover:bg-slate-200 rounded py-1.5 -ml-2.5 pl-2.5 duration-300">
 						<Settings size={18} />
 						<div className="font-medium">Settings</div>
+					</div>
+					<div className="horizontal items-center gap-2 hover:bg-slate-200 rounded py-1.5 -ml-2.5 pl-2.5 duration-300">
+						<Book size={18} />
+						<div className="font-medium">Documentation</div>
 					</div>
 					<div className="horizontal items-center gap-2 hover:bg-slate-200 rounded py-1.5 -ml-2.5 pl-2.5 duration-300">
 						<Information size={18} />

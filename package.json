@@ -12,6 +12,7 @@
 		"@carbon/icons-react": "^11.57.0",
 		"@codemirror/lang-python": "^6.1.7",
 		"@radix-ui/react-slot": "^1.2.0",
+		"@radix-ui/react-tabs": "^1.1.4",
 		"@uiw/codemirror-theme-tokyo-night-day": "^4.23.10",
 		"@uiw/react-codemirror": "^4.23.10",
 		"@xyflow/react": "^12.5.5",

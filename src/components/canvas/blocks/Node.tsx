@@ -34,7 +34,7 @@ export const StandardNode = ({ data }: NodeProps) => {
 			</div>
 			<Handle type="source" position={Position.Bottom} />
 			<div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-				<Button size="icon" className="!px-0 !py-0 !size-4 !rounded-xs bg-slate-600" onClick={(e) => e.stopPropagation()}>
+				<Button size="icon" className="!px-0 !py-0 !size-4 !rounded-xs bg-slate-600 hover:bg-slate-500" onClick={(e) => e.stopPropagation()}>
 					<Add size={4} />
 				</Button>
 			</div>

@@ -3,6 +3,7 @@ import { python } from "@codemirror/lang-python";
 import { tokyoNightDay } from "@uiw/codemirror-theme-tokyo-night-day";
 import { EditorView } from "@codemirror/view";
 import { useGlobal } from "@/context/GlobalContext";
+import { RefObject } from "react";
 
 const bgTheme = EditorView.theme({
 	"&": {
@@ -17,7 +18,11 @@ const bgTheme = EditorView.theme({
 	},
 });
 
-const CodeEditor = () => {
+interface CodeEditorProps {
+	editorRef: RefObject<EditorView | null>;
+}
+
+const CodeEditor = ({ editorRef }: CodeEditorProps) => {
 	const { currentProject, setCurrentProject } = useGlobal();
 
 	return (
@@ -31,6 +36,9 @@ const CodeEditor = () => {
 			width="100%"
 			className="h-full w-full"
 			theme={tokyoNightDay}
+			onCreateEditor={(view) => {
+				editorRef.current = view;
+			}}
 		/>
 	);
 };

@@ -1,13 +1,11 @@
 import { Button } from "@/components/ui/button";
-import CodeMirror from "@uiw/react-codemirror";
-import { python } from "@codemirror/lang-python";
-import { tokyoNightDay } from "@uiw/codemirror-theme-tokyo-night-day";
 import { Code, Folder, ParentChild } from "@carbon/icons-react";
-import DotBackground from "@/components/global/DotBackground";
 import { useGlobal } from "@/context/GlobalContext";
+import BlockEditor from "@/components/canvas/BlockEditor";
+import CodeEditor from "@/components/canvas/CodeEditor";
 
 const Canvas = () => {
-	const { mode, setMode, currentProject, setCurrentProject } = useGlobal();
+	const { mode, setMode, currentProject } = useGlobal();
 
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
@@ -19,7 +17,7 @@ const Canvas = () => {
 				</div>
 			</div>
 
-			<div className="relative h-full w-full pt-11">
+			<div className="relative h-full w-full pt-11 overflow-y-auto">
 				<Button className="z-50 absolute mt-11 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")}>
 					{mode === "blocks" ? (
 						<div className="horizontal items-center gap-2">
@@ -32,28 +30,7 @@ const Canvas = () => {
 						</div>
 					)}
 				</Button>
-				{mode === "blocks" ? (
-					<div>
-						<DotBackground />
-					</div>
-				) : (
-					<div className="flex h-full w-full overflow-y-auto -z-100">
-						<CodeMirror
-							extensions={[python()]}
-							value={currentProject?.code || ""}
-							onChange={(value) => {
-								setCurrentProject({ ...currentProject, code: value });
-							}}
-							height="100%"
-							width="100%"
-							className="h-full w-full"
-							theme={tokyoNightDay}
-							style={{
-								backgroundColor: "transparent",
-							}}
-						/>
-					</div>
-				)}
+				{mode === "blocks" ? <BlockEditor /> : <CodeEditor />}
 			</div>
 		</div>
 	);

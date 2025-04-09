@@ -55,7 +55,7 @@ const Canvas = () => {
 				</div>
 			</div>
 
-			<div className="relative h-full w-full pt-12 overflow-y-auto">
+			<div className="relative h-full w-full overflow-hidden">
 				<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")} disabled={transitioning}>
 					{mode === "blocks" ? (
 						<div className="horizontal items-center gap-2">
@@ -68,7 +68,9 @@ const Canvas = () => {
 						</div>
 					)}
 				</Button>
-				<EnergyDialog />
+				<div className="z-50 absolute mt-12 bottom-3 right-3 ">
+					<EnergyDialog />
+				</div>
 
 				<div className="relative h-full w-full">
 					{/* Block Editor with animation */}
@@ -85,7 +87,7 @@ const Canvas = () => {
 
 					{/* Code Editor with animation */}
 					<div
-						className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+						className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 							${
 								showCodeEditor
 									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"

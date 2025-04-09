@@ -1,3 +1,5 @@
+# High-level programming language for generative biology
+
 ## Getting Started
 
 First, run the development server:

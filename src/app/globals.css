@@ -6,7 +6,7 @@
 :root {
 	--radius: 0.625rem;
 	--background: oklch(96.8% 0.007 247.896); /* slate-100 */
-	--foreground: oklch(0 0 0);
+	--foreground: oklch(12.9% 0.042 264.695); /* slate-950 */
 	--card: oklch(1 0 0);
 	--card-foreground: oklch(0.129 0.042 264.695);
 	--popover: oklch(1 0 0);

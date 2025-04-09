@@ -1,0 +1,22 @@
+[
+	{
+		"name": "New design",
+		"createdAt": "2024-03-15T10:00:00.000Z",
+		"updatedAt": "2024-03-15T10:00:00.000Z"
+	},
+	{
+		"name": "Symmetric dimer of 2-fold symmetry",
+		"createdAt": "2024-03-14T15:30:00.000Z",
+		"updatedAt": "2024-03-15T09:45:00.000Z"
+	},
+	{
+		"name": "3-fold symmetric functional site scaffolding",
+		"createdAt": "2024-03-13T08:20:00.000Z",
+		"updatedAt": "2024-03-14T16:15:00.000Z"
+	},
+	{
+		"name": "Asymmetric complex of 2 dimers of 2-fold symmetry",
+		"createdAt": "2024-03-12T11:45:00.000Z",
+		"updatedAt": "2024-03-13T14:30:00.000Z"
+	}
+]

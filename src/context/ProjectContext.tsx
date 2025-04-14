@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, ReactNode, Dispatch, Set
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
 import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js"; // Import ELK and its types
 import { Program } from "@/types";
-import { parseProgramJSON, convertProgramToFlow } from "@/lib/utils";
+import { parseProgramJSON, convertProgramToFlow } from "@/lib";
 import programData from "@/data/mock/program.json";
 
 // --- ElkJS Layout Logic Start ---

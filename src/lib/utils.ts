@@ -74,6 +74,7 @@ export function convertProgramToFlow(program: Program): FlowData {
 				// Pass label for potential display in ContainerNode title
 				label: programNode.label,
 			},
+			draggable: false, // Make group nodes non-draggable
 			// Parent is the group ID of the program node's parent
 			...(parentGroupId && { parentId: parentGroupId }),
 		});

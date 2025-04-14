@@ -1,57 +1,58 @@
-import React, { useState, MouseEvent } from "react";
-import { ContainerData } from "@/types";
-import { NodeProps } from "@xyflow/react";
+import React from "react";
+import { Handle, Position } from "@xyflow/react";
+// import type { Node } from "@xyflow/react"; // Remove unused import
 import { Badge } from "@/components/ui/badge";
-import AddConstraint from "./AddConstraint";
-import { OverflowMenuHorizontal } from "@carbon/icons-react";
+import { Constraint } from "@/types";
 
-export const ContainerNode = ({ data, id, parentId, selected }: NodeProps) => {
-	const containerData = data as ContainerData;
+// Define the shape of the data object expected within the node
+interface ProgramNodeData {
+	label?: string;
+	constraints?: Constraint[];
+	backgroundColor?: string;
+}
 
-	const onMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-		// stop propagation only if this is a direct click on the container (not on its children)
-		if (event.target === event.currentTarget) {
-			event.stopPropagation();
-		}
-	};
+// Define the props interface directly for the component
+interface ContainerNodeProps {
+	data: ProgramNodeData; // The data object with our specific shape
+	selected: boolean | undefined; // Selected state from React Flow
+	id: string; // Node ID from React Flow
+	// Add other props provided by NodeProps if needed (e.g., dragging, zIndex, type, position)
+}
 
-	const isTopLevelContainer = id === "container-top" || !parentId;
-
-	// Add console.log to debug
-	console.log("Container ID:", data.id);
-	const [constraints, setConstraints] = useState<string[]>(containerData.label?.split(", ") || []);
+export const ContainerNode = ({ data, selected, id }: ContainerNodeProps) => {
+	// No need to cast 'data' if props are correctly typed
+	const constraintsToDisplay = data.label?.split(", ").filter(Boolean) || [];
 
 	return (
 		<div
-			className="react-flow__node-custom"
+			className="react-flow__node-custom nodrag"
 			style={{
-				width: "100%",
-				height: "100%",
-				borderRadius: 10,
-				backgroundColor: containerData.backgroundColor || "rgba(235, 244, 255, 0.5)",
+				padding: "10px 15px",
+				borderRadius: 8,
+				backgroundColor: data.backgroundColor || "rgba(235, 244, 255, 0.8)",
 				border: selected ? "1.5px solid #64748b" : "1px solid #CAD5E2",
-				boxShadow: "none",
-				zIndex: 0,
-				position: "relative",
-				outline: "none",
+				minWidth: 150,
+				textAlign: "center",
 			}}
-			onMouseDown={onMouseDown}
-			onClick={(event) => event.stopPropagation()}
 		>
-			<div className="horizontal my-3 mx-4 items-center gap-1 flex-wrap">
-				{!isTopLevelContainer && (
-					<Badge variant="outline" className="text-zinc-600 !px-0 !py-0 !size-5 !rounded-xs">
-						<OverflowMenuHorizontal className="stroke-1 stroke-zinc-600" />
-					</Badge>
-				)}
-				{constraints &&
-					constraints.map((label, index) => (
-						<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
-							{label}
+			<Handle type="target" position={Position.Top} className="!bg-slate-500" />
+			<div className="flex flex-col items-center gap-1">
+				<div className="font-semibold text-sm mb-1">Node {String(id)}</div>
+				<div className="flex flex-wrap justify-center gap-1">
+					{constraintsToDisplay.length > 0 ? (
+						constraintsToDisplay.map((constraintName: string, index: number) => (
+							<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
+								{constraintName}
+							</Badge>
+						))
+					) : (
+						<Badge variant="secondary" className="text-zinc-500">
+							No Constraints
 						</Badge>
-					))}
-				<AddConstraint constraints={constraints} setConstraints={setConstraints} />
+					)}
+				</div>
 			</div>
+			<Handle type="source" position={Position.Bottom} className="!bg-slate-500" />
 		</div>
 	);
 };

@@ -12,8 +12,8 @@
 		{
 			"id": "3",
 			"children": [
-				{ "id": "4", "children": [], "constraints": [{ "name": "length" }] },
-				{ "id": "5", "children": [], "constraints": [{ "name": "length" }] }
+				{ "id": "6", "children": [], "constraints": [{ "name": "length" }] },
+				{ "id": "7", "children": [], "constraints": [{ "name": "length" }] }
 			],
 			"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
 		}

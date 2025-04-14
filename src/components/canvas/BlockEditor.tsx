@@ -1,65 +1,114 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Connection, NodeChange, EdgeChange } from "@xyflow/react";
+import React, { useCallback, useEffect } from "react";
+import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Connection, addEdge, ConnectionLineType, useNodesState, useEdgesState, Position } from "@xyflow/react";
+import dagre from "@dagrejs/dagre";
 import "@xyflow/react/dist/style.css";
-import { applyNodeChanges, applyEdgeChanges, addEdge } from "@xyflow/react";
-import { defaultEdgeOptions } from "@/components/canvas/blocks/Edge";
-import { nodeTypes, edgeTypes } from "@/types";
-import { Project } from "@/types/Project";
 
-interface BlockEditorProps {
-	project?: Project;
+import { nodeTypes } from "@/types";
+import { parseProgramJSON, convertProgramToFlow } from "@/lib/utils";
+import programData from "@/data/mock/program.json";
+import { Program } from "@/types";
+
+const dagreGraph = new dagre.graphlib.Graph({ compound: true }).setDefaultEdgeLabel(() => ({}));
+
+const nodeWidth = 172;
+const nodeHeight = 60;
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
+	const direction = "TB";
+	dagreGraph.setGraph({ rankdir: direction, nodesep: 70, ranksep: 100 });
+
+	const dagreNodes = nodes.filter((n) => n.type !== "group");
+	const dagreGroups = nodes.filter((n) => n.type === "group");
+
+	dagreNodes.forEach((node) => {
+		dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+		if (node.parentId) {
+			dagreGraph.setParent(node.id, node.parentId);
+		}
+	});
+
+	dagreGroups.forEach((group) => {
+		dagreGraph.setNode(group.id, { clusterLabelPos: "top" });
+		if (group.parentId) {
+			dagreGraph.setParent(group.id, group.parentId);
+		}
+	});
+
+	edges.forEach((edge) => {
+		dagreGraph.setEdge(edge.source, edge.target);
+	});
+
+	dagre.layout(dagreGraph);
+
+	const layoutedNodes = nodes.map((node) => {
+		const nodeWithPosition = dagreGraph.node(node.id);
+		const position = {
+			x: nodeWithPosition.x - (node.type !== "group" ? nodeWidth / 2 : 0),
+			y: nodeWithPosition.y - (node.type !== "group" ? nodeHeight / 2 : 0),
+		};
+
+		return {
+			...node,
+			targetPosition: Position.Top,
+			sourcePosition: Position.Bottom,
+			position,
+			...(node.type === "group" && {
+				style: {
+					...node.style,
+					width: nodeWithPosition.width,
+					height: nodeWithPosition.height,
+				},
+			}),
+		};
+	});
+
+	return { nodes: layoutedNodes, edges };
+};
+
+let initialNodes: Node[] = [];
+let initialEdges: Edge[] = [];
+const parsedProgram = parseProgramJSON(programData);
+
+if (parsedProgram) {
+	const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(parsedProgram as Program);
+	const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(convertedNodes, convertedEdges);
+	initialNodes = layoutedNodes;
+	initialEdges = layoutedEdges;
+} else {
+	console.error("Failed to parse program data.");
 }
 
-const BlockEditor = ({ project }: BlockEditorProps) => {
-	const [nodes, setNodes] = useState<Node[]>([]);
-	const [edges, setEdges] = useState<Edge[]>([]);
+const BlockEditor = () => {
+	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-	// initialize with project nodes and edges
-	useEffect(() => {
-		console.log("Project received:", project);
-		if (project?.nodes && project.nodes.length > 0) {
-			setNodes(project.nodes);
-		} else {
-			setNodes([]);
-		}
-
-		if (project?.edges && project.edges.length > 0) {
-			setEdges(project.edges);
-		} else {
-			setEdges([]);
-		}
-	}, [project]);
+	const onConnect = useCallback((connection: Connection) => setEdges((eds) => addEdge({ ...connection, type: "default", animated: true, style: { stroke: "#aaa" } }, eds)), [setEdges]);
 
 	useEffect(() => {
 		console.log("Current nodes:", nodes);
 		console.log("Current edges:", edges);
 		console.log("Node types:", nodeTypes);
-		console.log("Edge types:", edgeTypes);
 	}, [nodes, edges]);
-
-	const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
-	const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
-	const onConnect = useCallback((connection: Connection) => setEdges((eds) => addEdge({ ...connection, ...defaultEdgeOptions }, eds)), []);
 
 	return (
 		<div style={{ height: "100%" }}>
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
-				defaultEdgeOptions={defaultEdgeOptions}
-				edgeTypes={edgeTypes}
-				proOptions={{ hideAttribution: true }}
 				onNodesChange={onNodesChange}
 				onEdgesChange={onEdgesChange}
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
+				connectionLineType={ConnectionLineType.SmoothStep}
+				proOptions={{ hideAttribution: true }}
 				fitView
-				fitViewOptions={{ padding: 0.2 }}
+				fitViewOptions={{ padding: 0.3 }}
+				nodesDraggable={true}
 			>
 				<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />
 				<Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} />
 				<MiniMap
-					nodeColor={"oklch(70.4% 0.04 256.788 / 0.15)"}
+					nodeColor={(n: Node) => (n.type === "group" ? "rgba(210, 230, 255, 0.5)" : "oklch(70.4% 0.04 256.788 / 0.15)")}
 					nodeStrokeWidth={3}
 					zoomable
 					pannable

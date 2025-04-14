@@ -20,7 +20,7 @@ const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: Con
 			}}
 		>
 			<DropdownMenuTrigger>
-				<Button size="icon" variant="outline" className="!px-0 !py-0 !size-5 !rounded-xs mt-1" onClick={(e) => e.stopPropagation()}>
+				<Button size="icon" variant="outline" className="!px-0 !py-0 !size-5 !rounded-xs mt-1 bg-slate-50/85" onClick={(e) => e.stopPropagation()}>
 					<Add size={4} />
 				</Button>
 			</DropdownMenuTrigger>

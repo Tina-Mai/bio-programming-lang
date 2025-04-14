@@ -33,7 +33,7 @@ export const ContainerNode = ({ data }: ContainerNodeProps) => {
 				{constraints &&
 					constraints.length > 0 &&
 					constraints?.map((constraint: Constraint, index: number) => (
-						<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
+						<Badge key={index} variant="outline" className="text-zinc-600 capitalize bg-slate-50/85">
 							{constraint.name}
 						</Badge>
 					))}

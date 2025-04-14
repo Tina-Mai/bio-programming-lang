@@ -1,27 +1,24 @@
 import React from "react";
 import { Handle, Position } from "@xyflow/react";
-// import type { Node } from "@xyflow/react"; // Remove unused import
 import { Badge } from "@/components/ui/badge";
 import { Constraint } from "@/types";
+import AddConstraint from "./AddConstraint";
 
 // Define the shape of the data object expected within the node
 interface ProgramNodeData {
-	label?: string;
 	constraints?: Constraint[];
 	backgroundColor?: string;
 }
 
 // Define the props interface directly for the component
 interface ContainerNodeProps {
-	data: ProgramNodeData; // The data object with our specific shape
-	selected: boolean | undefined; // Selected state from React Flow
-	id: string; // Node ID from React Flow
-	// Add other props provided by NodeProps if needed (e.g., dragging, zIndex, type, position)
+	data: ProgramNodeData;
+	selected: boolean | undefined;
+	id: string;
 }
 
 export const ContainerNode = ({ data, selected, id }: ContainerNodeProps) => {
-	// No need to cast 'data' if props are correctly typed
-	const constraintsToDisplay = data.label?.split(", ").filter(Boolean) || [];
+	const constraints = data.constraints || [];
 
 	return (
 		<div
@@ -38,18 +35,15 @@ export const ContainerNode = ({ data, selected, id }: ContainerNodeProps) => {
 			<Handle type="target" position={Position.Top} className="!bg-slate-500" />
 			<div className="flex flex-col items-center gap-1">
 				<div className="font-semibold text-sm mb-1">Node {String(id)}</div>
-				<div className="flex flex-wrap justify-center gap-1">
-					{constraintsToDisplay.length > 0 ? (
-						constraintsToDisplay.map((constraintName: string, index: number) => (
+				<div className="horizontal my-3 mx-4 items-center gap-1 flex-wrap">
+					{constraints &&
+						constraints.length > 0 &&
+						constraints?.map((constraint: Constraint, index: number) => (
 							<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
-								{constraintName}
+								{constraint.name}
 							</Badge>
-						))
-					) : (
-						<Badge variant="secondary" className="text-zinc-500">
-							No Constraints
-						</Badge>
-					)}
+						))}
+					<AddConstraint constraints={constraints} setConstraints={() => {}} />
 				</div>
 			</div>
 			<Handle type="source" position={Position.Bottom} className="!bg-slate-500" />

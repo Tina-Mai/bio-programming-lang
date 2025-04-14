@@ -1,38 +1,31 @@
-export const constraints = [
+import { Constraint } from "@/types";
+
+export const constraints: Constraint[] = [
 	{
-		label: "pTM",
-		description: "pTM",
+		name: "pTM",
 	},
 	{
-		label: "pLDDT",
-		description: "pLDDT",
+		name: "pLDDT",
 	},
 	{
-		label: "Hydrophobics",
-		description: "Hydrophobics",
+		name: "Hydrophobics",
 	},
 	{
-		label: "Symmetry",
-		description: "Symmetry",
+		name: "Symmetry",
 	},
 	{
-		label: "Single chain",
-		description: "Single chain",
+		name: "Single chain",
 	},
 	{
-		label: "Globularity",
-		description: "Globularity",
+		name: "Globularity",
 	},
 	{
-		label: "Length",
-		description: "Length",
+		name: "Length",
 	},
 	{
-		label: "All-atom coordination",
-		description: "All-atom coordination",
+		name: "All-atom coordination",
 	},
 	{
-		label: "Surface exposure",
-		description: "Surface exposure",
+		name: "Surface exposure",
 	},
 ];

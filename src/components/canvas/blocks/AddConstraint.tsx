@@ -1,14 +1,15 @@
+import React, { useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Add } from "@carbon/icons-react";
 import { Input } from "@/components/ui/input";
 import { constraints as constraintsOptions } from "@/data/constraints";
-import { useState } from "react";
+import { Constraint } from "@/types";
 
-const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: string[]; setConstraints: (constraints: string[]) => void }) => {
+const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: Constraint[]; setConstraints: (constraints: Constraint[]) => void }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 
-	const filteredConstraints = constraintsOptions.filter((constraint) => constraint.label.toLowerCase().includes(searchTerm.toLowerCase()));
+	const filteredConstraints = constraintsOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (
 		<DropdownMenu
@@ -40,17 +41,17 @@ const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: str
 				<DropdownMenuSeparator />
 				{filteredConstraints.map((constraint) => (
 					<DropdownMenuCheckboxItem
-						key={constraint.label}
-						checked={constraints.map((c) => c.toLowerCase()).includes(constraint.label.toLowerCase())}
+						key={constraint.name}
+						checked={constraints.map((c) => c.name.toLowerCase()).includes(constraint.name.toLowerCase())}
 						onCheckedChange={(checked) => {
 							if (checked) {
-								setConstraints([...constraints, constraint.label]);
+								setConstraints([...constraints, constraint]);
 							} else {
-								setConstraints(constraints.filter((c) => c.toLowerCase() !== constraint.label.toLowerCase()));
+								setConstraints(constraints.filter((c) => c.name !== constraint.name));
 							}
 						}}
 					>
-						{constraint.label}
+						{constraint.name}
 					</DropdownMenuCheckboxItem>
 				))}
 			</DropdownMenuContent>

@@ -180,3 +180,8 @@
 	box-shadow: none !important;
 	outline: none !important;
 }
+
+/* Hide handles on group nodes */
+.react-flow__node-group .react-flow__handle {
+	display: none !important;
+}

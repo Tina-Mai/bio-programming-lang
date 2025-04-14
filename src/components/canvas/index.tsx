@@ -7,6 +7,7 @@ import CodeEditor from "@/components/canvas/CodeEditor";
 import ProjectTabs from "@/components/canvas/ProjectTabs";
 import { EditorView } from "@codemirror/view";
 import EnergyDialog from "@/components/energy/EnergyDialog";
+import { ProjectProvider } from "@/context/ProjectContext";
 
 const Canvas = () => {
 	const { mode, setMode, currentProject } = useGlobal();
@@ -72,31 +73,33 @@ const Canvas = () => {
 					<EnergyDialog />
 				</div>
 
-				<div className="relative h-full w-full">
-					{/* Block Editor with animation */}
-					<div
-						className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
-							${
-								showBlockEditor
-									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
-									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
-							}`}
-					>
-						<BlockEditor project={currentProject} />
-					</div>
+				<ProjectProvider>
+					<div className="relative h-full w-full">
+						{/* Block Editor with animation */}
+						<div
+							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+								${
+									showBlockEditor
+										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+								}`}
+						>
+							<BlockEditor />
+						</div>
 
-					{/* Code Editor with animation */}
-					<div
-						className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
-							${
-								showCodeEditor
-									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
-									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
-							}`}
-					>
-						<CodeEditor editorRef={editorRef} />
+						{/* Code Editor with animation */}
+						<div
+							className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+								${
+									showCodeEditor
+										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
+								}`}
+						>
+							<CodeEditor editorRef={editorRef} />
+						</div>
 					</div>
-				</div>
+				</ProjectProvider>
 			</div>
 		</div>
 	);

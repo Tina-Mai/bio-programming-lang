@@ -1,93 +1,16 @@
-import React, { useCallback, useEffect } from "react";
-import { ReactFlow, Controls, Background, MiniMap, Node, Edge, Connection, addEdge, ConnectionLineType, useNodesState, useEdgesState, Position } from "@xyflow/react";
-import dagre from "@dagrejs/dagre";
+import React, { useEffect } from "react";
+import { ReactFlow, Controls, Background, MiniMap, Node, ConnectionLineType } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { nodeTypes } from "@/types";
-import { parseProgramJSON, convertProgramToFlow } from "@/lib/utils";
-import programData from "@/data/mock/program.json";
-import { Program } from "@/types";
-
-const dagreGraph = new dagre.graphlib.Graph({ compound: true }).setDefaultEdgeLabel(() => ({}));
-
-const nodeWidth = 172;
-const nodeHeight = 60;
-
-const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
-	const direction = "TB";
-	dagreGraph.setGraph({ rankdir: direction, nodesep: 70, ranksep: 100 });
-
-	const dagreNodes = nodes.filter((n) => n.type !== "group");
-	const dagreGroups = nodes.filter((n) => n.type === "group");
-
-	dagreNodes.forEach((node) => {
-		dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-		if (node.parentId) {
-			dagreGraph.setParent(node.id, node.parentId);
-		}
-	});
-
-	dagreGroups.forEach((group) => {
-		dagreGraph.setNode(group.id, { clusterLabelPos: "top" });
-		if (group.parentId) {
-			dagreGraph.setParent(group.id, group.parentId);
-		}
-	});
-
-	edges.forEach((edge) => {
-		dagreGraph.setEdge(edge.source, edge.target);
-	});
-
-	dagre.layout(dagreGraph);
-
-	const layoutedNodes = nodes.map((node) => {
-		const nodeWithPosition = dagreGraph.node(node.id);
-		const position = {
-			x: nodeWithPosition.x - (node.type !== "group" ? nodeWidth / 2 : 0),
-			y: nodeWithPosition.y - (node.type !== "group" ? nodeHeight / 2 : 0),
-		};
-
-		return {
-			...node,
-			targetPosition: Position.Top,
-			sourcePosition: Position.Bottom,
-			position,
-			...(node.type === "group" && {
-				style: {
-					...node.style,
-					width: nodeWithPosition.width,
-					height: nodeWithPosition.height,
-				},
-			}),
-		};
-	});
-
-	return { nodes: layoutedNodes, edges };
-};
-
-let initialNodes: Node[] = [];
-let initialEdges: Edge[] = [];
-const parsedProgram = parseProgramJSON(programData);
-
-if (parsedProgram) {
-	const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(parsedProgram as Program);
-	const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(convertedNodes, convertedEdges);
-	initialNodes = layoutedNodes;
-	initialEdges = layoutedEdges;
-} else {
-	console.error("Failed to parse program data.");
-}
+import { useProject } from "@/context/ProjectContext";
 
 const BlockEditor = () => {
-	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-	const onConnect = useCallback((connection: Connection) => setEdges((eds) => addEdge({ ...connection, type: "default", animated: true, style: { stroke: "#aaa" } }, eds)), [setEdges]);
+	const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useProject();
 
 	useEffect(() => {
-		console.log("Current nodes:", nodes);
-		console.log("Current edges:", edges);
-		console.log("Node types:", nodeTypes);
+		console.log("Current nodes from context:", nodes);
+		console.log("Current edges from context:", edges);
 	}, [nodes, edges]);
 
 	return (

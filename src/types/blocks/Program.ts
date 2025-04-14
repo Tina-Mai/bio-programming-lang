@@ -2,6 +2,7 @@ import { Constraint } from "./Constraint";
 
 export interface ProgramNode {
 	id: string;
+	label?: string;
 	children: ProgramNode[];
 	constraints: Constraint[];
 	constraintWeights?: number[];

@@ -1,13 +1,11 @@
-import { Node, Edge } from "@xyflow/react";
-
+import { Program } from "@/types";
 export interface Project {
 	id: string;
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
 	code: string;
-	nodes?: Node[];
-	edges?: Edge[];
+	program: Program;
 }
 
 export interface ProjectJSON {
@@ -16,8 +14,7 @@ export interface ProjectJSON {
 	createdAt: string;
 	updatedAt: string;
 	code: string;
-	nodes?: Node[];
-	edges?: Edge[];
+	program: Program;
 }
 
 export function convertJSONToProject(json: ProjectJSON): Project {
@@ -27,8 +24,7 @@ export function convertJSONToProject(json: ProjectJSON): Project {
 		createdAt: new Date(json.createdAt),
 		updatedAt: new Date(json.updatedAt),
 		code: json.code,
-		nodes: json.nodes,
-		edges: json.edges,
+		program: json.program,
 	};
 }
 

@@ -4,6 +4,7 @@ import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bund
 import { Program } from "@/types";
 import { parseProgramJSON, convertProgramToFlow } from "@/lib";
 import programData from "@/data/mock/program.json";
+import { generateLabels, NodeData } from "@/lib/utils"; // Import generateLabels and NodeData
 
 // --- ElkJS Layout Logic Start ---
 const elk = new ELK();
@@ -205,7 +206,9 @@ let rawEdges: Edge[] = [];
 const parsedProgram = parseProgramJSON(programData);
 
 if (parsedProgram) {
-	const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(parsedProgram as Program);
+	// Generate labels *before* converting to flow nodes
+	const programWithLabels = generateLabels(parsedProgram as NodeData);
+	const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels as Program);
 	rawNodes = convertedNodes;
 	rawEdges = convertedEdges;
 } else {

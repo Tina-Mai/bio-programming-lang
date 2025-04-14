@@ -29,7 +29,7 @@ export const ContainerNode = ({ data }: ContainerNodeProps) => {
 		>
 			<Handle type="target" position={Position.Top} className="!bg-slate-500" />
 
-			<div className="horizontal items-center justify-center my-1 gap-1 flex-wrap">
+			<div className="horizontal items-center justify-center my-1 gap-x-1 gap-y-px flex-wrap">
 				{constraints &&
 					constraints.length > 0 &&
 					constraints?.map((constraint: Constraint, index: number) => (

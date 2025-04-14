@@ -1,10 +1,10 @@
-import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from "react";
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
 import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js"; // Import ELK and its types
 import { Program } from "@/types";
 import { parseProgramJSON, convertProgramToFlow } from "@/lib";
-import programData from "@/data/mock/program.json";
 import { generateLabels, NodeData } from "@/lib/utils"; // Import generateLabels and NodeData
+import { useGlobal } from "./GlobalContext"; // Import useGlobal
 
 // --- ElkJS Layout Logic Start ---
 const elk = new ELK();
@@ -200,56 +200,70 @@ interface ProjectContextProps {
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
 
-// Load and convert initial data outside the component
-let rawNodes: Node[] = [];
-let rawEdges: Edge[] = [];
-const parsedProgram = parseProgramJSON(programData);
-
-if (parsedProgram) {
-	// Generate labels *before* converting to flow nodes
-	const programWithLabels = generateLabels(parsedProgram as NodeData);
-	const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels as Program);
-	rawNodes = convertedNodes;
-	rawEdges = convertedEdges;
-} else {
-	console.error("Failed to parse program data.");
-}
-
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
+	const { currentProject } = useGlobal();
 	const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-	const [layoutDone, setLayoutDone] = useState(false);
 
-	// Effect to run layout on initial load
+	// Effect to run layout when currentProject changes
 	useEffect(() => {
 		let isMounted = true;
-		if (rawNodes.length > 0 && !layoutDone) {
-			getLayoutedElements(rawNodes, rawEdges, elkOptions)
-				.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+
+		if (currentProject && currentProject.program) {
+			const parsedProgram = parseProgramJSON(currentProject.program);
+
+			if (parsedProgram) {
+				// Generate labels *before* converting to flow nodes
+				const programWithLabels = generateLabels(parsedProgram as NodeData);
+				const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels as Program);
+
+				// Only run layout if we have nodes and it hasn't been done for this project yet
+				if (convertedNodes.length > 0) {
+					getLayoutedElements(convertedNodes, convertedEdges, elkOptions)
+						.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+							if (isMounted) {
+								setNodes(layoutedNodes);
+								// Important: Use the layoutedEdges *returned by getLayoutedElements*
+								setEdges(layoutedEdges);
+								console.log("ElkJS layout applied for project:", currentProject.id);
+							}
+						})
+						.catch((error) => {
+							console.error("Error during ElkJS layout:", error);
+							if (isMounted) {
+								// Fallback to unlayouted nodes on error
+								setNodes(convertedNodes);
+								setEdges(convertedEdges);
+							}
+						});
+				} else {
+					// Handle case where conversion results in no nodes (e.g., empty program)
 					if (isMounted) {
-						setNodes(layoutedNodes);
-						// Important: Use the layoutedEdges *returned by getLayoutedElements*
-						// which are the original edges retrieved from the map.
-						setEdges(layoutedEdges);
-						setLayoutDone(true);
-						console.log("ElkJS layout applied.");
+						setNodes([]);
+						setEdges([]);
 					}
-				})
-				.catch((error) => {
-					console.error("Error during ElkJS layout:", error);
-					if (isMounted) {
-						setNodes(rawNodes);
-						setEdges(rawEdges);
-						setLayoutDone(true);
-					}
-				});
+				}
+			} else {
+				console.error("Failed to parse program data for project:", currentProject.id);
+				// Handle parsing failure (e.g., set empty nodes/edges)
+				if (isMounted) {
+					setNodes([]);
+					setEdges([]);
+				}
+			}
+		} else {
+			// Handle case where there is no currentProject or program
+			if (isMounted) {
+				setNodes([]);
+				setEdges([]);
+			}
 		}
 
 		return () => {
 			isMounted = false;
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [layoutDone]);
+		// Depend on currentProject to re-run layout when it changes
+	}, [currentProject, setNodes, setEdges]);
 
 	const onConnect = useCallback(
 		(connection: Connection) => {

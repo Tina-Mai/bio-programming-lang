@@ -69,16 +69,9 @@
 				{
 					"id": "2",
 					"children": [
-						{ "id": "4", "children": [], "constraints": [{ "name": "length" }] },
+						{ "id": "3", "children": [], "constraints": [{ "name": "length" }] },
+						{ "id": "4", "children": [], "constraints": [{ "name": "all-atom coordination" }, { "name": "surface exposure" }] },
 						{ "id": "5", "children": [], "constraints": [{ "name": "length" }] }
-					],
-					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
-				},
-				{
-					"id": "3",
-					"children": [
-						{ "id": "6", "children": [], "constraints": [{ "name": "length" }] },
-						{ "id": "7", "children": [], "constraints": [{ "name": "length" }] }
 					],
 					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
 				}
@@ -98,21 +91,33 @@
 				{
 					"id": "2",
 					"children": [
-						{ "id": "4", "children": [], "constraints": [{ "name": "length" }] },
-						{ "id": "5", "children": [], "constraints": [{ "name": "length" }] }
+						{
+							"id": "4",
+							"children": [
+								{ "id": "6", "children": [], "constraints": [{ "name": "length" }] },
+								{ "id": "7", "children": [], "constraints": [{ "name": "length" }] }
+							],
+							"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
+						}
 					],
 					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
 				},
 				{
 					"id": "3",
 					"children": [
-						{ "id": "6", "children": [], "constraints": [{ "name": "length" }] },
-						{ "id": "7", "children": [], "constraints": [{ "name": "length" }] }
+						{
+							"id": "5",
+							"children": [
+								{ "id": "8", "children": [], "constraints": [{ "name": "length" }] },
+								{ "id": "9", "children": [], "constraints": [{ "name": "length" }] }
+							],
+							"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
+						}
 					],
 					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
 				}
 			],
-			"constraints": [{ "name": "pTM" }, { "name": "pLDDT" }, { "name": "hydrophobics" }, { "name": "symmetry" }]
+			"constraints": [{ "name": "pTM" }, { "name": "pLDDT" }, { "name": "hydrophobics" }]
 		}
 	}
 ]

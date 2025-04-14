@@ -50,7 +50,7 @@ const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
 			height: nodeHeight,
 			...(node.type === "group" && {
 				layoutOptions: {
-					"elk.padding": "[top=50,left=20,bottom=20,right=20]",
+					"elk.padding": "[top=70,left=20,bottom=20,right=20]",
 					"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
 				},
 			}),

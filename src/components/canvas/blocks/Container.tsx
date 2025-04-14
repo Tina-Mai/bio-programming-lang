@@ -16,17 +16,13 @@ interface ContainerNodeProps {
 	id: string;
 }
 
-export const ContainerNode = ({ data, selected }: ContainerNodeProps) => {
+export const ContainerNode = ({ data }: ContainerNodeProps) => {
 	const constraints = data.constraints || [];
 
 	return (
 		<div
 			className="react-flow__node-custom nodrag"
 			style={{
-				padding: "10px 15px",
-				borderRadius: 8,
-				backgroundColor: data.backgroundColor || "rgba(235, 244, 255, 0.8)",
-				border: selected ? "1.5px solid #64748b" : "1px solid #CAD5E2",
 				minWidth: 150,
 				textAlign: "center",
 			}}
@@ -34,7 +30,7 @@ export const ContainerNode = ({ data, selected }: ContainerNodeProps) => {
 			<Handle type="target" position={Position.Top} className="!bg-slate-500" />
 
 			<div className="flex flex-col items-center gap-1">
-				<div className="horizontal my-1 mx-4 items-center gap-1 flex-wrap">
+				<div className="horizontal items-center gap-1 flex-wrap">
 					{constraints &&
 						constraints.length > 0 &&
 						constraints?.map((constraint: Constraint, index: number) => (

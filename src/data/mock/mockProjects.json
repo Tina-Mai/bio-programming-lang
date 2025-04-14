@@ -10,18 +10,7 @@
 			"children": [
 				{
 					"id": "2",
-					"children": [
-						{ "id": "4", "children": [], "constraints": [{ "name": "length" }] },
-						{ "id": "5", "children": [], "constraints": [{ "name": "length" }] }
-					],
-					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
-				},
-				{
-					"id": "3",
-					"children": [
-						{ "id": "6", "children": [], "constraints": [{ "name": "length" }] },
-						{ "id": "7", "children": [], "constraints": [{ "name": "length" }] }
-					],
+					"children": [{ "id": "3", "children": [{ "id": "4", "children": [], "constraints": [{ "name": "length" }] }], "constraints": [{ "name": "length" }] }],
 					"constraints": [{ "name": "symmetry" }, { "name": "single chain" }, { "name": "globularity" }]
 				}
 			],

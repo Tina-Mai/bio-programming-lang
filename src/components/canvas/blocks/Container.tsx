@@ -29,17 +29,15 @@ export const ContainerNode = ({ data }: ContainerNodeProps) => {
 		>
 			<Handle type="target" position={Position.Top} className="!bg-slate-500" />
 
-			<div className="flex flex-col items-center gap-1">
-				<div className="horizontal items-center gap-1 flex-wrap">
-					{constraints &&
-						constraints.length > 0 &&
-						constraints?.map((constraint: Constraint, index: number) => (
-							<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
-								{constraint.name}
-							</Badge>
-						))}
-					<AddConstraint constraints={constraints} setConstraints={() => {}} />
-				</div>
+			<div className="horizontal items-center justify-center my-1 gap-1 flex-wrap">
+				{constraints &&
+					constraints.length > 0 &&
+					constraints?.map((constraint: Constraint, index: number) => (
+						<Badge key={index} variant="outline" className="text-zinc-600 capitalize">
+							{constraint.name}
+						</Badge>
+					))}
+				<AddConstraint constraints={constraints} setConstraints={() => {}} />
 			</div>
 
 			<Handle type="source" position={Position.Bottom} className="!bg-slate-500" />

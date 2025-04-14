@@ -7,7 +7,7 @@ import mockProjects from "@/data/mock/mockProjects.json";
 import Canvas from "@/components/canvas";
 import { Project, ProjectJSON, convertJSONArrayToProjects } from "@/types";
 import { useGlobal } from "@/context/GlobalContext";
-
+import ProjectDropdown from "@/components/projects/ProjectDropdown";
 const projects: Project[] = convertJSONArrayToProjects(mockProjects as ProjectJSON[]);
 
 export default function Home() {
@@ -30,12 +30,13 @@ export default function Home() {
 						{projects.map((project) => (
 							<div
 								key={project.name}
-								className={`horizontal items-center text-sm rounded px-2.5 py-1.5 mb-0.5 transition-all duration-300 gap-2 cursor-pointer ${
+								className={`group horizontal items-center justify-between text-sm rounded px-2.5 py-1.5 mb-0.5 -mr-2 transition-all duration-300 gap-2 cursor-pointer ${
 									currentProject?.name === project.name ? "bg-slate-300/60 text-foreground" : "hover:bg-slate-200 text-slate-700"
 								}`}
 								onClick={() => setCurrentProject(project)}
 							>
 								{project.name}
+								<ProjectDropdown projectId={project.id} />
 							</div>
 						))}
 					</div>

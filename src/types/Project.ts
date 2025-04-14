@@ -1,6 +1,7 @@
 import { Node, Edge } from "@xyflow/react";
 
 export interface Project {
+	id: string;
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
@@ -10,6 +11,7 @@ export interface Project {
 }
 
 export interface ProjectJSON {
+	id: string;
 	name: string;
 	createdAt: string;
 	updatedAt: string;
@@ -20,6 +22,7 @@ export interface ProjectJSON {
 
 export function convertJSONToProject(json: ProjectJSON): Project {
 	return {
+		id: json.id,
 		name: json.name,
 		createdAt: new Date(json.createdAt),
 		updatedAt: new Date(json.updatedAt),

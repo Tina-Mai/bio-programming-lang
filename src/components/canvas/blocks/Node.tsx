@@ -21,7 +21,6 @@ export const defaultNodeOptions = {
 
 export const StandardNode = ({ data }: NodeProps) => {
 	const nodeData = data as { label: string };
-	// Restore original circular dimensions
 	const nodeWidth = 60;
 	const nodeHeight = 60;
 
@@ -30,18 +29,16 @@ export const StandardNode = ({ data }: NodeProps) => {
 			<Handle type="target" position={Position.Top} />
 			<div
 				style={{
-					// Apply explicit dimensions matching ELK config
 					width: nodeWidth,
 					height: nodeHeight,
-					// Styling from defaultNodeOptions (adjust as needed)
 					backgroundColor: "white",
-					borderRadius: "50%", // Ensure circle
-					display: "flex", // Use flexbox for centering
-					justifyContent: "center", // Center horizontally
-					alignItems: "center", // Center vertically
+					borderRadius: "50%",
+					display: "flex",
+					justifyContent: "center",
+					alignItems: "center",
 					fontWeight: 600,
 					fontSize: 20,
-					border: "1px solid #64748b", // Use the border from the original example
+					border: "1px solid #64748b",
 					zIndex: 1000,
 					transition: "all 0.2s ease",
 				}}

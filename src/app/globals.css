@@ -140,39 +140,38 @@
 
 /* —————————————— REACTFLOW OVERRIDES —————————————— */
 
-/* Group nodes */
+/* group nodes */
 .react-flow__node-group {
 	box-shadow: none !important;
 	outline: none !important;
 	padding: 10px 15px !important;
 	border-radius: 8px !important;
-	/* background-color: rgba(235, 244, 255, 0.25) !important; */ /* Comment out static background */
 	border: 1px solid #cad5e2 !important;
 	min-width: 150px;
 	text-align: center;
 	background-clip: padding-box;
 }
 
-/* Selected group nodes */
+/* selected group nodes */
 .react-flow__node-group.selected {
 	box-shadow: none !important;
 	outline: none !important;
 	border: 1.5px solid #94a3b8 !important;
 }
 
-/* Custom node class to override ReactFlow styles */
+/* custom node class to override ReactFlow styles */
 .react-flow__node-custom {
 	box-shadow: none !important;
 	outline: none !important;
 }
 
-/* Target all group outlines, shadows and borders */
+/* target all group outlines, shadows and borders */
 .react-flow__node {
 	box-shadow: none !important;
 	outline: none !important;
 }
 
-/* Override any selectable state */
+/* override any selectable state */
 .react-flow__node.selectable,
 .react-flow__node.selectable.selected,
 .react-flow__node.selectable:focus,
@@ -181,7 +180,7 @@
 	outline: none !important;
 }
 
-/* Hide handles on group nodes */
+/* hide handles on group nodes */
 .react-flow__node-group .react-flow__handle {
 	display: none !important;
 }

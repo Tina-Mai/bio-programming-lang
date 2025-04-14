@@ -1,10 +1,10 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from "react";
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
-import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js"; // Import ELK and its types
+import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
 import { Program } from "@/types";
-import { parseProgramJSON, convertProgramToFlow } from "@/lib";
-import { generateLabels, NodeData } from "@/lib/utils"; // Import generateLabels and NodeData
-import { useGlobal } from "./GlobalContext"; // Import useGlobal
+import { parseProgramJSON, convertProgramToFlow, generateLabels } from "@/lib";
+import { NodeData } from "@/types";
+import { useGlobal } from "./GlobalContext";
 
 // --- ElkJS Layout Logic Start ---
 const elk = new ELK();
@@ -12,7 +12,7 @@ const elk = new ELK();
 const nodeWidth = 172;
 const nodeHeight = 60;
 
-// Default ElkJS options
+// default ElkJS options
 const elkOptions: LayoutOptions = {
 	"elk.algorithm": "layered",
 	"elk.direction": "DOWN",
@@ -28,22 +28,19 @@ interface LayoutedElkNode extends ElkNode {
 	y?: number;
 	width?: number;
 	height?: number;
-	children?: LayoutedElkNode[]; // Add children to type for recursion
-	edges?: ElkExtendedEdge[]; // Add edges to type for recursion
+	children?: LayoutedElkNode[];
+	edges?: ElkExtendedEdge[];
 }
 
-// Fixed dimensions for StandardNode (circle)
 const standardNodeWidth = 60;
-// const standardNodeHeight = 60; // Removed unused constant
-// Define desired padding from the top of the container to the top of the standard node
-const standardNodeTopPadding = 65; // Adjust this value for desired vertical spacing below constraints
+const standardNodeTopPadding = 65;
 
-// Helper function to build nested Elk node structure
+// build nested Elk node structure
 const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
 	const elkNodeMap = new Map<string, ElkNode>();
 	const rootElkNodes: ElkNode[] = [];
 
-	// First pass: Create ElkNode objects for all nodes
+	// create ElkNode objects for all nodes
 	nodes.forEach((node) => {
 		const elkNode: ElkNode = {
 			id: node.id,
@@ -55,20 +52,19 @@ const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
 					"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
 				},
 			}),
-			children: [], // Initialize children array
+			children: [],
 		};
 		elkNodeMap.set(node.id, elkNode);
 	});
 
-	// Second pass: Build the hierarchy
+	// build the hierarchy
 	nodes.forEach((node) => {
 		const elkNode = elkNodeMap.get(node.id)!;
 		if (node.parentId && elkNodeMap.has(node.parentId)) {
 			const parentElkNode = elkNodeMap.get(node.parentId)!;
-			parentElkNode.children = parentElkNode.children || []; // Ensure children array exists
+			parentElkNode.children = parentElkNode.children || [];
 			parentElkNode.children.push(elkNode);
 		} else {
-			// Node is a root node (no parentId or parent not found)
 			rootElkNodes.push(elkNode);
 		}
 	});
@@ -76,7 +72,7 @@ const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
 	return rootElkNodes;
 };
 
-// Recursive function to flatten layouted nodes and adjust positions
+// recursively flatten layouted nodes and adjust positions
 const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal: boolean, rfNodeMap: Map<string, Node>, layoutedGroupMap: Map<string, LayoutedElkNode>): Node[] => {
 	let rfNodes: Node[] = [];
 	layoutedElkNodes.forEach((elkNode) => {
@@ -90,7 +86,6 @@ const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal:
 		const isGroup = originalNode.type === "group";
 
 		if (!isGroup && originalNode.parentId) {
-			// This is a StandardNode inside a group
 			const parentGroup = layoutedGroupMap.get(originalNode.parentId);
 			if (parentGroup) {
 				const parentWidth = parentGroup.width ?? 0;
@@ -106,12 +101,11 @@ const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal:
 
 		rfNodes.push({
 			...originalNode,
-			position: calculatedPosition, // Use calculated position
+			position: calculatedPosition,
 			targetPosition: isHorizontal ? Position.Left : Position.Top,
 			sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
 			style: {
 				...originalNode.style,
-				// Use ElkJS calculated dimensions ONLY for groups
 				...(isGroup && {
 					width: elkNode.width,
 					height: elkNode.height,
@@ -119,7 +113,6 @@ const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal:
 			},
 		});
 
-		// Recursively flatten children
 		if (elkNode.children && elkNode.children.length > 0) {
 			rfNodes = rfNodes.concat(flattenLayoutedNodes(elkNode.children, isHorizontal, rfNodeMap, layoutedGroupMap));
 		}
@@ -127,15 +120,11 @@ const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal:
 	return rfNodes;
 };
 
-// Async function to get layouted elements using ElkJS
+// get layouted elements using ElkJS
 const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: LayoutOptions = elkOptions): Promise<{ nodes: Node[]; edges: Edge[] }> => {
 	const isHorizontal = options?.["elk.direction"] === "RIGHT" || options?.["elk.direction"] === "LEFT";
-
 	const rfNodeMap = new Map<string, Node>(nodes.map((node) => [node.id, node]));
 	const rfEdgeMap = new Map<string, Edge>(edges.map((edge) => [edge.id, edge]));
-
-	// Build the nested structure for ElkJS input
-	// We need to map the *React Flow* nodes to *ElkJS* nodes here
 	const elkNodesHierarchy = buildElkHierarchy(nodes.map((n) => rfNodeMap.get(n.id)!));
 
 	const graph: ElkNode = {
@@ -154,11 +143,10 @@ const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: Layout
 	try {
 		const layoutedGraph = (await elk.layout(graph)) as LayoutedElkNode;
 
-		// Create a map of layouted group nodes for position calculation
+		// create a map of layouted group nodes for position calculation
 		const layoutedGroupMap = new Map<string, LayoutedElkNode>();
 		const collectGroups = (elkNodes: LayoutedElkNode[]) => {
 			elkNodes.forEach((node) => {
-				// Assuming group nodes have IDs starting with 'group-' from convertProgramToFlow
 				if (node.id.startsWith("group-")) {
 					layoutedGroupMap.set(node.id, node);
 				}
@@ -169,10 +157,10 @@ const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: Layout
 		};
 		collectGroups(layoutedGraph.children ?? []);
 
-		// Flatten the layouted nodes and adjust standard node positions
+		// flatten the layouted nodes and adjust standard node positions
 		const finalNodes = flattenLayoutedNodes(layoutedGraph.children ?? [], isHorizontal, rfNodeMap, layoutedGroupMap);
 
-		// Map layouted Elk edges back (retrieve original from map)
+		// map layouted Elk edges back (retrieve original from map)
 		const finalEdges =
 			layoutedGraph.edges
 				?.map((elkEdge: ElkExtendedEdge): Edge | undefined => {
@@ -183,7 +171,7 @@ const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: Layout
 		return { nodes: finalNodes, edges: finalEdges };
 	} catch (error) {
 		console.error("ElkJS layout failed:", error);
-		return { nodes, edges }; // Return original elements on error
+		return { nodes, edges };
 	}
 };
 // --- ElkJS Layout Logic End ---
@@ -205,7 +193,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-	// Effect to run layout when currentProject changes
+	// run layout when currentProject changes
 	useEffect(() => {
 		let isMounted = true;
 
@@ -213,11 +201,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const parsedProgram = parseProgramJSON(currentProject.program);
 
 			if (parsedProgram) {
-				// Generate labels *before* converting to flow nodes
 				const programWithLabels = generateLabels(parsedProgram as NodeData);
 				const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels as Program);
 
-				// Only run layout if we have nodes and it hasn't been done for this project yet
 				if (convertedNodes.length > 0) {
 					getLayoutedElements(convertedNodes, convertedEdges, elkOptions)
 						.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
@@ -231,13 +217,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 						.catch((error) => {
 							console.error("Error during ElkJS layout:", error);
 							if (isMounted) {
-								// Fallback to unlayouted nodes on error
 								setNodes(convertedNodes);
 								setEdges(convertedEdges);
 							}
 						});
 				} else {
-					// Handle case where conversion results in no nodes (e.g., empty program)
 					if (isMounted) {
 						setNodes([]);
 						setEdges([]);
@@ -245,14 +229,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 			} else {
 				console.error("Failed to parse program data for project:", currentProject.id);
-				// Handle parsing failure (e.g., set empty nodes/edges)
 				if (isMounted) {
 					setNodes([]);
 					setEdges([]);
 				}
 			}
 		} else {
-			// Handle case where there is no currentProject or program
 			if (isMounted) {
 				setNodes([]);
 				setEdges([]);
@@ -262,7 +244,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		return () => {
 			isMounted = false;
 		};
-		// Depend on currentProject to re-run layout when it changes
 	}, [currentProject, setNodes, setEdges]);
 
 	const onConnect = useCallback(

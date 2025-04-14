@@ -1,17 +1,10 @@
-import React, { useEffect } from "react";
 import { ReactFlow, Controls, Background, MiniMap, Node, ConnectionLineType } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-
 import { nodeTypes } from "@/types";
 import { useProject } from "@/context/ProjectContext";
 
 const BlockEditor = () => {
 	const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useProject();
-
-	useEffect(() => {
-		console.log("Current nodes from context:", nodes);
-		console.log("Current edges from context:", edges);
-	}, [nodes, edges]);
 
 	return (
 		<div style={{ height: "100%" }}>

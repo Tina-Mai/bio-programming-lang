@@ -256,7 +256,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				target: connection.target!,
 				type: "default",
 				animated: true,
-				style: { stroke: "#94a3b8" },
+				style: { stroke: "#334155" },
 			};
 			setEdges((eds) => addEdge(newEdge, eds));
 		},

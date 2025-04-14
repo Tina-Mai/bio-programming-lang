@@ -106,7 +106,7 @@ export function convertProgramToFlow(program: Program): FlowData {
 				target: child.id, // Target is the child's standard node ID
 				type: "default", // Or custom edge type
 				animated: true,
-				style: { stroke: "#94a3b8" },
+				style: { stroke: "#334155" },
 			});
 
 			// Recurse for children, passing the current node's *group ID* as the parentGroupId

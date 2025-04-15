@@ -4,8 +4,8 @@ export interface Project {
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
-	code: string;
-	program: Program;
+	code?: string;
+	program?: Program;
 }
 
 export interface ProjectJSON {
@@ -13,8 +13,8 @@ export interface ProjectJSON {
 	name: string;
 	createdAt: string;
 	updatedAt: string;
-	code: string;
-	program: Program;
+	code?: string;
+	program?: Program;
 }
 
 export function convertJSONToProject(json: ProjectJSON): Project {

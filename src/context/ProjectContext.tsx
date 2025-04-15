@@ -1,11 +1,12 @@
-import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from "react";
+import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
 import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
-import { Program, ProgramNode } from "@/types";
+import { ProgramNode } from "@/types";
 import { parseProgramJSON, convertProgramToFlow, generateLabels } from "@/lib";
-import { NodeData } from "@/types";
 import { useGlobal } from "./GlobalContext";
 import { v4 as uuidv4 } from "uuid";
+import { createClient } from "@/lib/supabase/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 // --- ElkJS Layout Logic Start ---
 const elk = new ELK();
@@ -186,6 +187,8 @@ interface ProjectContextProps {
 	onEdgesChange: OnEdgesChange;
 	onConnect: (connection: Connection) => void;
 	addChildNode: (parentId: string) => void;
+	isProgramLoading: boolean;
+	programError: string | null;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -208,50 +211,102 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const { currentProject } = useGlobal();
 	const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+	const [currentProgram, setCurrentProgram] = useState<ProgramNode | null>(null);
+	const [isProgramLoading, setIsProgramLoading] = useState<boolean>(false);
+	const [programError, setProgramError] = useState<string | null>(null);
+	const supabase: SupabaseClient = createClient();
 
-	// run layout when currentProject changes
+	// --- Effect 1: Fetch Program Data ---
+	useEffect(() => {
+		const fetchProgram = async () => {
+			if (!currentProject || !currentProject.id) {
+				console.log("No current project selected, clearing program data.");
+				setCurrentProgram(null);
+				setNodes([]);
+				setEdges([]);
+				setIsProgramLoading(false);
+				setProgramError(null);
+				return;
+			}
+
+			setIsProgramLoading(true);
+			setProgramError(null);
+			setCurrentProgram(null);
+			setNodes([]);
+			setEdges([]);
+			console.log(`Fetching program for project ID: ${currentProject.id}`);
+
+			try {
+				// Let Supabase infer types, handle checks below
+				const { data, error } = await supabase.from("programs").select("program").eq("project_id", currentProject.id).maybeSingle();
+
+				if (error) {
+					throw new Error(`Supabase fetch error: ${error.message}`);
+				}
+
+				// Runtime check for data and the program property
+				if (data && typeof data === "object" && data.program) {
+					console.log("Fetched raw program data:", data.program);
+					// Explicitly parse the program data
+					const parsedProgram = parseProgramJSON(data.program);
+
+					if (parsedProgram) {
+						console.log("Parsed program data:", parsedProgram);
+						setCurrentProgram(parsedProgram as ProgramNode); // Assert type after parsing
+					} else {
+						throw new Error("Failed to parse fetched program data (program property was present but parsing failed).");
+					}
+				} else {
+					console.log(`No program found or data structure incorrect for project ID: ${currentProject.id}.`);
+					setCurrentProgram(null);
+				}
+			} catch (error: unknown) {
+				console.error("Error fetching or processing program:", error);
+				const message = error instanceof Error ? error.message : "An unknown error occurred";
+				setProgramError(message);
+				setCurrentProgram(null);
+			} finally {
+				setIsProgramLoading(false);
+			}
+		};
+
+		fetchProgram();
+	}, [currentProject, supabase, setNodes, setEdges]);
+
+	// --- Effect 2: Layout Calculation ---
 	useEffect(() => {
 		let isMounted = true;
 
-		if (currentProject && currentProject.program) {
-			const parsedProgram = parseProgramJSON(currentProject.program);
+		if (currentProgram && !isProgramLoading) {
+			console.log("Applying layout for fetched program:", currentProgram);
+			const programWithLabels = generateLabels(currentProgram);
+			const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels);
 
-			if (parsedProgram) {
-				const programWithLabels = generateLabels(parsedProgram as NodeData);
-				const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels as Program);
-
-				if (convertedNodes.length > 0) {
-					getLayoutedElements(convertedNodes, convertedEdges, elkOptions)
-						.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
-							if (isMounted) {
-								setNodes(layoutedNodes);
-								// Important: Use the layoutedEdges *returned by getLayoutedElements*
-								setEdges(layoutedEdges);
-								console.log("ElkJS layout applied for project:", currentProject.id);
-							}
-						})
-						.catch((error) => {
-							console.error("Error during ElkJS layout:", error);
-							if (isMounted) {
-								setNodes(convertedNodes);
-								setEdges(convertedEdges);
-							}
-						});
-				} else {
-					if (isMounted) {
-						setNodes([]);
-						setEdges([]);
-					}
-				}
+			if (convertedNodes.length > 0) {
+				getLayoutedElements(convertedNodes, convertedEdges, elkOptions)
+					.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+						if (isMounted) {
+							setNodes(layoutedNodes);
+							setEdges(layoutedEdges);
+							console.log(`ElkJS layout applied for project: ${currentProject?.id}`);
+						}
+					})
+					.catch((error) => {
+						console.error("Error during ElkJS layout:", error);
+						if (isMounted) {
+							setNodes(convertedNodes);
+							setEdges(convertedEdges);
+						}
+					});
 			} else {
-				console.error("Failed to parse program data for project:", currentProject.id);
 				if (isMounted) {
-					setNodes([]);
-					setEdges([]);
+					setNodes(convertedNodes);
+					setEdges(convertedEdges);
 				}
 			}
-		} else {
+		} else if (!isProgramLoading) {
 			if (isMounted) {
+				console.log("No program loaded or in loading state, clearing nodes and edges.");
 				setNodes([]);
 				setEdges([]);
 			}
@@ -260,7 +315,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		return () => {
 			isMounted = false;
 		};
-	}, [currentProject, setNodes, setEdges]);
+	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]);
 
 	const onConnect = useCallback(
 		(connection: Connection) => {
@@ -273,70 +328,58 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				style: { stroke: "#334155" },
 			};
 			setEdges((eds) => addEdge(newEdge, eds));
+			console.warn("Edge added. Persistence to Supabase for edges is not yet implemented.");
 		},
 		[setEdges]
 	);
 
-	// Function to add a new child node, update program, relabel, and re-layout
 	const addChildNode = useCallback(
 		async (parentId: string) => {
-			if (!currentProject || !currentProject.program) {
-				console.error("Cannot add node: No current project or program data.");
+			if (!currentProject || !currentProgram) {
+				console.error("Cannot add node: No current project or program data loaded.");
 				return;
 			}
+			setIsProgramLoading(true);
+			setProgramError(null);
 
-			// 1. Parse the current program structure
-			// Create a deep copy to avoid mutating the original state directly before update
-			const programCopy = JSON.parse(JSON.stringify(currentProject.program));
-			const parsedProgram = parseProgramJSON(programCopy);
-
-			if (!parsedProgram) {
-				console.error("Failed to parse current program data.");
-				return;
-			}
-
-			// 2. Create the new ProgramNode
-			const newChildId = uuidv4();
-			const newProgramNode: ProgramNode = {
-				id: newChildId,
-				children: [],
-				constraints: [], // Start with empty constraints, can be modified later
-				// label will be generated in the next step
-			};
-
-			// 3. Find the parent in the program structure and add the new child
-			const added = findAndAddChildInProgram(parsedProgram, parentId, newProgramNode);
-
-			if (!added) {
-				console.error(`Could not find parent node with ID ${parentId} in the program structure.`);
-				return;
-			}
-
-			// TODO: Persist the updated `parsedProgram` structure to the database
-			// This would likely involve updating `currentProject` via `setCurrentProject`
-			// and then triggering a save operation.
-
-			// 4. Regenerate labels
-			const programWithNewLabels = generateLabels(parsedProgram);
-
-			// 5. Convert the updated program to flow elements
-			const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithNewLabels);
-
-			// 6. Apply layout
 			try {
-				const { nodes: layoutedNodes, edges: layoutedEdges } = await getLayoutedElements(convertedNodes, convertedEdges, elkOptions);
+				const programCopy = JSON.parse(JSON.stringify(currentProgram));
 
-				// 7. Update state
-				setNodes(layoutedNodes);
-				setEdges(layoutedEdges);
-				console.log("Added new node, regenerated labels, and applied layout.");
-			} catch (error) {
-				console.error("Error during layout after adding node:", error);
-				// Fallback: Update state with unlabeled/unlayouted nodes? Or show error?
-				// For now, just log the error. The state won't be updated if layout fails.
+				const newChildId = uuidv4();
+				const newProgramNode: ProgramNode = {
+					id: newChildId,
+					children: [],
+					constraints: [],
+				};
+
+				const added = findAndAddChildInProgram(programCopy, parentId, newProgramNode);
+
+				if (!added) {
+					throw new Error(`Could not find parent node with ID ${parentId} in the program structure.`);
+				}
+
+				const programWithNewLabels = generateLabels(programCopy);
+
+				console.log(`Updating program for project ID: ${currentProject.id}`);
+				const { error: updateError } = await supabase.from("programs").update({ program: programWithNewLabels }).eq("project_id", currentProject.id);
+
+				if (updateError) {
+					throw new Error(`Supabase update error: ${updateError.message}`);
+				}
+				console.log("Program successfully updated in Supabase.");
+
+				setCurrentProgram(programWithNewLabels);
+
+				console.log("Added new node, regenerated labels, updated Supabase, and triggered layout.");
+			} catch (error: unknown) {
+				console.error("Error adding child node or updating Supabase:", error);
+				const message = error instanceof Error ? error.message : "An unknown error occurred";
+				setProgramError(`Failed to add node: ${message}`);
+			} finally {
+				setIsProgramLoading(false);
 			}
 		},
-		[currentProject, setNodes, setEdges]
+		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
 	);
 
 	const value: ProjectContextProps = {
@@ -348,6 +391,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		onEdgesChange,
 		onConnect,
 		addChildNode,
+		isProgramLoading,
+		programError,
 	};
 
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

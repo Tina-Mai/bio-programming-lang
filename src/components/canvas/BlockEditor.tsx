@@ -34,7 +34,7 @@ const BlockEditorContent = () => {
 			<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />
 			<Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} />
 			<MiniMap
-				nodeColor={(n: Node) => (n.type === "group" ? "rgba(210, 230, 255, 0.5)" : "oklch(70.4% 0.04 256.788 / 0.15)")}
+				nodeColor={(n: Node) => (n.type === "group" ? "rgba(210, 230, 255, 0.3)" : "oklch(70.4% 0.04 256.788 / 0.15)")}
 				nodeStrokeWidth={3}
 				zoomable
 				pannable

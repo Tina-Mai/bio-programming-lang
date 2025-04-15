@@ -1,19 +1,28 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Code, Folder, ParentChild } from "@carbon/icons-react";
 import { useGlobal } from "@/context/GlobalContext";
+import { ProjectProvider } from "@/context/ProjectContext";
+import { EditorView } from "@codemirror/view";
+import { Code, Folder, ParentChild, ChevronDown, ChevronUp } from "@carbon/icons-react";
+import { Dna } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import EnergyDialog from "@/components/energy/EnergyDialog";
 import BlockEditor from "@/components/canvas/BlockEditor";
 import CodeEditor from "@/components/canvas/CodeEditor";
 import ProjectTabs from "@/components/canvas/ProjectTabs";
-import { EditorView } from "@codemirror/view";
-import EnergyDialog from "@/components/energy/EnergyDialog";
-import { ProjectProvider } from "@/context/ProjectContext";
+import Sequence from "@/components/canvas/Sequence";
+
+const mockSequence = {
+	id: "1",
+	sequence:
+		"ATTGGATGTGAATAAAGCGTATAGGTTTACCTCAAACTGCGCGGCTGTGTTATAATTTGCGACCTTTGAATCCGGGATACAGTAGAGGGATAGCGGTTAGATGAGCGACCTTGCGAGAGAAATTACACCGGTCAACATTGAGGAAGAGCTGAAGAGCTCCTATCTGGATTATGCGATGTCGGTCATTGTTGGCCGTGCGCTGCCAGATGTCCGAGATGGCCTGAAGCCGGTACACCGTCGCGTACTTTACGCCATGAACGTACTAGGCAATGACTGGAACAAAGCCTATAAAAAATCTGCCCGTGTCGTTGGTGACGTAATCGGTAAATACCATCCCCATGGTGACTCGGCGGTCTATGACACGATCGTCCGCATGGCGCAGCCATTCTCGCTGCGTTATATGCTGGTAGACGGTCAGGGTAACTTCGGTTCTATCGACGGCGACTCTGCGGCGGCAATGCGTTATACGGAAATCCGTCTGGCGAAAATTGCCCATGAAC",
+};
 
 const Canvas = () => {
 	const { mode, setMode, currentProject } = useGlobal();
 	const [showBlockEditor, setShowBlockEditor] = useState(mode === "blocks");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
+	const [showSequence, setShowSequence] = useState(false);
 	const editorRef = useRef<EditorView | null>(null);
 
 	// handle mode switch animation
@@ -56,50 +65,70 @@ const Canvas = () => {
 				</div>
 			</div>
 
-			<div className="relative h-full w-full overflow-hidden">
-				<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")} disabled={transitioning}>
-					{mode === "blocks" ? (
-						<div className="horizontal items-center gap-2">
-							<Code />
-							Show code
-						</div>
-					) : (
-						<div className="horizontal items-center gap-2">
-							<ParentChild /> Show blocks
-						</div>
-					)}
-				</Button>
-				<div className="z-50 absolute mt-12 bottom-3 right-3 ">
-					<EnergyDialog />
-				</div>
+			<div className="relative vertical h-full w-full">
+				<div className="relative h-full w-full overflow-hidden">
+					<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")} disabled={transitioning}>
+						{mode === "blocks" ? (
+							<div className="horizontal items-center gap-2">
+								<Code />
+								Show code
+							</div>
+						) : (
+							<div className="horizontal items-center gap-2">
+								<ParentChild /> Show blocks
+							</div>
+						)}
+					</Button>
+					<div className="z-50 absolute mt-12 bottom-3 right-3 ">
+						<EnergyDialog />
+					</div>
 
-				<ProjectProvider>
-					<div className="relative h-full w-full">
-						{/* Block Editor with animation */}
-						<div
-							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+					<ProjectProvider>
+						<div className="relative h-full w-full">
+							{/* Block Editor with animation */}
+							<div
+								className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
 									showBlockEditor
 										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 								}`}
-						>
-							<BlockEditor />
-						</div>
+							>
+								<BlockEditor />
+							</div>
 
-						{/* Code Editor with animation */}
-						<div
-							className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+							{/* Code Editor with animation */}
+							<div
+								className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
 									showCodeEditor
 										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 								}`}
-						>
-							<CodeEditor editorRef={editorRef} />
+							>
+								<CodeEditor editorRef={editorRef} />
+							</div>
 						</div>
-					</div>
-				</ProjectProvider>
+					</ProjectProvider>
+				</div>
+				{/* Sequence viewer */}
+				<div className={`relative vertical border-t border-slate-300 py-3 ${showSequence ? "h-36" : "h-min cursor-pointer"}`} onClick={() => !showSequence && setShowSequence(!showSequence)}>
+					{showSequence ? (
+						<Sequence sequence={mockSequence} showSequence={showSequence} setShowSequence={setShowSequence} />
+					) : (
+						<div className="horizontal items-center justify-between text-slate-400 text-sm px-5">
+							<div className="flex horizontal items-center gap-1.5">
+								<Dna className="size-5" strokeWidth={1.3} />
+								<div className="text-slate-500 font-medium">Sequence</div>
+							</div>
+							{showSequence ? (
+								<ChevronDown size={20} className="hover:text-slate-700 cursor-pointer" onClick={() => setShowSequence(!showSequence)} />
+							) : (
+								<ChevronUp size={20} className="hover:text-slate-700 cursor-pointer" onClick={() => setShowSequence(!showSequence)} />
+							)}
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);

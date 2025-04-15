@@ -1,10 +1,11 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from "react";
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
 import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
-import { Program } from "@/types";
+import { Program, ProgramNode } from "@/types";
 import { parseProgramJSON, convertProgramToFlow, generateLabels } from "@/lib";
 import { NodeData } from "@/types";
 import { useGlobal } from "./GlobalContext";
+import { v4 as uuidv4 } from "uuid";
 
 // --- ElkJS Layout Logic Start ---
 const elk = new ELK();
@@ -184,9 +185,24 @@ interface ProjectContextProps {
 	onNodesChange: OnNodesChange;
 	onEdgesChange: OnEdgesChange;
 	onConnect: (connection: Connection) => void;
+	addChildNode: (parentId: string) => void;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
+
+// Helper function to find a node in the program tree and add a child
+const findAndAddChildInProgram = (programNode: ProgramNode, parentId: string, newChild: ProgramNode): boolean => {
+	if (programNode.id === parentId) {
+		programNode.children.push(newChild);
+		return true;
+	}
+	for (const child of programNode.children) {
+		if (findAndAddChildInProgram(child, parentId, newChild)) {
+			return true;
+		}
+	}
+	return false;
+};
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const { currentProject } = useGlobal();
@@ -261,6 +277,68 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[setEdges]
 	);
 
+	// Function to add a new child node, update program, relabel, and re-layout
+	const addChildNode = useCallback(
+		async (parentId: string) => {
+			if (!currentProject || !currentProject.program) {
+				console.error("Cannot add node: No current project or program data.");
+				return;
+			}
+
+			// 1. Parse the current program structure
+			// Create a deep copy to avoid mutating the original state directly before update
+			const programCopy = JSON.parse(JSON.stringify(currentProject.program));
+			const parsedProgram = parseProgramJSON(programCopy);
+
+			if (!parsedProgram) {
+				console.error("Failed to parse current program data.");
+				return;
+			}
+
+			// 2. Create the new ProgramNode
+			const newChildId = uuidv4();
+			const newProgramNode: ProgramNode = {
+				id: newChildId,
+				children: [],
+				constraints: [], // Start with empty constraints, can be modified later
+				// label will be generated in the next step
+			};
+
+			// 3. Find the parent in the program structure and add the new child
+			const added = findAndAddChildInProgram(parsedProgram, parentId, newProgramNode);
+
+			if (!added) {
+				console.error(`Could not find parent node with ID ${parentId} in the program structure.`);
+				return;
+			}
+
+			// TODO: Persist the updated `parsedProgram` structure to the database
+			// This would likely involve updating `currentProject` via `setCurrentProject`
+			// and then triggering a save operation.
+
+			// 4. Regenerate labels
+			const programWithNewLabels = generateLabels(parsedProgram);
+
+			// 5. Convert the updated program to flow elements
+			const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithNewLabels);
+
+			// 6. Apply layout
+			try {
+				const { nodes: layoutedNodes, edges: layoutedEdges } = await getLayoutedElements(convertedNodes, convertedEdges, elkOptions);
+
+				// 7. Update state
+				setNodes(layoutedNodes);
+				setEdges(layoutedEdges);
+				console.log("Added new node, regenerated labels, and applied layout.");
+			} catch (error) {
+				console.error("Error during layout after adding node:", error);
+				// Fallback: Update state with unlabeled/unlayouted nodes? Or show error?
+				// For now, just log the error. The state won't be updated if layout fails.
+			}
+		},
+		[currentProject, setNodes, setEdges]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -269,6 +347,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		onNodesChange,
 		onEdgesChange,
 		onConnect,
+		addChildNode,
 	};
 
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

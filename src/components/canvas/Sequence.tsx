@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const SequenceKey = () => {
 	return (
-		<div className="horizontal gap-2 items-center justify-center text-xs">
+		<div className="horizontal gap-1.5 items-center justify-center text-[10px]">
 			<div className="flex size-5 items-center justify-center rounded-xs text-foreground" style={{ backgroundColor: nucleotideColors.A }}>
 				A
 			</div>

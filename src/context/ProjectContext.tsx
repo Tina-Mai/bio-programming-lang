@@ -276,46 +276,69 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	// --- Effect 2: Layout Calculation ---
 	useEffect(() => {
 		let isMounted = true;
+		console.log(`Layout effect triggered. currentProgram ID: ${currentProgram?.id}, isProgramLoading: ${isProgramLoading}`);
 
-		if (currentProgram && !isProgramLoading) {
-			console.log("Applying layout for fetched program:", currentProgram);
+		// If a program structure exists, process it for display
+		if (currentProgram) {
+			console.log("Program data exists, preparing for layout:", currentProgram);
+			// 1. Generate labels consistently here
 			const programWithLabels = generateLabels(currentProgram);
+			console.log("Generated labels:", programWithLabels);
+
+			// 2. Convert to flow structure
 			const { nodes: convertedNodes, edges: convertedEdges } = convertProgramToFlow(programWithLabels);
+			console.log("Converted to flow:", { nodes: convertedNodes, edges: convertedEdges });
 
 			if (convertedNodes.length > 0) {
+				// 3. Apply layout algorithm
+				console.log("Requesting ElkJS layout...");
 				getLayoutedElements(convertedNodes, convertedEdges, elkOptions)
 					.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
 						if (isMounted) {
+							console.log("ElkJS layout successful. Applying layouted nodes/edges:", { nodes: layoutedNodes, edges: layoutedEdges });
 							setNodes(layoutedNodes);
 							setEdges(layoutedEdges);
-							console.log(`ElkJS layout applied for project: ${currentProject?.id}`);
+						} else {
+							console.log("ElkJS layout finished, but component unmounted.");
 						}
 					})
 					.catch((error) => {
 						console.error("Error during ElkJS layout:", error);
 						if (isMounted) {
+							// Fallback to non-layouted nodes if layout fails
+							console.warn("Falling back to non-layouted nodes/edges due to layout error.");
 							setNodes(convertedNodes);
 							setEdges(convertedEdges);
 						}
 					});
 			} else {
+				// Program exists but resulted in no nodes (e.g., root with no children converted?)
 				if (isMounted) {
-					setNodes(convertedNodes);
-					setEdges(convertedEdges);
+					console.warn("Program converted to empty nodes/edges array. Clearing canvas.");
+					setNodes([]);
+					setEdges([]);
 				}
 			}
-		} else if (!isProgramLoading) {
-			if (isMounted) {
-				console.log("No program loaded or in loading state, clearing nodes and edges.");
+		} else {
+			// No current program structure.
+			// Clear the canvas only if we are NOT currently in the middle of the initial load.
+			if (isMounted && !isProgramLoading) {
+				console.log("No current program and not loading. Clearing canvas.");
 				setNodes([]);
 				setEdges([]);
+			} else if (isMounted && isProgramLoading) {
+				// Initial load in progress, wait for program data or loading to finish
+				console.log("No current program, but initial load is in progress. Canvas state maintained.");
 			}
 		}
 
 		return () => {
+			console.log("Layout effect cleanup.");
 			isMounted = false;
 		};
-	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]);
+		// Dependencies: Re-run layout when the program structure changes,
+		// or when the initial loading state finishes (to clear canvas if no program was found).
+	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]); // Keep original dependencies for now
 
 	const onConnect = useCallback(
 		(connection: Connection) => {
@@ -335,47 +358,63 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 	const addChildNode = useCallback(
 		async (parentId: string) => {
-			if (!currentProject || !currentProgram) {
-				console.error("Cannot add node: No current project or program data loaded.");
+			if (!currentProject || !currentProject.id) {
+				console.error("Cannot add node: No current project selected.");
+				setProgramError("Cannot add node: No current project selected.");
 				return;
 			}
+			// Indicate mutation is in progress
 			setIsProgramLoading(true);
 			setProgramError(null);
 
 			try {
+				// Ensure currentProgram exists before proceeding
+				if (!currentProgram) {
+					// This case might happen if the initial load failed or is still pending
+					// Or if the user tries to add a node before the program is loaded.
+					throw new Error("Cannot add node: program data is not available.");
+				}
+
 				const programCopy = JSON.parse(JSON.stringify(currentProgram));
 
 				const newChildId = uuidv4();
 				const newProgramNode: ProgramNode = {
 					id: newChildId,
 					children: [],
-					constraints: [],
+					constraints: [], // Default to empty constraints for a new node
 				};
 
+				// Attempt to add the new node to the program structure copy
 				const added = findAndAddChildInProgram(programCopy, parentId, newProgramNode);
 
 				if (!added) {
+					// This should ideally not happen if parentId comes from a valid node
 					throw new Error(`Could not find parent node with ID ${parentId} in the program structure.`);
 				}
 
-				const programWithNewLabels = generateLabels(programCopy);
-
-				console.log(`Updating program for project ID: ${currentProject.id}`);
-				const { error: updateError } = await supabase.from("programs").update({ program: programWithNewLabels }).eq("project_id", currentProject.id);
+				// Persist the structurally updated program to Supabase.
+				// Labels will be generated by the layout effect based on this structure.
+				console.log(`Updating program structure in Supabase for project ID: ${currentProject.id}`);
+				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
 				if (updateError) {
+					// If Supabase update fails, throw an error to prevent inconsistent state
 					throw new Error(`Supabase update error: ${updateError.message}`);
 				}
-				console.log("Program successfully updated in Supabase.");
+				console.log("Program structure successfully updated in Supabase.");
 
-				setCurrentProgram(programWithNewLabels);
+				// Update local state with the structurally modified program.
+				// This will trigger the layout useEffect, which handles labels, flow conversion, and layout.
+				setCurrentProgram(programCopy);
 
-				console.log("Added new node, regenerated labels, updated Supabase, and triggered layout.");
+				console.log("Set currentProgram with new structure. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error adding child node or updating Supabase:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
 				setProgramError(`Failed to add node: ${message}`);
+				// Consider if state needs rollback or refetch here on error
 			} finally {
+				// Signal that the add operation (including async Supabase call) is complete
 				setIsProgramLoading(false);
 			}
 		},

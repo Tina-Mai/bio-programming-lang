@@ -3,8 +3,10 @@ import { Handle, Position } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
 import { Constraint } from "@/types";
 import AddConstraint from "./AddConstraint";
+import { useProject } from "@/context/ProjectContext";
 
 interface ProgramNodeData {
+	programNodeId?: string;
 	constraints?: Constraint[];
 	backgroundColor?: string;
 	label?: string;
@@ -16,8 +18,19 @@ interface ContainerNodeProps {
 	id: string;
 }
 
-export const ContainerNode = ({ data }: ContainerNodeProps) => {
+export const ContainerNode = ({ data, id: groupId }: ContainerNodeProps) => {
 	const constraints = data.constraints || [];
+	const programNodeId = data.programNodeId;
+	const { updateNodeConstraints } = useProject();
+
+	const handleSetConstraints = (newConstraints: Constraint[]) => {
+		if (programNodeId) {
+			console.log(`ContainerNode (${groupId}): Updating constraints for program node ${programNodeId}`, newConstraints);
+			updateNodeConstraints(programNodeId, newConstraints);
+		} else {
+			console.error(`ContainerNode (${groupId}): Missing programNodeId in data. Cannot update constraints.`);
+		}
+	};
 
 	return (
 		<div
@@ -37,7 +50,7 @@ export const ContainerNode = ({ data }: ContainerNodeProps) => {
 							{constraint.name}
 						</Badge>
 					))}
-				<AddConstraint constraints={constraints} setConstraints={() => {}} />
+				<AddConstraint constraints={constraints} setConstraints={handleSetConstraints} />
 			</div>
 
 			<Handle type="source" position={Position.Bottom} className="!bg-slate-500" />

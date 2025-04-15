@@ -59,6 +59,7 @@ export function convertProgramToFlow(program: Program): FlowData {
 			type: "group",
 			position: { ...position },
 			data: {
+				programNodeId: programNode.id,
 				constraints: programNode.constraints,
 				label: programNode.label,
 				depth: depth,
@@ -113,16 +114,29 @@ const getConstraintsKey = (constraints: Constraint[]): string => {
 		.join(",");
 };
 
-// recursively get a structural key for a node and its descendants
-// this key aims to be identical for structurally identical subtrees (constraints + children structure)
+// Recursively get a structural key for a node and its descendants.
+// Memoization map to avoid redundant calculations within a single generateLabels call.
+const structuralKeyMemo = new Map<NodeData, string>();
+
 function getStructuralKey(node: NodeData): string {
-	const constraintKey = getConstraintsKey(node.constraints);
-	if (!node.children || node.children.length === 0) {
-		return `leaf:[${constraintKey}]`;
+	if (structuralKeyMemo.has(node)) {
+		return structuralKeyMemo.get(node)!;
+	}
+
+	const constraintKey = getConstraintsKey(node.constraints || []); // Ensure constraints is an array
+	const children = node.children || []; // Ensure children is an array
+
+	if (children.length === 0) {
+		// Leaf node key depends only on constraints
+		const key = `leaf:[${constraintKey}]`;
+		structuralKeyMemo.set(node, key);
+		return key;
 	} else {
-		// key depends on own constraints and the sorted keys of children
-		const childrenKeys = node.children.map((child) => getStructuralKey(child)).sort();
-		return `node:[${constraintKey}]_children:[${childrenKeys.join(";")}]`;
+		// Intermediate node key depends on own constraints and the sorted keys of children
+		const childrenKeys = children.map((child) => getStructuralKey(child)).sort();
+		const key = `node:[${constraintKey}]_children:[${childrenKeys.join(";")}]`;
+		structuralKeyMemo.set(node, key);
+		return key;
 	}
 }
 
@@ -146,65 +160,116 @@ const toSubscript = (num: number): string => {
 		.join("");
 };
 
-// generate labels recursively based on level and structural similarity
+// Helper to ensure node properties exist, providing defaults if not.
+function ensureNodeDefaults(node: NodeData): Required<NodeData> {
+	return {
+		id: node.id, // id is required
+		constraints: node.constraints ?? [],
+		children: node.children ?? [],
+		label: node.label ?? "",
+		// constraintWeights is not part of ProgramNode/NodeData, removed
+	};
+}
+
+// Generate labels using a robust 3-pass approach
 export function generateLabels(data: NodeData): NodeData {
+	structuralKeyMemo.clear(); // Clear memoization
 	const letterLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	const intermediateLevelLabels = new Map<number, Map<string, string>>(); // Map<level, Map<structuralKey, X_label>>
-	const leafLabels = new Map<string, string>(); // Map<leafKey, letter> - Changed: Now global, not per-level
-	const nextXIndexForLevel = new Map<number, number>();
 
-	function traverse(node: NodeData, level: number, parentLabel: string | null) {
-		if (!intermediateLevelLabels.has(level)) intermediateLevelLabels.set(level, new Map<string, string>());
-		// Removed: No need to check/initialize leafLabels per level
-		if (!nextXIndexForLevel.has(level)) {
-			nextXIndexForLevel.set(level, level + 1);
-		}
+	// --- Pass 1: Collect Keys and First Encounter Order ---+
+	const nodeInfoMap = new Map<string, { structuralKey: string; leafKey?: string }>(); // Map<node.id, keys>
+	const orderedUniqueIntermediateKeys = new Map<number, string[]>(); // Map<level, ordered structuralKey[]>
+	const orderedUniqueLeafKeys: string[] = [];
+	const seenIntermediateKeys = new Map<number, Set<string>>(); // Map<level, Set<structuralKey>>
+	const seenLeafKeys = new Set<string>();
 
-		const currentIntermediateMap = intermediateLevelLabels.get(level)!;
-		// Removed: No currentLeafMap per level needed
+	function collectKeys(node: NodeData, level: number, parentStructuralKey: string | null) {
+		const safeNode = ensureNodeDefaults(node);
+		const currentStructuralKey = getStructuralKey(safeNode);
+		let currentLeafKey: string | undefined = undefined;
 
-		let currentLabel: string | undefined;
+		nodeInfoMap.set(safeNode.id, { structuralKey: currentStructuralKey });
 
-		if (level === 0) {
-			currentLabel = `X${toSubscript(1)}`;
-		} else if (node.children && node.children.length > 0) {
-			// Intermediate node
-			const structuralKey = getStructuralKey(node);
-
-			if (!currentIntermediateMap.has(structuralKey)) {
-				const currentXIndex = nextXIndexForLevel.get(level)!;
-				const newLabel = `X${toSubscript(currentXIndex)}`;
-
-				currentIntermediateMap.set(structuralKey, newLabel);
-				nextXIndexForLevel.set(level, currentXIndex + 1);
+		if (safeNode.children.length > 0) {
+			// Intermediate Node
+			if (!seenIntermediateKeys.has(level)) {
+				seenIntermediateKeys.set(level, new Set());
+				orderedUniqueIntermediateKeys.set(level, []);
 			}
-			currentLabel = currentIntermediateMap.get(structuralKey);
+			if (!seenIntermediateKeys.get(level)!.has(currentStructuralKey)) {
+				seenIntermediateKeys.get(level)!.add(currentStructuralKey);
+				orderedUniqueIntermediateKeys.get(level)!.push(currentStructuralKey);
+			}
+
+			// Recurse for children
+			safeNode.children.forEach((child) => collectKeys(child, level + 1, currentStructuralKey));
 		} else {
-			// Leaf node
-			const constraintsKey = getConstraintsKey(node.constraints);
-			const leafKey = `parent:${parentLabel}_constraints:[${constraintsKey}]`; // Key remains the same
+			// Leaf Node
+			const constraintKey = getConstraintsKey(safeNode.constraints);
+			currentLeafKey = `parentKey:[${parentStructuralKey || "root"}]_constraints:[${constraintKey}]`;
+			nodeInfoMap.get(safeNode.id)!.leafKey = currentLeafKey; // Store leaf key too
 
-			// Check the global leafLabels map
-			if (!leafLabels.has(leafKey)) {
-				// Assign letter based on the global map size
-				const usedLettersCount = leafLabels.size;
-				const letterIndex = usedLettersCount % letterLabels.length;
-				const newLabel = letterLabels[letterIndex];
-				leafLabels.set(leafKey, newLabel); // Add to global map
+			if (!seenLeafKeys.has(currentLeafKey)) {
+				seenLeafKeys.add(currentLeafKey);
+				orderedUniqueLeafKeys.push(currentLeafKey);
 			}
-			currentLabel = leafLabels.get(leafKey); // Retrieve from global map
-		}
-
-		node.label = currentLabel;
-
-		// recursively process children
-		if (node.children && node.children.length > 0) {
-			node.children.forEach((child) => traverse(child, level + 1, currentLabel!));
 		}
 	}
 
-	// start traversal from the root node (level 0) with null parent label
-	traverse(data, 0, null);
+	collectKeys(data, 0, null);
+
+	// --- Pass 2: Assign Labels to Keys ---+
+	const xLabelAssignments = new Map<string, string>(); // Map<structuralKey, X_label>
+	const leafLabelAssignments = new Map<string, string>(); // Map<leafKey, Letter>
+
+	// Assign X labels (Root is always X_1)
+	const rootStructuralKey = getStructuralKey(ensureNodeDefaults(data));
+	xLabelAssignments.set(rootStructuralKey, `X${toSubscript(1)}`);
+	orderedUniqueIntermediateKeys.forEach((keys, level) => {
+		if (level === 0) return; // Skip root, already handled
+		keys.forEach((key, index) => {
+			// X index starts from level + 1 and increments based on encounter order at that level
+			const xIndex = level + 1 + index;
+			xLabelAssignments.set(key, `X${toSubscript(xIndex)}`);
+		});
+	});
+
+	// Assign Leaf labels (A, B, C... based on global encounter order)
+	orderedUniqueLeafKeys.forEach((leafKey, index) => {
+		const letterIndex = index % letterLabels.length;
+		// TODO: Handle running out of letters
+		leafLabelAssignments.set(leafKey, letterLabels[letterIndex]);
+	});
+
+	// --- Pass 3: Apply Labels to Nodes ---+
+	function applyLabels(node: NodeData) {
+		const safeNode = ensureNodeDefaults(node);
+		const nodeInfo = nodeInfoMap.get(safeNode.id);
+
+		if (!nodeInfo) {
+			console.warn(`Label application: Node info not found for ID ${safeNode.id}`);
+			node.label = "?";
+			return;
+		}
+
+		if (safeNode.children.length > 0) {
+			// Intermediate node
+			node.label = xLabelAssignments.get(nodeInfo.structuralKey) || "?";
+			safeNode.children.forEach(applyLabels); // Recurse
+		} else {
+			// Leaf node
+			if (!nodeInfo.leafKey) {
+				console.warn(`Label application: Leaf key missing for leaf node ID ${safeNode.id}`);
+				node.label = "?";
+				return;
+			}
+			node.label = leafLabelAssignments.get(nodeInfo.leafKey) || "?";
+		}
+	}
+
+	applyLabels(data);
+
+	structuralKeyMemo.clear(); // Final clear
 
 	return data;
 }

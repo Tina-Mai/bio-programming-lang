@@ -149,25 +149,26 @@ const toSubscript = (num: number): string => {
 // generate labels recursively based on level and structural similarity
 export function generateLabels(data: NodeData): NodeData {
 	const letterLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	const intermediateLevelLabels = new Map<number, Map<string, string>>();
-	const leafLevelLabels = new Map<number, Map<string, string>>();
+	const intermediateLevelLabels = new Map<number, Map<string, string>>(); // Map<level, Map<structuralKey, X_label>>
+	const leafLabels = new Map<string, string>(); // Map<leafKey, letter> - Changed: Now global, not per-level
 	const nextXIndexForLevel = new Map<number, number>();
 
 	function traverse(node: NodeData, level: number, parentLabel: string | null) {
 		if (!intermediateLevelLabels.has(level)) intermediateLevelLabels.set(level, new Map<string, string>());
-		if (!leafLevelLabels.has(level)) leafLevelLabels.set(level, new Map<string, string>());
+		// Removed: No need to check/initialize leafLabels per level
 		if (!nextXIndexForLevel.has(level)) {
 			nextXIndexForLevel.set(level, level + 1);
 		}
 
 		const currentIntermediateMap = intermediateLevelLabels.get(level)!;
-		const currentLeafMap = leafLevelLabels.get(level)!;
+		// Removed: No currentLeafMap per level needed
 
 		let currentLabel: string | undefined;
 
 		if (level === 0) {
 			currentLabel = `X${toSubscript(1)}`;
 		} else if (node.children && node.children.length > 0) {
+			// Intermediate node
 			const structuralKey = getStructuralKey(node);
 
 			if (!currentIntermediateMap.has(structuralKey)) {
@@ -179,16 +180,19 @@ export function generateLabels(data: NodeData): NodeData {
 			}
 			currentLabel = currentIntermediateMap.get(structuralKey);
 		} else {
+			// Leaf node
 			const constraintsKey = getConstraintsKey(node.constraints);
-			const leafKey = `parent:${parentLabel}_constraints:[${constraintsKey}]`;
+			const leafKey = `parent:${parentLabel}_constraints:[${constraintsKey}]`; // Key remains the same
 
-			if (!currentLeafMap.has(leafKey)) {
-				const usedLettersCount = currentLeafMap.size;
+			// Check the global leafLabels map
+			if (!leafLabels.has(leafKey)) {
+				// Assign letter based on the global map size
+				const usedLettersCount = leafLabels.size;
 				const letterIndex = usedLettersCount % letterLabels.length;
 				const newLabel = letterLabels[letterIndex];
-				currentLeafMap.set(leafKey, newLabel);
+				leafLabels.set(leafKey, newLabel); // Add to global map
 			}
-			currentLabel = currentLeafMap.get(leafKey);
+			currentLabel = leafLabels.get(leafKey); // Retrieve from global map
 		}
 
 		node.label = currentLabel;

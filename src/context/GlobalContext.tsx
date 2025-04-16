@@ -1,10 +1,26 @@
 "use client";
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { Project, ProjectJSON, ProgramNode } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
 type Mode = "blocks" | "code";
+
+// convert ProjectJSON to Project
+const mapProjectJsonToProject = (p: ProjectJSON): Project => ({
+	id: p.id,
+	name: p.name,
+	createdAt: new Date(p.createdAt),
+	updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(p.createdAt),
+});
+
+// sort projects
+const sortProjects = (projects: Project[]): Project[] => {
+	// TODO: remove sorting for now because it's not working :(
+	// return [...projects].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+	return projects;
+};
 
 interface GlobalContextType {
 	mode: Mode;
@@ -25,239 +41,201 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	const [mode, setMode] = useState<Mode>("blocks");
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [currentProject, setCurrentProject] = useState<Project | null>(null);
-	const supabase = createClient();
+	const supabase: SupabaseClient = createClient();
 
-	const fetchProjects = async () => {
+	// --- Internal Helper Functions ---
+
+	const _fetchProjectsFromDB = useCallback(async (): Promise<Project[]> => {
 		console.log("Fetching projects from Supabase...");
-		try {
-			const { data, error: fetchError } = await supabase.from("projects").select<"*", ProjectJSON>("*");
-			if (fetchError) {
-				throw fetchError;
-			}
-			if (data) {
-				console.log("Fetched projects:", data);
-				const fetchedProjects: Project[] = data.map((p: ProjectJSON) => ({
-					id: p.id,
-					name: p.name,
-					createdAt: new Date(p.createdAt),
-					updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(p.createdAt),
-				}));
-
-				// Sort projects by updatedAt descending
-				const sortedProjects = fetchedProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-
-				setProjects(sortedProjects);
-
-				// Set current project based on sorted list
-				if (sortedProjects.length > 0) {
-					// If no project is currently selected, select the most recent one
-					if (!currentProject) {
-						setCurrentProject(sortedProjects[0]);
-					} else {
-						// If a project IS selected, check if it still exists in the fetched list
-						const currentProjectStillExists = sortedProjects.some((p) => p.id === currentProject.id);
-						if (!currentProjectStillExists) {
-							// If the previously current project is gone (e.g., deleted elsewhere), select the most recent one
-							setCurrentProject(sortedProjects[0]);
-						}
-						// Otherwise, keep the current selection
-					}
-				} else if (sortedProjects.length === 0) {
-					setCurrentProject(null);
-				}
-			} else {
-				setProjects([]);
-				setCurrentProject(null);
-			}
-		} catch (err: unknown) {
-			console.error("Error fetching projects:", err);
-			setProjects([]);
-			setCurrentProject(null);
+		const { data, error } = await supabase.from("projects").select<"*", ProjectJSON>("*");
+		if (error) {
+			console.error("Error fetching projects:", error);
+			throw error;
 		}
-	};
+		return data ? data.map(mapProjectJsonToProject) : [];
+	}, [supabase]);
 
-	// create new project
-	const createNewProject = async () => {
-		console.log("Creating new project...");
-		try {
-			// create new project in projects table
-			const { data: newProjectData, error: projectError } = await supabase.from("projects").insert({ name: "New design" }).select().single();
-
+	const _createProjectInDB = useCallback(
+		async (name: string): Promise<{ project: ProjectJSON; program: ProgramNode | null }> => {
+			console.log("Creating new project in DB:", name);
+			// 1. create project entry
+			const { data: newProjectData, error: projectError } = await supabase.from("projects").insert({ name }).select().single();
 			if (projectError) throw projectError;
 			if (!newProjectData) throw new Error("Failed to create project, no data returned.");
 
-			console.log("New project created:", newProjectData);
-			const newProjectId = newProjectData.id;
-
-			// create default program in programs table
-			const defaultProgram: ProgramNode = {
-				id: uuidv4(),
-				children: [],
-				constraints: [],
-			};
-
+			// 2. create default program entry
+			const defaultProgram: ProgramNode = { id: uuidv4(), children: [], constraints: [] };
 			const { error: programError } = await supabase.from("programs").insert({
-				project_id: newProjectId,
+				project_id: newProjectData.id,
 				program: defaultProgram,
 			});
 
 			if (programError) {
-				console.error("Error creating program, attempting to delete project:", programError);
-				await supabase.from("projects").delete().eq("id", newProjectId);
+				console.error("Error creating program, attempting to roll back project creation:", programError);
+				await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
 				throw programError;
 			}
 
-			console.log("Default program created for new project:", newProjectId);
+			return { project: newProjectData, program: defaultProgram };
+		},
+		[supabase]
+	);
 
-			// 3. refresh projects and set the new one as current
-			await fetchProjects();
-
-			// 4. set the new project as current
-			const { data: fetchedProjects, error: fetchAfterCreateError } = await supabase.from("projects").select<"*", ProjectJSON>("*");
-			if (fetchAfterCreateError) throw fetchAfterCreateError;
-
-			if (fetchedProjects) {
-				const newlyCreatedProject = fetchedProjects.find((p) => p.id === newProjectId);
-				if (newlyCreatedProject) {
-					const projectToSet: Project = {
-						id: newlyCreatedProject.id,
-						name: newlyCreatedProject.name,
-						createdAt: new Date(newlyCreatedProject.createdAt),
-						updatedAt: newlyCreatedProject.updatedAt ? new Date(newlyCreatedProject.updatedAt) : new Date(newlyCreatedProject.createdAt),
-					};
-					setCurrentProject(projectToSet);
-					console.log("Set current project to the newly created one:", projectToSet.id);
-				} else {
-					console.warn("Could not find the newly created project after refetching.");
-				}
-			} else {
-				console.warn("Failed to refetch projects after creation.");
-			}
-		} catch (err: unknown) {
-			console.error("Error creating new project:", err);
-		}
-	};
-
-	// delete a project (and its program)
-	const deleteProject = async (projectId: string) => {
-		console.log(`Deleting project: ${projectId}...`);
-		try {
-			// 1. delete associated program
+	const _deleteProjectFromDB = useCallback(
+		async (projectId: string): Promise<void> => {
+			console.log(`Deleting project from DB: ${projectId}...`);
+			// 1. delete associated program (handle potential non-existence gracefully)
 			const { error: programError } = await supabase.from("programs").delete().eq("project_id", projectId);
 			if (programError && programError.code !== "PGRST204") {
+				// PGRST204: No rows found - this is okay
 				throw new Error(`Failed to delete associated program: ${programError.message}`);
 			}
-			console.log(`Associated program for project ${projectId} deleted (or did not exist).`);
 
-			// 2. delete project itself
+			// 2. delete project
 			const { error: projectError } = await supabase.from("projects").delete().eq("id", projectId);
+			if (projectError) throw projectError;
+		},
+		[supabase]
+	);
 
-			if (projectError) {
-				throw projectError;
-			}
-			console.log(`Project ${projectId} deleted successfully.`);
-
-			// 3. update local state (already sorted)
-			const remainingProjects = projects.filter((p) => p.id !== projectId);
-			setProjects(remainingProjects); // Assuming 'projects' was already sorted
-
-			// if deleted project was the current one, switch to another or null
-			if (currentProject?.id === projectId) {
-				if (remainingProjects.length > 0) {
-					setCurrentProject(remainingProjects[0]);
-					console.log(`Switched current project to ${remainingProjects[0].id}`);
-				} else {
-					setCurrentProject(null);
-					console.log("No projects left, setting current project to null.");
-				}
-			}
-		} catch (err: unknown) {
-			console.error("Error deleting project:", err);
-		}
-	};
-
-	// duplicate a project (and its program)
-	const duplicateProject = async (projectId: string) => {
-		console.log(`Duplicating project: ${projectId}...`);
-		try {
-			// 1. fetch original project details
+	const _duplicateProjectInDB = useCallback(
+		async (projectId: string): Promise<{ duplicatedProject: ProjectJSON; duplicatedProgram: ProgramNode | null }> => {
+			console.log(`Duplicating project in DB: ${projectId}...`);
+			// 1. fetch original project & program
 			const { data: originalProjectData, error: fetchProjectError } = await supabase.from("projects").select("name").eq("id", projectId).single();
-
-			if (fetchProjectError) throw new Error(`Failed to fetch original project details: ${fetchProjectError.message}`);
+			if (fetchProjectError) throw new Error(`Failed to fetch original project: ${fetchProjectError.message}`);
 			if (!originalProjectData) throw new Error("Original project not found.");
 
-			// 2. fetch original program data
-			const { data: originalProgramData, error: fetchProgramError } = await supabase.from("programs").select("program").eq("project_id", projectId).maybeSingle(); // Use maybeSingle as program might not exist yet
+			const { data: originalProgramData, error: fetchProgramError } = await supabase.from("programs").select("program").eq("project_id", projectId).maybeSingle();
+			if (fetchProgramError) throw new Error(`Failed to fetch original program: ${fetchProgramError.message}`);
+			const originalProgram = originalProgramData?.program || { id: uuidv4(), children: [], constraints: [] }; // Use default if none exists
 
-			if (fetchProgramError) throw new Error(`Failed to fetch original program data: ${fetchProgramError.message}`);
-
-			const originalProgram = originalProgramData?.program || { id: uuidv4(), children: [], constraints: [] }; // Use default if no program exists
-
-			// 3. create new duplicated project
+			// 2. create new project
 			const newProjectName = `(Copy) ${originalProjectData.name}`;
 			const { data: newProjectData, error: createProjectError } = await supabase.from("projects").insert({ name: newProjectName }).select().single();
-
-			if (createProjectError) throw new Error(`Failed to create duplicated project: ${createProjectError.message}`);
+			if (createProjectError) throw createProjectError;
 			if (!newProjectData) throw new Error("Failed to create duplicated project, no data returned.");
 
-			const newProjectId = newProjectData.id;
-			console.log("Duplicated project created:", newProjectData);
-
-			// 4. create new duplicated program
+			// 3. create new program
 			const { error: createProgramError } = await supabase.from("programs").insert({
-				project_id: newProjectId,
+				project_id: newProjectData.id,
 				program: originalProgram,
 			});
 
 			if (createProgramError) {
-				console.error("Error creating duplicated program, attempting to delete duplicated project:", createProgramError);
-				await supabase.from("projects").delete().eq("id", newProjectId);
-				throw new Error(`Failed to create duplicated program: ${createProgramError.message}`);
+				console.error("Error creating duplicated program, rolling back duplicated project:", createProgramError);
+				await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
+				throw createProgramError;
 			}
-			console.log("Duplicated program created for new project:", newProjectId);
 
-			// 5. refresh projects and set the new duplicate as current
-			await fetchProjects();
+			return { duplicatedProject: newProjectData, duplicatedProgram: originalProgram };
+		},
+		[supabase]
+	);
 
-			// find the newly created project in the updated list and set it as current
-			const { data: fetchedProjects, error: fetchAfterCreateError } = await supabase.from("projects").select<"*", ProjectJSON>("*");
-			if (fetchAfterCreateError) throw fetchAfterCreateError;
+	// --- Public API ---
 
-			if (fetchedProjects) {
-				const newlyCreatedProject = fetchedProjects.find((p) => p.id === newProjectId);
-				if (newlyCreatedProject) {
-					const projectToSet: Project = {
-						id: newlyCreatedProject.id,
-						name: newlyCreatedProject.name,
-						createdAt: new Date(newlyCreatedProject.createdAt),
-						updatedAt: newlyCreatedProject.updatedAt ? new Date(newlyCreatedProject.updatedAt) : new Date(newlyCreatedProject.createdAt),
-					};
-					setCurrentProject(projectToSet);
-					console.log("Set current project to the newly duplicated one:", projectToSet.id);
-				} else {
-					console.warn("Could not find the newly duplicated project after refetching.");
+	const fetchProjects = useCallback(async () => {
+		try {
+			const fetchedProjects = await _fetchProjectsFromDB();
+			const sortedProjects = sortProjects(fetchedProjects);
+			setProjects(sortedProjects);
+
+			if (sortedProjects.length > 0) {
+				// determine the next current project
+				const currentStillExists = currentProject && sortedProjects.some((p) => p.id === currentProject.id);
+				if (!currentStillExists) {
+					setCurrentProject(sortedProjects[0]);
 				}
 			} else {
-				console.warn("Failed to refetch projects after duplication.");
+				setCurrentProject(null);
 			}
+			console.log("Projects fetched and state updated. Current project:", currentProject?.id ?? "None");
 		} catch (err: unknown) {
-			console.error("Error duplicating project:", err);
+			console.error("Error in fetchProjects:", err);
+			setProjects([]);
+			setCurrentProject(null);
 		}
-	};
+	}, [_fetchProjectsFromDB, currentProject]);
 
-	// update a project's timestamp locally and re-sort
-	const updateProjectTimestamp = (projectId: string, newTimestamp: Date) => {
+	const createNewProject = useCallback(async () => {
+		console.log("Creating new project...");
+		try {
+			const { project: newProjectJson } = await _createProjectInDB("New design");
+			const newProject = mapProjectJsonToProject(newProjectJson);
+
+			// update local state
+			setProjects((prevProjects) => sortProjects([newProject, ...prevProjects]));
+			setCurrentProject(newProject);
+
+			console.log("New project created successfully:", newProject.id);
+		} catch (err: unknown) {
+			console.error("Error creating new project:", err);
+		}
+	}, [_createProjectInDB, setProjects, setCurrentProject]);
+
+	const deleteProject = useCallback(
+		async (projectId: string) => {
+			console.log(`Deleting project: ${projectId}...`);
+			try {
+				await _deleteProjectFromDB(projectId);
+
+				// update local state
+				let nextCurrentProject: Project | null = null;
+				const remainingProjects = projects.filter((p) => p.id !== projectId);
+
+				if (remainingProjects.length > 0) {
+					if (currentProject?.id === projectId) {
+						nextCurrentProject = remainingProjects[0];
+					} else {
+						nextCurrentProject = currentProject;
+					}
+				} else {
+					nextCurrentProject = null;
+				}
+
+				setProjects(remainingProjects);
+				setCurrentProject(nextCurrentProject);
+
+				console.log(`Project ${projectId} deleted successfully. Current project set to: ${nextCurrentProject?.id ?? "None"}`);
+			} catch (err: unknown) {
+				console.error("Error deleting project:", err);
+			}
+		},
+		[_deleteProjectFromDB, projects, currentProject, setProjects, setCurrentProject]
+	);
+
+	const duplicateProject = useCallback(
+		async (projectId: string) => {
+			console.log(`Duplicating project: ${projectId}...`);
+			try {
+				const { duplicatedProject: dupProjectJson } = await _duplicateProjectInDB(projectId);
+				const duplicatedProject = mapProjectJsonToProject(dupProjectJson);
+
+				// update local state
+				setProjects((prevProjects) => sortProjects([duplicatedProject, ...prevProjects]));
+				setCurrentProject(duplicatedProject);
+
+				console.log("Project duplicated successfully:", duplicatedProject.id);
+			} catch (err: unknown) {
+				console.error("Error duplicating project:", err);
+			}
+		},
+		[_duplicateProjectInDB, setProjects, setCurrentProject]
+	);
+
+	const updateProjectTimestamp = useCallback((projectId: string, newTimestamp: Date) => {
 		setProjects((prevProjects) => {
 			const updatedProjects = prevProjects.map((project) => (project.id === projectId ? { ...project, updatedAt: newTimestamp } : project));
-			// Re-sort after updating the timestamp
-			return updatedProjects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+			return sortProjects(updatedProjects);
 		});
-	};
+	}, []);
+
+	// --- Effects ---
 
 	useEffect(() => {
 		fetchProjects();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [fetchProjects]);
 
 	return (
 		<GlobalContext.Provider

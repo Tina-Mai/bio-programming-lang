@@ -1,182 +1,23 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
-import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
-import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
+import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
 import { ProgramNode, Constraint } from "@/types";
-import { parseProgramJSON, convertProgramToFlow, generateLabels, findAndRemoveNodeFromProgram, findAndDuplicateNodeInProgram } from "@/lib";
+import {
+	parseProgramJSON,
+	convertProgramToFlow,
+	generateLabels,
+	findAndRemoveNodeFromProgram,
+	findAndDuplicateNodeInProgram,
+	findAndAddChildInProgram,
+	findAndUpdateNodeConstraints,
+	getLayoutedElements,
+	defaultElkOptions,
+} from "@/lib/utils";
 import { useGlobal } from "./GlobalContext";
 import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 
-// --- ElkJS Layout Logic Start ---
-const elk = new ELK();
-
-const nodeWidth = 172;
-const nodeHeight = 60;
-
-// default ElkJS options
-const elkOptions: LayoutOptions = {
-	"elk.algorithm": "layered",
-	"elk.direction": "DOWN",
-	"elk.layered.spacing.nodeNodeBetweenLayers": "100",
-	"elk.spacing.nodeNode": "80",
-	"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
-	"elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-};
-
-// type def for layouted Elk nodes
-interface LayoutedElkNode extends ElkNode {
-	x?: number;
-	y?: number;
-	width?: number;
-	height?: number;
-	children?: LayoutedElkNode[];
-	edges?: ElkExtendedEdge[];
-}
-
-const standardNodeWidth = 60;
-const standardNodeTopPadding = 65;
-
-// build nested Elk node structure
-const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
-	const elkNodeMap = new Map<string, ElkNode>();
-	const rootElkNodes: ElkNode[] = [];
-
-	// create ElkNode objects for all nodes
-	nodes.forEach((node) => {
-		const elkNode: ElkNode = {
-			id: node.id,
-			width: nodeWidth,
-			height: nodeHeight,
-			...(node.type === "group" && {
-				layoutOptions: {
-					"elk.padding": "[top=70,left=20,bottom=20,right=20]",
-					"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
-				},
-			}),
-			children: [],
-		};
-		elkNodeMap.set(node.id, elkNode);
-	});
-
-	// build the hierarchy
-	nodes.forEach((node) => {
-		const elkNode = elkNodeMap.get(node.id)!;
-		if (node.parentId && elkNodeMap.has(node.parentId)) {
-			const parentElkNode = elkNodeMap.get(node.parentId)!;
-			parentElkNode.children = parentElkNode.children || [];
-			parentElkNode.children.push(elkNode);
-		} else {
-			rootElkNodes.push(elkNode);
-		}
-	});
-
-	return rootElkNodes;
-};
-
-// recursively flatten layouted nodes and adjust positions
-const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal: boolean, rfNodeMap: Map<string, Node>, layoutedGroupMap: Map<string, LayoutedElkNode>): Node[] => {
-	let rfNodes: Node[] = [];
-	layoutedElkNodes.forEach((elkNode) => {
-		const originalNode = rfNodeMap.get(elkNode.id);
-		if (!originalNode) {
-			console.warn(`Original RF node not found for Elk node ID: ${elkNode.id}`);
-			return;
-		}
-
-		let calculatedPosition = { x: elkNode.x ?? 0, y: elkNode.y ?? 0 };
-		const isGroup = originalNode.type === "group";
-
-		if (!isGroup && originalNode.parentId) {
-			const parentGroup = layoutedGroupMap.get(originalNode.parentId);
-			if (parentGroup) {
-				const parentWidth = parentGroup.width ?? 0;
-
-				calculatedPosition = {
-					x: parentWidth / 2 - standardNodeWidth / 2,
-					y: standardNodeTopPadding,
-				};
-			} else {
-				console.warn(`Parent group node not found for standard node ID: ${elkNode.id}`);
-			}
-		}
-
-		rfNodes.push({
-			...originalNode,
-			position: calculatedPosition,
-			targetPosition: isHorizontal ? Position.Left : Position.Top,
-			sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-			style: {
-				...originalNode.style,
-				...(isGroup && {
-					width: elkNode.width,
-					height: elkNode.height,
-				}),
-			},
-		});
-
-		if (elkNode.children && elkNode.children.length > 0) {
-			rfNodes = rfNodes.concat(flattenLayoutedNodes(elkNode.children, isHorizontal, rfNodeMap, layoutedGroupMap));
-		}
-	});
-	return rfNodes;
-};
-
-// get layouted elements using ElkJS
-const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: LayoutOptions = elkOptions): Promise<{ nodes: Node[]; edges: Edge[] }> => {
-	const isHorizontal = options?.["elk.direction"] === "RIGHT" || options?.["elk.direction"] === "LEFT";
-	const rfNodeMap = new Map<string, Node>(nodes.map((node) => [node.id, node]));
-	const rfEdgeMap = new Map<string, Edge>(edges.map((edge) => [edge.id, edge]));
-	const elkNodesHierarchy = buildElkHierarchy(nodes.map((n) => rfNodeMap.get(n.id)!));
-
-	const graph: ElkNode = {
-		id: "root",
-		layoutOptions: options,
-		children: elkNodesHierarchy,
-		edges: edges.map(
-			(edge): ElkExtendedEdge => ({
-				id: edge.id,
-				sources: [edge.source],
-				targets: [edge.target],
-			})
-		),
-	};
-
-	try {
-		const layoutedGraph = (await elk.layout(graph)) as LayoutedElkNode;
-
-		// create a map of layouted group nodes for position calculation
-		const layoutedGroupMap = new Map<string, LayoutedElkNode>();
-		const collectGroups = (elkNodes: LayoutedElkNode[]) => {
-			elkNodes.forEach((node) => {
-				if (node.id.startsWith("group-")) {
-					layoutedGroupMap.set(node.id, node);
-				}
-				if (node.children) {
-					collectGroups(node.children);
-				}
-			});
-		};
-		collectGroups(layoutedGraph.children ?? []);
-
-		// flatten the layouted nodes and adjust standard node positions
-		const finalNodes = flattenLayoutedNodes(layoutedGraph.children ?? [], isHorizontal, rfNodeMap, layoutedGroupMap);
-
-		// map layouted Elk edges back (retrieve original from map)
-		const finalEdges =
-			layoutedGraph.edges
-				?.map((elkEdge: ElkExtendedEdge): Edge | undefined => {
-					return rfEdgeMap.get(elkEdge.id);
-				})
-				.filter((edge): edge is Edge => edge !== undefined) ?? [];
-
-		return { nodes: finalNodes, edges: finalEdges };
-	} catch (error) {
-		console.error("ElkJS layout failed:", error);
-		return { nodes, edges };
-	}
-};
-// --- ElkJS Layout Logic End ---
+// --- ElkJS Layout Logic Removed ---
 
 interface ProjectContextProps {
 	nodes: Node[];
@@ -197,39 +38,8 @@ interface ProjectContextProps {
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
 
-// find a node in the program tree and add a child
-const findAndAddChildInProgram = (programNode: ProgramNode, parentId: string, newChild: ProgramNode): boolean => {
-	if (programNode.id === parentId) {
-		programNode.children.push(newChild);
-		return true;
-	}
-	for (const child of programNode.children) {
-		if (findAndAddChildInProgram(child, parentId, newChild)) {
-			return true;
-		}
-	}
-	return false;
-};
-
-// find a node in the program tree and update its constraints
-const findAndUpdateNodeConstraints = (programNode: ProgramNode, targetId: string, newConstraints: Constraint[]): boolean => {
-	if (programNode.id === targetId) {
-		programNode.constraints = newConstraints;
-		if (!Array.isArray(programNode.constraints)) {
-			programNode.constraints = [];
-		}
-		return true;
-	}
-	for (const child of programNode.children) {
-		if (Array.isArray(programNode.children) && findAndUpdateNodeConstraints(child, targetId, newConstraints)) {
-			return true;
-		}
-	}
-	return false;
-};
-
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-	const { currentProject } = useGlobal();
+	const { currentProject, updateProjectTimestamp } = useGlobal();
 	const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 	const [currentProgram, setCurrentProgram] = useState<ProgramNode | null>(null);
@@ -237,17 +47,86 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const [programError, setProgramError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
 
-	// fetch program data from supabase
+	// --- Internal Helper Functions ---
+
+	// update program in state and DB, and update project timestamp
+	const _updateProgramAndTimestamp = useCallback(
+		async (programUpdater: (programCopy: ProgramNode) => ProgramNode | null | void, operationName: string) => {
+			if (!currentProject || !currentProject.id) {
+				console.error(`Cannot ${operationName}: No current project selected.`);
+				setProgramError(`Cannot ${operationName}: No current project selected.`);
+				return;
+			}
+			if (!currentProgram) {
+				console.error(`Cannot ${operationName}: Program data is not available.`);
+				setProgramError(`Cannot ${operationName}: Program data is not available.`);
+				return;
+			}
+
+			setIsProgramLoading(true);
+			setProgramError(null);
+
+			try {
+				let programCopy: ProgramNode;
+				try {
+					programCopy = structuredClone(currentProgram);
+				} catch (e) {
+					console.warn("structuredClone failed, falling back to JSON methods", e);
+					try {
+						programCopy = JSON.parse(JSON.stringify(currentProgram));
+					} catch (jsonError) {
+						console.error("CRITICAL: Failed to deep copy program data.", jsonError);
+						throw new Error("Failed to process program data.");
+					}
+				}
+
+				const updateResult = programUpdater(programCopy);
+				if (updateResult === null) {
+					throw new Error("Failed to process program data.");
+				}
+
+				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
+				if (updateError) {
+					throw new Error(`Supabase program update error: ${updateError.message}`);
+				}
+
+				const newTimestamp = new Date();
+				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: newTimestamp.toISOString() }).eq("id", currentProject.id);
+				if (projectUpdateError) {
+					console.warn(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+				}
+
+				setCurrentProgram(programCopy);
+				updateProjectTimestamp(currentProject.id, newTimestamp);
+
+				console.log(`Program ${operationName} successful for project ${currentProject.id}`);
+			} catch (error: unknown) {
+				console.error(`Error during ${operationName}:`, error);
+				const message = error instanceof Error ? error.message : "An unknown error occurred";
+				setProgramError(`Failed to ${operationName}: ${message}`);
+			} finally {
+				setIsProgramLoading(false);
+			}
+		},
+		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading, updateProjectTimestamp]
+	);
+
+	// --- Effects ---
+
+	// fetch program data when current project changes
 	useEffect(() => {
 		const fetchProgram = async () => {
-			if (!currentProject || !currentProject.id) {
+			if (!currentProject?.id) {
 				setCurrentProgram(null);
 				setNodes([]);
 				setEdges([]);
 				setIsProgramLoading(false);
 				setProgramError(null);
+				console.log("No current project ID, clearing program state.");
 				return;
 			}
+
+			console.log(`Fetching program for project ID: ${currentProject.id}`);
 			setIsProgramLoading(true);
 			setProgramError(null);
 			setCurrentProgram(null);
@@ -261,96 +140,97 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Supabase fetch error: ${error.message}`);
 				}
 
-				if (data && typeof data === "object" && data.program) {
+				if (data?.program) {
 					const parsedProgram = parseProgramJSON(data.program);
-
 					if (parsedProgram) {
 						setCurrentProgram(parsedProgram as ProgramNode);
+						console.log(`Successfully fetched and parsed program for project: ${currentProject.id}`);
 					} else {
-						throw new Error("Failed to parse fetched program data (program property was present but parsing failed).");
+						throw new Error("Failed to parse fetched program data.");
 					}
 				} else {
-					console.log(`No program found or data structure incorrect for project ID: ${currentProject.id}.`);
+					console.log(`No program found for project ID: ${currentProject.id}. A default might be created if needed.`);
 					setCurrentProgram(null);
 				}
 			} catch (error: unknown) {
 				console.error("Error fetching or processing program:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
-				setProgramError(message);
+				setProgramError(`Failed to load program: ${message}`);
 				setCurrentProgram(null);
 			} finally {
 				setIsProgramLoading(false);
 			}
 		};
-
 		fetchProgram();
-	}, [currentProject, supabase, setNodes, setEdges]);
+	}, [currentProject?.id, supabase, setNodes, setEdges]);
 
-	// layout calculation
+	// layout calculation when program changes or loading finishes
 	useEffect(() => {
 		let isMounted = true;
-		console.log(`Layout effect triggered. Project ID: ${currentProject?.id}, Has program: ${!!currentProgram}, Loading: ${isProgramLoading}`);
+		console.log(`Layout effect triggered. Has program: ${!!currentProgram}, Loading: ${isProgramLoading}`);
 
-		if (currentProgram) {
-			// create temp copy to label nodes
-			let programToProcess: ProgramNode;
-			try {
-				programToProcess = structuredClone(currentProgram);
-			} catch (e) {
-				console.error("Failed to structuredClone currentProgram, falling back to JSON methods", e);
-				try {
-					programToProcess = JSON.parse(JSON.stringify(currentProgram));
-				} catch (jsonError) {
-					console.error("CRITICAL: Failed to deep copy program data. Aborting layout.", jsonError);
-					if (isMounted) setProgramError("Failed to process program data.");
-					return; // Cannot proceed without a safe copy
-				}
-			}
-
-			// generate labels
-			const programWithLabels = generateLabels(programToProcess);
-
-			// convert to flow structure
-			const { nodes: flowNodes, edges: flowEdges } = convertProgramToFlow(programWithLabels);
-
-			if (flowNodes.length > 0) {
-				// apply layout algorithm
-				getLayoutedElements(flowNodes, flowEdges, elkOptions)
-					.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
-						if (isMounted) {
-							setNodes(layoutedNodes);
-							setEdges(layoutedEdges);
-						}
-					})
-					.catch((error) => {
-						console.error("Error during ElkJS layout:", error);
-						if (isMounted) {
-							console.warn("Falling back to non-layouted nodes/edges due to layout error.");
-							setNodes(flowNodes);
-							setEdges(flowEdges);
-						}
-					});
-			} else {
-				if (isMounted) {
-					console.warn("Program converted to empty nodes/edges array. Clearing canvas.");
-					setNodes([]);
-					setEdges([]);
-				}
-			}
-		} else {
-			if (isMounted && !isProgramLoading) {
+		if (!currentProgram) {
+			if (!isProgramLoading && isMounted) {
 				console.log("No program data OR loading finished with no program. Clearing canvas.");
 				setNodes([]);
 				setEdges([]);
-			} else if (isMounted && isProgramLoading) {
-				console.log("No current program, but initial load is in progress. Canvas state maintained.");
+			}
+			return;
+		}
+
+		// create temp copy for processing (labeling)
+		let programToProcess: ProgramNode;
+		try {
+			programToProcess = structuredClone(currentProgram);
+		} catch (e) {
+			console.warn("structuredClone failed for layout, falling back to JSON methods", e);
+			try {
+				programToProcess = JSON.parse(JSON.stringify(currentProgram));
+			} catch (jsonError) {
+				console.error("CRITICAL: Failed to deep copy program data for layout. Aborting layout.", jsonError);
+				if (isMounted) setProgramError("Failed to process program data for layout.");
+				return;
+			}
+		}
+
+		// generate labels & convert to flow structure
+		const programWithLabels = generateLabels(programToProcess);
+		const { nodes: flowNodes, edges: flowEdges } = convertProgramToFlow(programWithLabels);
+
+		if (flowNodes.length > 0) {
+			// apply layout algorithm
+			getLayoutedElements(flowNodes, flowEdges, defaultElkOptions)
+				.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+					if (isMounted) {
+						console.log("Applying layout to nodes and edges.");
+						setNodes(layoutedNodes);
+						setEdges(layoutedEdges);
+					}
+				})
+				.catch((error) => {
+					console.error("Error during layout calculation:", error);
+					if (isMounted) {
+						console.warn("Falling back to non-layouted nodes/edges due to layout error.");
+						setNodes(flowNodes);
+						setEdges(flowEdges);
+					}
+				});
+		} else {
+			if (isMounted) {
+				console.warn("Program converted to empty nodes/edges array. Clearing canvas.");
+				setNodes([]);
+				setEdges([]);
 			}
 		}
 		return () => {
 			isMounted = false;
+			console.log("Layout effect cleanup.");
 		};
-	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]);
+	}, [currentProgram, isProgramLoading, setNodes, setEdges]);
 
+	// --- Public API Methods ---
+
+	// connect two nodes
 	const onConnect = useCallback(
 		(connection: Connection) => {
 			const newEdge: Edge = {
@@ -362,223 +242,84 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				style: { stroke: "#334155" },
 			};
 			setEdges((eds) => addEdge(newEdge, eds));
-			console.warn("Edge added. Persistence to Supabase for edges is not yet implemented.");
+			console.warn("Edge added visually. Persistence to program structure is not implemented.");
 		},
 		[setEdges]
 	);
 
+	// add a child node to a parent node
 	const addChildNode = useCallback(
 		async (parentId: string) => {
-			if (!currentProject || !currentProject.id) {
-				console.error("Cannot add node: No current project selected.");
-				setProgramError("Cannot add node: No current project selected.");
-				return;
-			}
-			setIsProgramLoading(true);
-			setProgramError(null);
-
-			try {
-				if (!currentProgram) {
-					throw new Error("Cannot add node: program data is not available.");
-				}
-
-				const programCopy = JSON.parse(JSON.stringify(currentProgram));
-
+			await _updateProgramAndTimestamp((programCopy) => {
 				const newChildId = uuidv4();
 				const newProgramNode: ProgramNode = {
 					id: newChildId,
 					children: [],
 					constraints: [],
 				};
-
 				const added = findAndAddChildInProgram(programCopy, parentId, newProgramNode);
 				if (!added) {
-					throw new Error(`Could not find parent node with ID ${parentId} in the program structure.`);
+					throw new Error(`Could not find parent node with ID ${parentId} to add child.`);
 				}
-
-				// persist structurally updated program to supabase
-				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-				if (updateError) {
-					throw new Error(`Supabase update error: ${updateError.message}`);
-				}
-
-				// update project timestamp
-				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
-				if (projectUpdateError) {
-					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
-				}
-
-				// update local state with the structurally modified program
-				setCurrentProgram(programCopy);
-			} catch (error: unknown) {
-				console.error("Error adding child node or updating Supabase:", error);
-				const message = error instanceof Error ? error.message : "An unknown error occurred";
-				setProgramError(`Failed to add node: ${message}`);
-			} finally {
-				setIsProgramLoading(false);
-			}
+			}, "add child node");
 		},
-		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+		[_updateProgramAndTimestamp]
 	);
 
-	// update node constraints
+	// update constraints for a node
 	const updateNodeConstraints = useCallback(
 		async (nodeId: string, newConstraints: Constraint[]) => {
-			if (!currentProject || !currentProject.id) {
-				console.error("Cannot update constraints: No current project selected.");
-				setProgramError("Cannot update constraints: No current project selected.");
-				return;
-			}
-			if (!currentProgram) {
-				console.error("Cannot update constraints: program data is not available.");
-				setProgramError("Cannot update constraints: program data is not available.");
-				return;
-			}
-			setIsProgramLoading(true);
-			setProgramError(null);
-
-			try {
-				const programCopy = JSON.parse(JSON.stringify(currentProgram));
+			await _updateProgramAndTimestamp((programCopy) => {
 				const updated = findAndUpdateNodeConstraints(programCopy, nodeId, newConstraints);
-
 				if (!updated) {
 					throw new Error(`Could not find node with ID ${nodeId} to update constraints.`);
 				}
-
-				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-				if (updateError) {
-					throw new Error(`Supabase update error: ${updateError.message}`);
-				}
-
-				// update project timestamp
-				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
-				if (projectUpdateError) {
-					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
-				}
-
-				setCurrentProgram(programCopy);
-			} catch (error: unknown) {
-				console.error("Error updating node constraints:", error);
-				const message = error instanceof Error ? error.message : "An unknown error occurred";
-				setProgramError(`Failed to update constraints: ${message}`);
-			} finally {
-				setIsProgramLoading(false);
-			}
+			}, "update node constraints");
 		},
-		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+		[_updateProgramAndTimestamp]
 	);
 
 	// delete a node (and its children)
 	const deleteNode = useCallback(
 		async (nodeId: string) => {
-			if (!currentProject || !currentProject.id) {
-				console.error("Cannot delete node: No current project selected.");
-				setProgramError("Cannot delete node: No current project selected.");
-				return;
-			}
-			if (!currentProgram) {
-				console.error("Cannot delete node: program data is not available.");
-				setProgramError("Cannot delete node: program data is not available.");
-				return;
-			}
-
-			// prevent deleting the root node
-			if (currentProgram.id === nodeId) {
-				console.warn("Cannot delete the root node.");
+			// prevent deleting root node
+			if (currentProgram?.id === nodeId) {
+				console.warn("Attempted to delete the root node.");
 				setProgramError("Cannot delete the root node.");
 				return;
 			}
 
-			setIsProgramLoading(true);
-			setProgramError(null);
-
-			try {
-				const programCopy = JSON.parse(JSON.stringify(currentProgram));
+			await _updateProgramAndTimestamp((programCopy) => {
 				const removed = findAndRemoveNodeFromProgram(programCopy, nodeId);
 				if (!removed) {
 					throw new Error(`Could not find node with ID ${nodeId} to delete.`);
 				}
-
-				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-
-				if (updateError) {
-					throw new Error(`Supabase update error after delete: ${updateError.message}`);
-				}
-
-				// update project timestamp
-				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
-				if (projectUpdateError) {
-					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
-				}
-
-				setCurrentProgram(programCopy);
-			} catch (error: unknown) {
-				console.error("Error deleting node:", error);
-				const message = error instanceof Error ? error.message : "An unknown error occurred";
-				setProgramError(`Failed to delete node: ${message}`);
-			} finally {
-				setIsProgramLoading(false);
-			}
+			}, "delete node");
 		},
-		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+		[currentProgram?.id, _updateProgramAndTimestamp, setProgramError]
 	);
 
 	// duplicate a node (and its children)
 	const duplicateNode = useCallback(
 		async (nodeId: string) => {
-			if (!currentProject || !currentProject.id) {
-				console.error("Cannot duplicate node: No current project selected.");
-				setProgramError("Cannot duplicate node: No current project selected.");
-				return;
-			}
-			if (!currentProgram) {
-				console.error("Cannot duplicate node: program data is not available.");
-				setProgramError("Cannot duplicate node: program data is not available.");
-				return;
-			}
-
-			// prevent duplicating the root node
-			if (currentProgram.id === nodeId) {
-				console.warn("Cannot duplicate the root node.");
+			// prevent duplicating root node
+			if (currentProgram?.id === nodeId) {
+				console.warn("Attempted to duplicate the root node.");
 				setProgramError("Cannot duplicate the root node.");
 				return;
 			}
 
-			setIsProgramLoading(true);
-			setProgramError(null);
-
-			try {
-				const programCopy = JSON.parse(JSON.stringify(currentProgram));
-
+			await _updateProgramAndTimestamp((programCopy) => {
 				const duplicated = findAndDuplicateNodeInProgram(programCopy, nodeId);
-
 				if (!duplicated) {
-					throw new Error(`Could not find node with ID ${nodeId} to duplicate, or it's the root node.`);
+					throw new Error(`Could not find node with ID ${nodeId} to duplicate.`);
 				}
-
-				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-
-				if (updateError) {
-					throw new Error(`Supabase update error after duplicate: ${updateError.message}`);
-				}
-
-				// update project timestamp
-				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
-				if (projectUpdateError) {
-					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
-				}
-
-				setCurrentProgram(programCopy);
-			} catch (error: unknown) {
-				console.error("Error duplicating node:", error);
-				const message = error instanceof Error ? error.message : "An unknown error occurred";
-				setProgramError(`Failed to duplicate node: ${message}`);
-			} finally {
-				setIsProgramLoading(false);
-			}
+			}, "duplicate node");
 		},
-		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+		[currentProgram?.id, _updateProgramAndTimestamp, setProgramError]
 	);
+
+	// --- Context Provider Value ---
 
 	const value: ProjectContextProps = {
 		nodes,
@@ -599,6 +340,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };
+
+// --- Hook ---
 
 export const useProject = (): ProjectContextProps => {
 	const context = useContext(ProjectContext);

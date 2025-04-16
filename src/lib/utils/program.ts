@@ -336,3 +336,47 @@ export const findAndDuplicateNodeInProgram = (programNode: ProgramNode, targetId
 	// Target node not found in this subtree
 	return false;
 };
+
+// --- Merged from programUtils.ts ---
+
+// Find a node in the program tree and add a child
+export const findAndAddChildInProgram = (programNode: ProgramNode, parentId: string, newChild: ProgramNode): boolean => {
+	if (programNode.id === parentId) {
+		// Ensure children array exists before pushing
+		if (!Array.isArray(programNode.children)) {
+			programNode.children = [];
+		}
+		programNode.children.push(newChild);
+		return true;
+	}
+	// Recursively search in children if they exist
+	if (Array.isArray(programNode.children)) {
+		for (const child of programNode.children) {
+			if (findAndAddChildInProgram(child, parentId, newChild)) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
+// Find a node in the program tree and update its constraints
+export const findAndUpdateNodeConstraints = (programNode: ProgramNode, targetId: string, newConstraints: Constraint[]): boolean => {
+	if (programNode.id === targetId) {
+		programNode.constraints = newConstraints;
+		// Ensure constraints is always an array
+		if (!Array.isArray(programNode.constraints)) {
+			programNode.constraints = [];
+		}
+		return true;
+	}
+	// Recursively search in children if they exist
+	if (Array.isArray(programNode.children)) {
+		for (const child of programNode.children) {
+			if (findAndUpdateNodeConstraints(child, targetId, newConstraints)) {
+				return true;
+			}
+		}
+	}
+	return false;
+};

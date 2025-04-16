@@ -24,7 +24,7 @@ const elkOptions: LayoutOptions = {
 	"elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
 };
 
-// Type definition for layouted Elk nodes
+// type def for layouted Elk nodes
 interface LayoutedElkNode extends ElkNode {
 	x?: number;
 	y?: number;
@@ -196,7 +196,7 @@ interface ProjectContextProps {
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
 
-// Helper function to find a node in the program tree and add a child
+// find a node in the program tree and add a child
 const findAndAddChildInProgram = (programNode: ProgramNode, parentId: string, newChild: ProgramNode): boolean => {
 	if (programNode.id === parentId) {
 		programNode.children.push(newChild);
@@ -210,18 +210,16 @@ const findAndAddChildInProgram = (programNode: ProgramNode, parentId: string, ne
 	return false;
 };
 
-// Helper function to find a node in the program tree and update its constraints
+// find a node in the program tree and update its constraints
 const findAndUpdateNodeConstraints = (programNode: ProgramNode, targetId: string, newConstraints: Constraint[]): boolean => {
 	if (programNode.id === targetId) {
 		programNode.constraints = newConstraints;
-		// Ensure constraints are always an array, even if empty
 		if (!Array.isArray(programNode.constraints)) {
 			programNode.constraints = [];
 		}
 		return true;
 	}
 	for (const child of programNode.children) {
-		// Ensure children array exists and is an array
 		if (Array.isArray(programNode.children) && findAndUpdateNodeConstraints(child, targetId, newConstraints)) {
 			return true;
 		}
@@ -238,7 +236,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const [programError, setProgramError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
 
-	// --- Effect 1: Fetch Program Data ---
+	// fetch program data from supabase
 	useEffect(() => {
 		const fetchProgram = async () => {
 			if (!currentProject || !currentProject.id) {
@@ -250,7 +248,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setProgramError(null);
 				return;
 			}
-
 			setIsProgramLoading(true);
 			setProgramError(null);
 			setCurrentProgram(null);
@@ -259,22 +256,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			console.log(`Fetching program for project ID: ${currentProject.id}`);
 
 			try {
-				// Let Supabase infer types, handle checks below
 				const { data, error } = await supabase.from("programs").select("program").eq("project_id", currentProject.id).maybeSingle();
 
 				if (error) {
 					throw new Error(`Supabase fetch error: ${error.message}`);
 				}
 
-				// Runtime check for data and the program property
 				if (data && typeof data === "object" && data.program) {
 					console.log("Fetched raw program data:", data.program);
-					// Explicitly parse the program data
 					const parsedProgram = parseProgramJSON(data.program);
 
 					if (parsedProgram) {
 						console.log("Parsed program data:", parsedProgram);
-						setCurrentProgram(parsedProgram as ProgramNode); // Assert type after parsing
+						setCurrentProgram(parsedProgram as ProgramNode);
 					} else {
 						throw new Error("Failed to parse fetched program data (program property was present but parsing failed).");
 					}
@@ -295,17 +289,15 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		fetchProgram();
 	}, [currentProject, supabase, setNodes, setEdges]);
 
-	// --- Effect 2: Layout Calculation ---
+	// layout calculation
 	useEffect(() => {
 		let isMounted = true;
 		console.log(`Layout effect triggered. Project ID: ${currentProject?.id}, Has program: ${!!currentProgram}, Loading: ${isProgramLoading}`);
 
-		// currentProgram holds the UNLABELED structure from Supabase/local state
 		if (currentProgram) {
 			console.log("Unlabeled program data exists, generating labels and layout...");
 
-			// 1. Create a temporary copy to label (DO NOT MUTATE currentProgram state)
-			// Use structuredClone for a deep copy, safer than JSON.parse(JSON.stringify(...))
+			// create temp copy to label nodes
 			let programToProcess: ProgramNode;
 			try {
 				programToProcess = structuredClone(currentProgram);
@@ -320,16 +312,16 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 			}
 
-			// 2. Generate labels dynamically on the temporary copy
+			// generate labels
 			const programWithLabels = generateLabels(programToProcess);
 			console.log("Generated labels on copy:", programWithLabels);
 
-			// 3. Convert the LABELED copy to flow structure
+			// convert to flow structure
 			const { nodes: flowNodes, edges: flowEdges } = convertProgramToFlow(programWithLabels);
 			console.log("Converted labeled program to flow:", { nodes: flowNodes, edges: flowEdges });
 
 			if (flowNodes.length > 0) {
-				// 4. Apply layout algorithm to the LABELED flow elements
+				// apply layout algorithm
 				console.log("Requesting ElkJS layout...");
 				getLayoutedElements(flowNodes, flowEdges, elkOptions)
 					.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
@@ -344,14 +336,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					.catch((error) => {
 						console.error("Error during ElkJS layout:", error);
 						if (isMounted) {
-							// Fallback to non-layouted, but still LABELED nodes if layout fails
 							console.warn("Falling back to non-layouted nodes/edges due to layout error.");
 							setNodes(flowNodes);
 							setEdges(flowEdges);
 						}
 					});
 			} else {
-				// Labeled program converted to no nodes
 				if (isMounted) {
 					console.warn("Program converted to empty nodes/edges array. Clearing canvas.");
 					setNodes([]);
@@ -359,14 +349,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 			}
 		} else {
-			// No current program structure.
-			// Clear the canvas only if we are NOT currently in the middle of the initial load.
 			if (isMounted && !isProgramLoading) {
 				console.log("No program data OR loading finished with no program. Clearing canvas.");
 				setNodes([]);
 				setEdges([]);
 			} else if (isMounted && isProgramLoading) {
-				// Initial load in progress, wait for program data or loading to finish
 				console.log("No current program, but initial load is in progress. Canvas state maintained.");
 			}
 		}
@@ -375,8 +362,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			console.log("Layout effect cleanup.");
 			isMounted = false;
 		};
-		// Dependencies: Re-run layout when the UNLABELED program structure changes,
-		// or when the loading state finishes.
 	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]);
 
 	const onConnect = useCallback(
@@ -402,15 +387,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setProgramError("Cannot add node: No current project selected.");
 				return;
 			}
-			// Indicate mutation is in progress
 			setIsProgramLoading(true);
 			setProgramError(null);
 
 			try {
-				// Ensure currentProgram exists before proceeding
 				if (!currentProgram) {
-					// This case might happen if the initial load failed or is still pending
-					// Or if the user tries to add a node before the program is loaded.
 					throw new Error("Cannot add node: program data is not available.");
 				}
 
@@ -420,30 +401,23 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const newProgramNode: ProgramNode = {
 					id: newChildId,
 					children: [],
-					constraints: [], // Default to empty constraints for a new node
+					constraints: [], // default to empty constraints for new nodes
 				};
 
-				// Attempt to add the new node to the program structure copy
 				const added = findAndAddChildInProgram(programCopy, parentId, newProgramNode);
-
 				if (!added) {
-					// This should ideally not happen if parentId comes from a valid node
 					throw new Error(`Could not find parent node with ID ${parentId} in the program structure.`);
 				}
 
-				// Persist the structurally updated program to Supabase.
-				// Labels will be generated by the layout effect based on this structure.
+				// persist structurally updated program to supabase
 				console.log(`Updating program structure in Supabase for project ID: ${currentProject.id}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-
 				if (updateError) {
-					// If Supabase update fails, throw an error to prevent inconsistent state
 					throw new Error(`Supabase update error: ${updateError.message}`);
 				}
 				console.log("Program structure successfully updated in Supabase.");
 
-				// Update local state with the structurally modified program.
-				// This will trigger the layout useEffect, which handles labels, flow conversion, and layout.
+				// update local state with the structurally modified program
 				setCurrentProgram(programCopy);
 
 				console.log("Set currentProgram with new structure. Layout effect will now process it.");
@@ -451,15 +425,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				console.error("Error adding child node or updating Supabase:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
 				setProgramError(`Failed to add node: ${message}`);
-				// Consider if state needs rollback or refetch here on error
 			} finally {
-				// Signal that the add operation (including async Supabase call) is complete
 				setIsProgramLoading(false);
 			}
 		},
 		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
 	);
 
+	// update node constraints
 	const updateNodeConstraints = useCallback(
 		async (nodeId: string, newConstraints: Constraint[]) => {
 			if (!currentProject || !currentProject.id) {
@@ -472,50 +445,39 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setProgramError("Cannot update constraints: program data is not available.");
 				return;
 			}
-
-			setIsProgramLoading(true); // Indicate mutation
+			setIsProgramLoading(true);
 			setProgramError(null);
 
 			try {
-				// Deep copy to avoid mutating the current state directly before success
 				const programCopy = JSON.parse(JSON.stringify(currentProgram));
-
-				// Find the node and update its constraints in the copy
 				const updated = findAndUpdateNodeConstraints(programCopy, nodeId, newConstraints);
 
 				if (!updated) {
 					throw new Error(`Could not find node with ID ${nodeId} to update constraints.`);
 				}
 
-				// Persist the structurally updated program. Labels will be generated by the layout effect.
 				console.log(`Updating program structure (constraints) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
-				const { error: updateError } = await supabase
-					.from("programs")
-					.update({ program: programCopy }) // Persist the structurally modified copy
-					.eq("project_id", currentProject.id);
+				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
 				if (updateError) {
-					// Handle Supabase error
 					throw new Error(`Supabase update error: ${updateError.message}`);
 				}
 				console.log("Program structure (constraints) successfully updated in Supabase.");
 
-				// Update local state with the successfully persisted program copy
-				// This triggers the layout useEffect
 				setCurrentProgram(programCopy);
 				console.log("Set currentProgram with updated structure. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error updating node constraints:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
 				setProgramError(`Failed to update constraints: ${message}`);
-				// Optionally: Consider refetching or rolling back state if needed
 			} finally {
-				setIsProgramLoading(false); // End mutation indication
+				setIsProgramLoading(false);
 			}
 		},
 		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
 	);
 
+	// delete a node (and its children)
 	const deleteNode = useCallback(
 		async (nodeId: string) => {
 			if (!currentProject || !currentProject.id) {
@@ -529,27 +491,23 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
-			// Prevent deleting the root node
+			// prevent deleting the root node
 			if (currentProgram.id === nodeId) {
 				console.warn("Cannot delete the root node.");
 				setProgramError("Cannot delete the root node.");
 				return;
 			}
 
-			setIsProgramLoading(true); // Indicate mutation
+			setIsProgramLoading(true);
 			setProgramError(null);
 
 			try {
 				const programCopy = JSON.parse(JSON.stringify(currentProgram));
-
-				// Attempt to remove the node from the program structure copy
 				const removed = findAndRemoveNodeFromProgram(programCopy, nodeId);
-
 				if (!removed) {
 					throw new Error(`Could not find node with ID ${nodeId} to delete.`);
 				}
 
-				// Persist the structurally updated program to Supabase.
 				console.log(`Updating program structure (deleting node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
@@ -558,7 +516,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 				console.log("Program structure successfully updated in Supabase after deletion.");
 
-				// Update local state
 				setCurrentProgram(programCopy);
 				console.log("Set currentProgram with updated structure after deletion. Layout effect will now process it.");
 			} catch (error: unknown) {
@@ -572,6 +529,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
 	);
 
+	// duplicate a node (and its children)
 	const duplicateNode = useCallback(
 		async (nodeId: string) => {
 			if (!currentProject || !currentProject.id) {
@@ -585,7 +543,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
-			// Prevent duplicating the root node
+			// prevent duplicating the root node
 			if (currentProgram.id === nodeId) {
 				console.warn("Cannot duplicate the root node.");
 				setProgramError("Cannot duplicate the root node.");
@@ -598,15 +556,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			try {
 				const programCopy = JSON.parse(JSON.stringify(currentProgram));
 
-				// Attempt to duplicate the node in the program structure copy
 				const duplicated = findAndDuplicateNodeInProgram(programCopy, nodeId);
 
 				if (!duplicated) {
-					// This error might occur if the nodeId doesn't exist or is the root
 					throw new Error(`Could not find node with ID ${nodeId} to duplicate, or it's the root node.`);
 				}
 
-				// Persist the structurally updated program to Supabase.
 				console.log(`Updating program structure (duplicating node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
@@ -615,7 +570,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 				console.log("Program structure successfully updated in Supabase after duplication.");
 
-				// Update local state
 				setCurrentProgram(programCopy);
 				console.log("Set currentProgram with updated structure after duplication. Layout effect will now process it.");
 			} catch (error: unknown) {

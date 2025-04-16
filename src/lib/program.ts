@@ -1,5 +1,6 @@
 import { Program, ProgramNode, Constraint, NodeData } from "@/types";
 import { Node, Edge } from "@xyflow/react";
+import { v4 as uuidv4 } from "uuid";
 
 // type guard to check if an object is a Constraint
 function isConstraint(obj: unknown): obj is Constraint {
@@ -273,3 +274,65 @@ export function generateLabels(data: NodeData): NodeData {
 
 	return data;
 }
+
+// --- Program Structure Manipulation Helpers ---
+
+// Helper function to find a node in the program tree and remove it along with its descendants
+export const findAndRemoveNodeFromProgram = (programNode: ProgramNode, targetId: string): boolean => {
+	// Check children first
+	const initialLength = programNode.children.length;
+	programNode.children = programNode.children.filter((child) => child.id !== targetId);
+
+	// If a child was removed, we're done in this branch
+	if (programNode.children.length < initialLength) {
+		return true;
+	}
+
+	// If not found in direct children, recurse into remaining children
+	for (const child of programNode.children) {
+		if (findAndRemoveNodeFromProgram(child, targetId)) {
+			return true; // Found and removed in a deeper branch
+		}
+	}
+
+	// Not found in this subtree
+	return false;
+};
+
+// Deep duplicates a ProgramNode and its descendants, assigning new UUIDs
+const deepDuplicateNode = (node: ProgramNode): ProgramNode => {
+	const newId = uuidv4();
+	const duplicatedNode: ProgramNode = {
+		...node, // Copy constraints, potentially label (will be regenerated later), etc.
+		id: newId,
+		children: node.children.map(deepDuplicateNode), // Recursively duplicate children
+		// Reset label, as it will be regenerated based on new structure/position
+		label: undefined,
+	};
+	return duplicatedNode;
+};
+
+// Helper function to find a node and duplicate it (including children) as a sibling
+export const findAndDuplicateNodeInProgram = (programNode: ProgramNode, targetId: string): boolean => {
+	// Check children of the current node
+	const targetIndex = programNode.children.findIndex((child) => child.id === targetId);
+
+	if (targetIndex !== -1) {
+		// Found the node to duplicate as a child of the current programNode
+		const nodeToDuplicate = programNode.children[targetIndex];
+		const duplicatedNode = deepDuplicateNode(nodeToDuplicate);
+		// Insert the duplicated node right after the original in the children array
+		programNode.children.splice(targetIndex + 1, 0, duplicatedNode);
+		return true; // Duplication successful
+	}
+
+	// If not found in direct children, recurse into the children
+	for (const child of programNode.children) {
+		if (findAndDuplicateNodeInProgram(child, targetId)) {
+			return true; // Found and duplicated in a deeper branch
+		}
+	}
+
+	// Target node not found in this subtree
+	return false;
+};

@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, ReactNode, Dispatch, Set
 import { Node, Edge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState, Position } from "@xyflow/react";
 import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
 import { ProgramNode, Constraint } from "@/types";
-import { parseProgramJSON, convertProgramToFlow, generateLabels } from "@/lib";
+import { parseProgramJSON, convertProgramToFlow, generateLabels, findAndRemoveNodeFromProgram, findAndDuplicateNodeInProgram } from "@/lib";
 import { useGlobal } from "./GlobalContext";
 import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@/lib/supabase/client";
@@ -188,6 +188,8 @@ interface ProjectContextProps {
 	onConnect: (connection: Connection) => void;
 	addChildNode: (parentId: string) => Promise<void>;
 	updateNodeConstraints: (nodeId: string, newConstraints: Constraint[]) => Promise<void>;
+	deleteNode: (nodeId: string) => Promise<void>;
+	duplicateNode: (nodeId: string) => Promise<void>;
 	isProgramLoading: boolean;
 	programError: string | null;
 }
@@ -514,6 +516,119 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
 	);
 
+	const deleteNode = useCallback(
+		async (nodeId: string) => {
+			if (!currentProject || !currentProject.id) {
+				console.error("Cannot delete node: No current project selected.");
+				setProgramError("Cannot delete node: No current project selected.");
+				return;
+			}
+			if (!currentProgram) {
+				console.error("Cannot delete node: program data is not available.");
+				setProgramError("Cannot delete node: program data is not available.");
+				return;
+			}
+
+			// Prevent deleting the root node
+			if (currentProgram.id === nodeId) {
+				console.warn("Cannot delete the root node.");
+				setProgramError("Cannot delete the root node.");
+				return;
+			}
+
+			setIsProgramLoading(true); // Indicate mutation
+			setProgramError(null);
+
+			try {
+				const programCopy = JSON.parse(JSON.stringify(currentProgram));
+
+				// Attempt to remove the node from the program structure copy
+				const removed = findAndRemoveNodeFromProgram(programCopy, nodeId);
+
+				if (!removed) {
+					throw new Error(`Could not find node with ID ${nodeId} to delete.`);
+				}
+
+				// Persist the structurally updated program to Supabase.
+				console.log(`Updating program structure (deleting node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
+				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
+
+				if (updateError) {
+					throw new Error(`Supabase update error after delete: ${updateError.message}`);
+				}
+				console.log("Program structure successfully updated in Supabase after deletion.");
+
+				// Update local state
+				setCurrentProgram(programCopy);
+				console.log("Set currentProgram with updated structure after deletion. Layout effect will now process it.");
+			} catch (error: unknown) {
+				console.error("Error deleting node:", error);
+				const message = error instanceof Error ? error.message : "An unknown error occurred";
+				setProgramError(`Failed to delete node: ${message}`);
+			} finally {
+				setIsProgramLoading(false);
+			}
+		},
+		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+	);
+
+	const duplicateNode = useCallback(
+		async (nodeId: string) => {
+			if (!currentProject || !currentProject.id) {
+				console.error("Cannot duplicate node: No current project selected.");
+				setProgramError("Cannot duplicate node: No current project selected.");
+				return;
+			}
+			if (!currentProgram) {
+				console.error("Cannot duplicate node: program data is not available.");
+				setProgramError("Cannot duplicate node: program data is not available.");
+				return;
+			}
+
+			// Prevent duplicating the root node
+			if (currentProgram.id === nodeId) {
+				console.warn("Cannot duplicate the root node.");
+				setProgramError("Cannot duplicate the root node.");
+				return;
+			}
+
+			setIsProgramLoading(true);
+			setProgramError(null);
+
+			try {
+				const programCopy = JSON.parse(JSON.stringify(currentProgram));
+
+				// Attempt to duplicate the node in the program structure copy
+				const duplicated = findAndDuplicateNodeInProgram(programCopy, nodeId);
+
+				if (!duplicated) {
+					// This error might occur if the nodeId doesn't exist or is the root
+					throw new Error(`Could not find node with ID ${nodeId} to duplicate, or it's the root node.`);
+				}
+
+				// Persist the structurally updated program to Supabase.
+				console.log(`Updating program structure (duplicating node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
+				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
+
+				if (updateError) {
+					throw new Error(`Supabase update error after duplicate: ${updateError.message}`);
+				}
+				console.log("Program structure successfully updated in Supabase after duplication.");
+
+				// Update local state
+				setCurrentProgram(programCopy);
+				console.log("Set currentProgram with updated structure after duplication. Layout effect will now process it.");
+			} catch (error: unknown) {
+				console.error("Error duplicating node:", error);
+				const message = error instanceof Error ? error.message : "An unknown error occurred";
+				setProgramError(`Failed to duplicate node: ${message}`);
+			} finally {
+				setIsProgramLoading(false);
+			}
+		},
+		[currentProject, currentProgram, supabase, setCurrentProgram, setProgramError, setIsProgramLoading]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -524,6 +639,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		onConnect,
 		addChildNode,
 		updateNodeConstraints,
+		deleteNode,
+		duplicateNode,
 		isProgramLoading,
 		programError,
 	};

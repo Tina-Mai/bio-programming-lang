@@ -109,7 +109,7 @@ export const layerColors = ["rgba(255, 250, 227, 0.4)", "rgba(235, 244, 255, 0.4
 // create a stable string representation of constraints for comparison
 const getConstraintsKey = (constraints: Constraint[]): string => {
 	return constraints
-		.map((c) => c.name)
+		.map((c) => c.name.toLowerCase())
 		.sort()
 		.join(",");
 };

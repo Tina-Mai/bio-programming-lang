@@ -55,31 +55,62 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		return data ? data.map(mapProjectJsonToProject) : [];
 	}, [supabase]);
 
-	const _createProjectInDB = useCallback(
-		async (name: string): Promise<{ project: ProjectJSON; program: ProgramNode | null }> => {
-			console.log("Creating new project in DB:", name);
-			// 1. create project entry
-			const { data: newProjectData, error: projectError } = await supabase.from("projects").insert({ name }).select().single();
-			if (projectError) throw projectError;
-			if (!newProjectData) throw new Error("Failed to create project, no data returned.");
+	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON; program: ProgramNode | null }> => {
+		// 1. Determine the next available project name
+		const baseName = "New design";
+		let finalName = baseName;
+		let counter = 1; // Start checking from "New design 2" if "New design" exists
 
-			// 2. create default program entry
-			const defaultProgram: ProgramNode = { id: uuidv4(), children: [], constraints: [] };
-			const { error: programError } = await supabase.from("programs").insert({
-				project_id: newProjectData.id,
-				program: defaultProgram,
-			});
+		// Fetch existing names like "New design", "New design 2", ...
+		const { data: existingProjects, error: fetchError } = await supabase.from("projects").select("name").like("name", `${baseName}%`);
 
-			if (programError) {
-				console.error("Error creating program, attempting to roll back project creation:", programError);
-				await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
-				throw programError;
+		if (fetchError) {
+			console.error("Error fetching existing project names:", fetchError);
+			throw fetchError; // Propagate the error
+		}
+
+		if (existingProjects && existingProjects.length > 0) {
+			const existingNames = new Set(existingProjects.map((p) => p.name));
+
+			// Check if the base name itself exists
+			if (existingNames.has(baseName)) {
+				counter = 2; // Start checking from "New design 2"
+				while (existingNames.has(`${baseName} ${counter}`)) {
+					counter++;
+				}
+				finalName = `${baseName} ${counter}`;
 			}
+			// If baseName doesn't exist, finalName remains baseName
+		}
+		// If no projects starting with baseName exist, finalName remains baseName
 
-			return { project: newProjectData, program: defaultProgram };
-		},
-		[supabase]
-	);
+		console.log(`Creating new project in DB with name: "${finalName}"`);
+
+		// 2. create project entry with the unique name
+		const { data: newProjectData, error: projectError } = await supabase
+			.from("projects")
+			.insert({ name: finalName }) // Use the determined finalName
+			.select()
+			.single();
+
+		if (projectError) throw projectError;
+		if (!newProjectData) throw new Error("Failed to create project, no data returned.");
+
+		// 3. create default program entry
+		const defaultProgram: ProgramNode = { id: uuidv4(), children: [], constraints: [] };
+		const { error: programError } = await supabase.from("programs").insert({
+			project_id: newProjectData.id,
+			program: defaultProgram,
+		});
+
+		if (programError) {
+			console.error("Error creating program, attempting to roll back project creation:", programError);
+			await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
+			throw programError;
+		}
+
+		return { project: newProjectData, program: defaultProgram };
+	}, [supabase]);
 
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
@@ -161,7 +192,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	const createNewProject = useCallback(async () => {
 		console.log("Creating new project...");
 		try {
-			const { project: newProjectJson } = await _createProjectInDB("New design");
+			const { project: newProjectJson } = await _createProjectInDB();
 			const newProject = mapProjectJsonToProject(newProjectJson);
 
 			// update local state

@@ -44,10 +44,13 @@ const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: Con
 						key={constraint.name}
 						checked={constraints.map((c) => c.name.toLowerCase()).includes(constraint.name.toLowerCase())}
 						onCheckedChange={(checked) => {
+							const constraintNameLower = constraint.name.toLowerCase();
 							if (checked) {
-								setConstraints([...constraints, constraint]);
+								if (!constraints.some((c) => c.name.toLowerCase() === constraintNameLower)) {
+									setConstraints([...constraints, constraint]);
+								}
 							} else {
-								setConstraints(constraints.filter((c) => c.name !== constraint.name));
+								setConstraints(constraints.filter((c) => c.name.toLowerCase() !== constraintNameLower));
 							}
 						}}
 					>

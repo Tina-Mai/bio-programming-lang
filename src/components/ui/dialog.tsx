@@ -1,10 +1,8 @@
 "use client";
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Close } from "@carbon/icons-react";
 import { cva, type VariantProps } from "class-variance-authority";
-
 import { cn } from "@/lib/utils";
 
 const dialogContentVariants = cva(
@@ -69,7 +67,7 @@ function DialogContent({
 				<DialogPrimitive.Content data-slot="dialog-content" className={cn(dialogContentVariants({ size, className }))} {...props}>
 					{children}
 					{!hideCloseButton && (
-						<DialogPrimitive.Close className="bg-button-secondary hover:bg-button-secondary-hover p-px transition-all duration-200 cursor-pointer data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+						<DialogPrimitive.Close className="bg-slate-300/70 hover:bg-slate-400/50 p-px transition-all duration-200 cursor-pointer data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
 							<Close />
 							<span className="sr-only">Close</span>
 						</DialogPrimitive.Close>

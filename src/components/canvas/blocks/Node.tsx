@@ -1,8 +1,9 @@
-import { NodeProps, Handle, Position } from "@xyflow/react";
+import { NodeProps, Handle, Position, useReactFlow } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/context/ProjectContext";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Add, AddLarge, SubtractLarge, Copy } from "@carbon/icons-react";
+import { useState } from "react";
 
 export const defaultNodeOptions = {
 	style: {
@@ -21,14 +22,30 @@ export const defaultNodeOptions = {
 	},
 };
 
-export const StandardNode = ({ data, id }: NodeProps) => {
+export const StandardNode = ({ data, id, selected }: NodeProps) => {
 	const nodeData = data as { label: string };
 	const nodeWidth = 60;
 	const nodeHeight = 60;
 	const { addChildNode, deleteNode, duplicateNode, currentProgram } = useProject();
+	const [contextMenuOpen, setContextMenuOpen] = useState(false);
+	const { setNodes } = useReactFlow();
+
+	const isActive = selected || contextMenuOpen;
+
+	const handleContextMenuOpenChange = (open: boolean) => {
+		setContextMenuOpen(open);
+		if (open) {
+			setNodes((nodes) =>
+				nodes.map((node) => ({
+					...node,
+					selected: node.id === id,
+				}))
+			);
+		}
+	};
 
 	return (
-		<ContextMenu>
+		<ContextMenu onOpenChange={handleContextMenuOpenChange}>
 			<ContextMenuTrigger>
 				<>
 					<Handle type="target" position={Position.Top} />
@@ -36,17 +53,11 @@ export const StandardNode = ({ data, id }: NodeProps) => {
 						style={{
 							width: nodeWidth,
 							height: nodeHeight,
-							backgroundColor: "white",
-							borderRadius: "50%",
-							display: "flex",
-							justifyContent: "center",
-							alignItems: "center",
 							fontWeight: 600,
 							fontSize: 20,
-							border: "1px solid #64748b",
 							zIndex: 1000,
-							transition: "all 0.2s ease",
 						}}
+						className={`flex bg-white items-center justify-center rounded-full ${isActive ? "border-slate-600 border-[1.5px]" : "border border-slate-400"} transition-all duration-200`}
 					>
 						{nodeData.label}
 					</div>

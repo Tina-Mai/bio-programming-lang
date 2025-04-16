@@ -1,27 +1,28 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { OverflowMenuHorizontal, Copy, TrashCan } from "@carbon/icons-react";
 import { useState } from "react";
+import { useGlobal } from "@/context/GlobalContext";
 
 const ProjectDropdown = ({ projectId }: { projectId: string }) => {
 	const [open, setOpen] = useState(false);
+	const { deleteProject, duplicateProject } = useGlobal();
 
-	// stop click events from propagating to parent
 	const handleClick = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
 	};
 
-	// TODO: handle duplicating project
-	const handleDuplicate = (e: React.MouseEvent) => {
+	const handleDuplicate = async (e: React.MouseEvent) => {
 		handleClick(e);
 		console.log(`Duplicate project: ${projectId}`);
+		await duplicateProject(projectId);
 		setOpen(false);
 	};
 
-	// TODO: handle deleting project
-	const handleDelete = (e: React.MouseEvent) => {
+	const handleDelete = async (e: React.MouseEvent) => {
 		handleClick(e);
 		console.log(`Delete project: ${projectId}`);
+		await deleteProject(projectId);
 		setOpen(false);
 	};
 

@@ -241,7 +241,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	useEffect(() => {
 		const fetchProgram = async () => {
 			if (!currentProject || !currentProject.id) {
-				console.log("No current project selected, clearing program data.");
 				setCurrentProgram(null);
 				setNodes([]);
 				setEdges([]);
@@ -254,7 +253,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			setCurrentProgram(null);
 			setNodes([]);
 			setEdges([]);
-			console.log(`Fetching program for project ID: ${currentProject.id}`);
 
 			try {
 				const { data, error } = await supabase.from("programs").select("program").eq("project_id", currentProject.id).maybeSingle();
@@ -264,11 +262,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 
 				if (data && typeof data === "object" && data.program) {
-					console.log("Fetched raw program data:", data.program);
 					const parsedProgram = parseProgramJSON(data.program);
 
 					if (parsedProgram) {
-						console.log("Parsed program data:", parsedProgram);
 						setCurrentProgram(parsedProgram as ProgramNode);
 					} else {
 						throw new Error("Failed to parse fetched program data (program property was present but parsing failed).");
@@ -296,8 +292,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		console.log(`Layout effect triggered. Project ID: ${currentProject?.id}, Has program: ${!!currentProgram}, Loading: ${isProgramLoading}`);
 
 		if (currentProgram) {
-			console.log("Unlabeled program data exists, generating labels and layout...");
-
 			// create temp copy to label nodes
 			let programToProcess: ProgramNode;
 			try {
@@ -315,23 +309,17 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 			// generate labels
 			const programWithLabels = generateLabels(programToProcess);
-			console.log("Generated labels on copy:", programWithLabels);
 
 			// convert to flow structure
 			const { nodes: flowNodes, edges: flowEdges } = convertProgramToFlow(programWithLabels);
-			console.log("Converted labeled program to flow:", { nodes: flowNodes, edges: flowEdges });
 
 			if (flowNodes.length > 0) {
 				// apply layout algorithm
-				console.log("Requesting ElkJS layout...");
 				getLayoutedElements(flowNodes, flowEdges, elkOptions)
 					.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
 						if (isMounted) {
-							console.log("ElkJS layout successful. Applying layouted nodes/edges:", { nodes: layoutedNodes, edges: layoutedEdges });
 							setNodes(layoutedNodes);
 							setEdges(layoutedEdges);
-						} else {
-							console.log("ElkJS layout finished, but component unmounted.");
 						}
 					})
 					.catch((error) => {
@@ -358,9 +346,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				console.log("No current program, but initial load is in progress. Canvas state maintained.");
 			}
 		}
-
 		return () => {
-			console.log("Layout effect cleanup.");
 			isMounted = false;
 		};
 	}, [currentProgram, isProgramLoading, setNodes, setEdges, currentProject?.id]);
@@ -402,7 +388,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const newProgramNode: ProgramNode = {
 					id: newChildId,
 					children: [],
-					constraints: [], // default to empty constraints for new nodes
+					constraints: [],
 				};
 
 				const added = findAndAddChildInProgram(programCopy, parentId, newProgramNode);
@@ -411,17 +397,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 
 				// persist structurally updated program to supabase
-				console.log(`Updating program structure in Supabase for project ID: ${currentProject.id}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 				if (updateError) {
 					throw new Error(`Supabase update error: ${updateError.message}`);
 				}
-				console.log("Program structure successfully updated in Supabase.");
+
+				// update project timestamp
+				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
+				if (projectUpdateError) {
+					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+				}
 
 				// update local state with the structurally modified program
 				setCurrentProgram(programCopy);
-
-				console.log("Set currentProgram with new structure. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error adding child node or updating Supabase:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
@@ -457,16 +445,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Could not find node with ID ${nodeId} to update constraints.`);
 				}
 
-				console.log(`Updating program structure (constraints) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
-
 				if (updateError) {
 					throw new Error(`Supabase update error: ${updateError.message}`);
 				}
-				console.log("Program structure (constraints) successfully updated in Supabase.");
+
+				// update project timestamp
+				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
+				if (projectUpdateError) {
+					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+				}
 
 				setCurrentProgram(programCopy);
-				console.log("Set currentProgram with updated structure. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error updating node constraints:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
@@ -509,16 +499,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Could not find node with ID ${nodeId} to delete.`);
 				}
 
-				console.log(`Updating program structure (deleting node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
 				if (updateError) {
 					throw new Error(`Supabase update error after delete: ${updateError.message}`);
 				}
-				console.log("Program structure successfully updated in Supabase after deletion.");
+
+				// update project timestamp
+				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
+				if (projectUpdateError) {
+					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+				}
 
 				setCurrentProgram(programCopy);
-				console.log("Set currentProgram with updated structure after deletion. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error deleting node:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
@@ -563,16 +556,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Could not find node with ID ${nodeId} to duplicate, or it's the root node.`);
 				}
 
-				console.log(`Updating program structure (duplicating node) in Supabase for project ID: ${currentProject.id}, node ID: ${nodeId}`);
 				const { error: updateError } = await supabase.from("programs").update({ program: programCopy }).eq("project_id", currentProject.id);
 
 				if (updateError) {
 					throw new Error(`Supabase update error after duplicate: ${updateError.message}`);
 				}
-				console.log("Program structure successfully updated in Supabase after duplication.");
+
+				// update project timestamp
+				const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: new Date().toISOString() }).eq("id", currentProject.id);
+				if (projectUpdateError) {
+					console.error(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+				}
 
 				setCurrentProgram(programCopy);
-				console.log("Set currentProgram with updated structure after duplication. Layout effect will now process it.");
 			} catch (error: unknown) {
 				console.error("Error duplicating node:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";

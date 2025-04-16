@@ -25,7 +25,7 @@ export const StandardNode = ({ data, id }: NodeProps) => {
 	const nodeData = data as { label: string };
 	const nodeWidth = 60;
 	const nodeHeight = 60;
-	const { addChildNode, deleteNode, duplicateNode } = useProject();
+	const { addChildNode, deleteNode, duplicateNode, currentProgram } = useProject();
 
 	return (
 		<ContextMenu>
@@ -69,12 +69,16 @@ export const StandardNode = ({ data, id }: NodeProps) => {
 				<ContextMenuItem onSelect={() => addChildNode(id)}>
 					<AddLarge size={16} /> Add child node
 				</ContextMenuItem>
-				<ContextMenuItem onSelect={() => deleteNode(id)}>
-					<SubtractLarge size={16} /> Delete node
-				</ContextMenuItem>
-				<ContextMenuItem onSelect={() => duplicateNode(id)}>
-					<Copy size={16} /> Duplicate node
-				</ContextMenuItem>
+				{currentProgram && currentProgram.id !== id && (
+					<>
+						<ContextMenuItem onSelect={() => deleteNode(id)}>
+							<SubtractLarge size={16} /> Delete branch
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={() => duplicateNode(id)}>
+							<Copy size={16} /> Duplicate branch
+						</ContextMenuItem>
+					</>
+				)}
 			</ContextMenuContent>
 		</ContextMenu>
 	);

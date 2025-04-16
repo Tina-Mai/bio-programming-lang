@@ -192,6 +192,7 @@ interface ProjectContextProps {
 	duplicateNode: (nodeId: string) => Promise<void>;
 	isProgramLoading: boolean;
 	programError: string | null;
+	currentProgram: ProgramNode | null;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -597,6 +598,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		duplicateNode,
 		isProgramLoading,
 		programError,
+		currentProgram,
 	};
 
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

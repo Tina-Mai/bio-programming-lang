@@ -99,7 +99,7 @@ const Canvas = () => {
 
 							{/* Code Editor with animation */}
 							<div
-								className={`absolute overflow-y-auto inset-0 mt-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+								className={`absolute overflow-y-auto inset-0 mt-12 pb-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
 									showCodeEditor
 										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"

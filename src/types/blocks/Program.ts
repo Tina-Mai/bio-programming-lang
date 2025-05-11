@@ -1,37 +1,26 @@
-import { Constraint } from "./Constraint";
-
-export interface ProgramNode {
+export type SequenceType = "dna" | "rna" | "protein";
+export interface SequenceNode {
 	id: string;
-	label?: string;
-	children: ProgramNode[];
-	constraints: Constraint[];
-	constraintWeights?: number[];
+	type: SequenceType;
+	sequence: string;
+	metadata?: Record<string, unknown>;
+	generator: GeneratorNode;
 }
 
-// a program is just the top level node, since it contains all of its children
-export type Program = ProgramNode;
+export interface ConstraintNode {
+	id: string;
+	name: string;
+	scoring_function: string; // function name
+}
 
-export type ProgramJSON = Program;
+export interface GeneratorNode {
+	id: string;
+	name: string;
+	hyperparameters?: Record<string, unknown>;
+}
 
-export const exampleProgram: Program = {
-	id: "1",
-	children: [
-		{
-			id: "2",
-			children: [
-				{ id: "4", children: [], constraints: [{ name: "length" }] },
-				{ id: "5", children: [], constraints: [{ name: "length" }] },
-			],
-			constraints: [{ name: "symmetry" }, { name: "single chain" }, { name: "globularity" }],
-		},
-		{
-			id: "3",
-			children: [
-				{ id: "4", children: [], constraints: [{ name: "length" }] },
-				{ id: "5", children: [], constraints: [{ name: "length" }] },
-			],
-			constraints: [{ name: "symmetry" }, { name: "single chain" }, { name: "globularity" }],
-		},
-	],
-	constraints: [{ name: "pTM" }, { name: "pLDDT" }, { name: "hydrophobics" }, { name: "symmetry" }],
-};
+export interface Edge {
+	id: string;
+	constraint: ConstraintNode;
+	sequence: SequenceNode;
+}

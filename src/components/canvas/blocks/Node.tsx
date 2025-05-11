@@ -1,9 +1,9 @@
-import { NodeProps, Handle, Position, useReactFlow } from "@xyflow/react";
+import { NodeProps, Handle, Position, useReactFlow, useEdges } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/context/ProjectContext";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Add, AddLarge, SubtractLarge, Copy } from "@carbon/icons-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export const defaultNodeOptions = {
 	style: {
@@ -29,6 +29,7 @@ export const StandardNode = ({ data, id, selected }: NodeProps) => {
 	const { addChildNode, deleteNode, duplicateNode, currentProgram } = useProject();
 	const [contextMenuOpen, setContextMenuOpen] = useState(false);
 	const { setNodes } = useReactFlow();
+	const edges = useEdges();
 
 	const isActive = selected || contextMenuOpen;
 
@@ -43,6 +44,10 @@ export const StandardNode = ({ data, id, selected }: NodeProps) => {
 			);
 		}
 	};
+
+	const hasChildren = useMemo(() => {
+		return edges.some((edge) => edge.source === id);
+	}, [edges, id]);
 
 	return (
 		<ContextMenu onOpenChange={handleContextMenuOpenChange}>
@@ -83,10 +88,10 @@ export const StandardNode = ({ data, id, selected }: NodeProps) => {
 				{currentProgram && currentProgram.id !== id && (
 					<>
 						<ContextMenuItem onSelect={() => deleteNode(id)}>
-							<SubtractLarge size={16} /> Delete branch
+							<SubtractLarge size={16} /> {hasChildren ? "Delete branch" : "Delete node"}
 						</ContextMenuItem>
 						<ContextMenuItem onSelect={() => duplicateNode(id)}>
-							<Copy size={16} /> Duplicate branch
+							<Copy size={16} /> {hasChildren ? "Duplicate branch" : "Duplicate node"}
 						</ContextMenuItem>
 					</>
 				)}

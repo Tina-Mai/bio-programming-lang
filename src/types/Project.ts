@@ -1,4 +1,6 @@
 import { Program } from "@/types";
+
+// TODO: this needs to be edited based off of new Program.ts
 export interface Project {
 	id: string;
 	name: string;

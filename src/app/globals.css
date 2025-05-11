@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+	--text-base: 15px;
+	--text-sm: 13.5px;
+}
+
 :root {
 	--radius: 0.625rem;
 	--background: oklch(96.8% 0.007 247.896); /* slate-100 */

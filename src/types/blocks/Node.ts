@@ -1,3 +1,5 @@
+// TODO: delete this?
+// Nodes for canvas
 import { ContainerNode } from "@/components/canvas/blocks/Container";
 import { StandardNode } from "@/components/canvas/blocks/Node";
 import { Constraint } from "@/types";

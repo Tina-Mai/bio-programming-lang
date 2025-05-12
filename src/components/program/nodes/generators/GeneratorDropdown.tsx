@@ -29,7 +29,7 @@ const GeneratorDropdown = ({
 			}}
 		>
 			<DropdownMenuTrigger className="w-full">
-				<Button size="sm" variant="outline" className="w-full bg-system-slate/50 hover:bg-system-slate/70 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
+				<Button size="sm" variant="outline" className="w-full bg-system-slate/50 hover:bg-system-slate/50 hover:border-slate-400/75" onClick={(e) => e.stopPropagation()}>
 					<div className={`horizontal w-full justify-between items-center gap-1 ${currentSelectedGenerator ? "text-slate-900" : "text-slate-500/80"}`}>
 						<div className="text-xs">{currentSelectedGenerator ? currentSelectedGenerator.name : "Select model"}</div>
 						<ChevronDown />

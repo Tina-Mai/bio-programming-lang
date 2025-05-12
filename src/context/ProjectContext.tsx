@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
 import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils";
-import { getLayoutedElements, defaultElkOptions } from "@/lib/utils/layout";
+import { getLayoutedElements } from "@/lib/utils/layout";
 import { useGlobal } from "./GlobalContext";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -31,6 +31,9 @@ interface ProjectContextProps {
 	updateConstraintNodeConstraint: (nodeId: string, constraint: import("@/types/Constraint").Constraint) => Promise<void>;
 	updateSequenceNodeType: (nodeId: string, type: import("@/types/Node").SequenceType) => Promise<void>;
 	updateSequenceNodeGenerator: (nodeId: string, generator: import("@/types/Generator").Generator) => Promise<void>;
+
+	// Add a new method to trigger layout
+	applyLayout: () => void;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -201,6 +204,21 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		fetchProjectGraphData();
 	}, [currentProject?.id, supabase, setNodes, setEdges]);
 
+	// Apply layout to current nodes and edges
+	const applyLayout = useCallback(() => {
+		// Apply layout to edges
+		setEdges((edges) => {
+			const { edges: layoutedEdges } = getLayoutedElements(nodes, edges);
+			return layoutedEdges;
+		});
+
+		// Apply layout to nodes
+		setNodes((nodes) => {
+			const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges);
+			return layoutedNodes;
+		});
+	}, [setNodes, setEdges, edges, nodes]);
+
 	// layout calculation effect
 	useEffect(() => {
 		let isMounted = true;
@@ -215,48 +233,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData);
 		console.log("Converted to flow: ", { convertedNodes, convertedEdges });
 
-		// preserve existing node positions from the previous update
-		const preservePositions = (newNodes: FlowNode[]) => {
-			const existingNodeMap = new Map();
-			setNodes((oldNodes) => {
-				oldNodes.forEach((node) => {
-					existingNodeMap.set(node.id, node.position);
-				});
-
-				// apply existing positions to new nodes where applicable
-				return newNodes.map((node) => {
-					const existingPosition = existingNodeMap.get(node.id);
-					if (existingPosition) {
-						return { ...node, position: existingPosition };
-					}
-					return node;
-				});
-			});
-		};
-
-		// only apply layout if there are at least some nodes without positions
-		if (convertedNodes.length > 0) {
-			preservePositions(convertedNodes);
-			getLayoutedElements(convertedNodes, convertedEdges, defaultElkOptions)
-				.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
-					if (isMounted) {
-						console.log("Applying layout: ", { layoutedNodes, layoutedEdges });
-						preservePositions(layoutedNodes);
-						setEdges(layoutedEdges);
-					}
-				})
-				.catch((error) => {
-					console.error("Error during layout calculation:", error);
-					if (isMounted) {
-						console.warn("Falling back to non-layouted nodes/edges due to layout error.");
-						setEdges(convertedEdges);
-					}
-				});
-		} else {
-			if (isMounted) {
-				setNodes([]);
-				setEdges([]);
-			}
+		// Apply the converted nodes and edges directly
+		if (isMounted) {
+			setNodes(convertedNodes);
+			setEdges(convertedEdges);
+			// Layout is already applied by convertProjectDataToFlow
 		}
 
 		return () => {
@@ -507,6 +488,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateConstraintNodeConstraint,
 		updateSequenceNodeType,
 		updateSequenceNodeGenerator,
+		applyLayout,
 	};
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

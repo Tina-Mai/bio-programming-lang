@@ -1,6 +1,7 @@
 import { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
 import { Constraint, constraintOptions } from "@/types/Constraint";
 import { Generator, generatorOptions } from "@/types/Generator";
+import { getLayoutedElements } from "./layout";
 
 export interface SupabaseBase {
 	id: string;
@@ -72,7 +73,8 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 		flowNodes.push({
 			id: dbNode.id,
 			type: "constraint",
-			position: { x: Math.random() * 400, y: Math.random() * 400 }, // TODO: temp random position
+			// Initialize with position {0,0}, will be calculated by layout algorithm
+			position: { x: 0, y: 0 },
 			data: {
 				constraint: constraint,
 			},
@@ -97,7 +99,8 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 		flowNodes.push({
 			id: dbNode.id,
 			type: "sequence",
-			position: { x: Math.random() * 400 + 200, y: Math.random() * 400 }, // TODO: temp random position
+			// Initialize with position {0,0}, will be calculated by layout algorithm
+			position: { x: 0, y: 0 },
 			data: {
 				sequence: {
 					id: dbNode.id,
@@ -124,5 +127,8 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 		});
 	});
 
-	return { nodes: flowNodes, edges: flowEdges };
+	// Apply auto-layout
+	const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(flowNodes, flowEdges);
+
+	return { nodes: layoutedNodes, edges: layoutedEdges };
 }

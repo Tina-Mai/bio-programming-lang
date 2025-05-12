@@ -1,95 +1,148 @@
-import { Node, Edge, Position } from "@xyflow/react";
-import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bundled.js";
+import { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import dagre from "@dagrejs/dagre";
 
-const elk = new ELK();
+export const LAYOUT_CONFIG = {
+	// node dimensions used for layout calculations
+	NODE_WIDTH: 200,
+	NODE_HEIGHT: 80,
 
-// Default node dimensions (can be overridden by actual node sizes if known, or passed to ELK)
-const DEFAULT_NODE_WIDTH = 180; // Matches the width set in new node components
-const DEFAULT_NODE_HEIGHT = 100; // Approximate height for new node components
+	// horizontal spacing between nodes in the same layer
+	NODE_SPACING_X: 75,
 
-// Default ElkJS options for a flat graph layout
-export const defaultElkOptions: LayoutOptions = {
-	"elk.algorithm": "layered", // Good for directed graphs
-	"elk.direction": "DOWN",
-	"elk.layered.spacing.nodeNodeBetweenLayers": "80", // Spacing between layers of nodes
-	"elk.spacing.nodeNode": "60", // Spacing between nodes in the same layer
-	"elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-	"elk.edgeRouting": "ORTHOGONAL", // OR "POLYLINE" or "SPLINES"
+	// vertical spacing between layers
+	ROW_SPACING_Y: 150,
+
+	// padding around the entire layout
+	PADDING_X: 50,
+	PADDING_Y: 50,
 };
 
-interface LayoutedElkNode extends ElkNode {
-	x?: number;
-	y?: number;
-	width?: number;
-	height?: number;
-	children?: LayoutedElkNode[];
-	edges?: ElkExtendedEdge[];
+// apply dagre-based layout to graph nodes and edges
+export function getLayoutedElements(nodes: FlowNode[], edges: FlowEdge[]) {
+	// Preserve existing horizontal order by sorting nodes by x-position within their type
+	const sortedNodes = [...nodes].sort((a, b) => {
+		// First separate by type (constraints before sequences)
+		if (a.type === "constraint" && b.type === "sequence") return -1;
+		if (a.type === "sequence" && b.type === "constraint") return 1;
+
+		// Then sort by x position within the same type to maintain order
+		const aX = a.position?.x ?? 0;
+		const bX = b.position?.x ?? 0;
+		return aX - bX;
+	});
+
+	const dagreGraph = new dagre.graphlib.Graph();
+	dagreGraph.setDefaultEdgeLabel(() => ({}));
+	dagreGraph.setGraph({
+		rankdir: "TB", // top to bottom layout
+		nodesep: LAYOUT_CONFIG.NODE_SPACING_X,
+		ranksep: LAYOUT_CONFIG.ROW_SPACING_Y,
+		marginx: LAYOUT_CONFIG.PADDING_X,
+		marginy: LAYOUT_CONFIG.PADDING_Y,
+		align: "UL", // align to top left
+	});
+
+	// separate nodes by type
+	const constraintNodes = sortedNodes.filter((node) => node.type === "constraint");
+	const sequenceNodes = sortedNodes.filter((node) => node.type === "sequence");
+
+	// Add constraint nodes in their current order
+	constraintNodes.forEach((node, index) => {
+		dagreGraph.setNode(node.id, {
+			width: LAYOUT_CONFIG.NODE_WIDTH,
+			height: LAYOUT_CONFIG.NODE_HEIGHT,
+			type: node.type,
+			order: index, // preserve horizontal order
+		});
+	});
+
+	// Add sequence nodes in their current order
+	sequenceNodes.forEach((node, index) => {
+		dagreGraph.setNode(node.id, {
+			width: LAYOUT_CONFIG.NODE_WIDTH,
+			height: LAYOUT_CONFIG.NODE_HEIGHT,
+			type: node.type,
+			order: index, // preserve horizontal order
+		});
+	});
+
+	// add edges to the graph
+	edges.forEach((edge) => {
+		dagreGraph.setEdge(edge.source, edge.target);
+	});
+
+	// Create virtual edges to enforce layering and ordering
+	if (constraintNodes.length > 0 && sequenceNodes.length > 0) {
+		// Create virtual nodes for rank groups
+		dagreGraph.setNode("rank_group_0", { width: 0, height: 0 });
+		dagreGraph.setNode("rank_group_1", { width: 0, height: 0 });
+
+		// Connect constraint nodes to rank_group_0
+		constraintNodes.forEach((node) => {
+			// Connect to rank group with high weight to enforce rank
+			dagreGraph.setEdge("rank_group_0", node.id, { weight: 1000 });
+		});
+
+		// Connect sequence nodes to rank_group_1
+		sequenceNodes.forEach((node) => {
+			// Connect to rank group with high weight to enforce rank
+			dagreGraph.setEdge("rank_group_1", node.id, { weight: 1000 });
+		});
+
+		// Enforce rank order between the two groups
+		dagreGraph.setEdge("rank_group_0", "rank_group_1", { weight: 2000 });
+	}
+
+	// calculate the layout
+	dagre.layout(dagreGraph);
+
+	// Get positions from dagre
+	const layoutedNodes = sortedNodes.map((node) => {
+		const nodeWithPosition = dagreGraph.node(node.id);
+		return {
+			...node,
+			position: {
+				x: nodeWithPosition.x - LAYOUT_CONFIG.NODE_WIDTH / 2,
+				y: nodeWithPosition.y - LAYOUT_CONFIG.NODE_HEIGHT / 2,
+			},
+		};
+	});
+
+	// Center each row horizontally
+	if (constraintNodes.length > 0) {
+		const constraintLayoutedNodes = layoutedNodes.filter((node) => node.type === "constraint");
+		const minX = Math.min(...constraintLayoutedNodes.map((n) => n.position.x));
+		const maxX = Math.max(...constraintLayoutedNodes.map((n) => n.position.x + LAYOUT_CONFIG.NODE_WIDTH));
+		const rowWidth = maxX - minX;
+		const graphWidth = dagreGraph.graph()?.width || 0;
+		const offsetX = (graphWidth - rowWidth) / 2 - minX + LAYOUT_CONFIG.PADDING_X;
+
+		// Apply centering offset to constraint nodes
+		constraintLayoutedNodes.forEach((node) => {
+			node.position.x += offsetX;
+		});
+	}
+
+	if (sequenceNodes.length > 0) {
+		const sequenceLayoutedNodes = layoutedNodes.filter((node) => node.type === "sequence");
+		const minX = Math.min(...sequenceLayoutedNodes.map((n) => n.position.x));
+		const maxX = Math.max(...sequenceLayoutedNodes.map((n) => n.position.x + LAYOUT_CONFIG.NODE_WIDTH));
+		const rowWidth = maxX - minX;
+		const graphWidth = dagreGraph.graph()?.width || 0;
+		const offsetX = (graphWidth - rowWidth) / 2 - minX + LAYOUT_CONFIG.PADDING_X;
+
+		// Apply centering offset to sequence nodes
+		sequenceLayoutedNodes.forEach((node) => {
+			node.position.x += offsetX;
+		});
+	}
+
+	// Clean up by removing virtual nodes
+	["rank_group_0", "rank_group_1"].forEach((id) => {
+		if (dagreGraph.hasNode(id)) {
+			dagreGraph.removeNode(id);
+		}
+	});
+
+	return { nodes: layoutedNodes, edges };
 }
-
-// Converts React Flow nodes to a flat list of ElkNodes for layouting.
-// Hierarchy is no longer built here as the graph is flat.
-const convertToElkNodes = (nodes: Node[]): ElkNode[] => {
-	return nodes.map((node) => ({
-		id: node.id,
-		width: node.width || DEFAULT_NODE_WIDTH,
-		height: node.height || DEFAULT_NODE_HEIGHT,
-	}));
-};
-
-// Converts layouted ElkNodes back to React Flow nodes, applying positions.
-const applyLayoutToFlowNodes = (layoutedElkNodes: LayoutedElkNode[], originalFlowNodesMap: Map<string, Node>, isHorizontal: boolean): Node[] => {
-	return layoutedElkNodes
-		.map((elkNode) => {
-			const originalNode = originalFlowNodesMap.get(elkNode.id);
-			if (!originalNode) {
-				console.warn(`Original RF node not found for Elk node ID: ${elkNode.id}`);
-				return null; // Or some default error node
-			}
-
-			return {
-				...originalNode,
-				position: { x: elkNode.x ?? 0, y: elkNode.y ?? 0 },
-				targetPosition: isHorizontal ? Position.Left : Position.Top,
-				sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-				style: {
-					...originalNode.style,
-					width: elkNode.width || originalNode.width,
-					height: elkNode.height || originalNode.height,
-				},
-			};
-		})
-		.filter((node) => node !== null) as Node[];
-};
-
-export const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: LayoutOptions = defaultElkOptions): Promise<{ nodes: Node[]; edges: Edge[] }> => {
-	if (nodes.length === 0) {
-		return { nodes: [], edges: [] };
-	}
-
-	const isHorizontal = options?.["elk.direction"] === "RIGHT" || options?.["elk.direction"] === "LEFT";
-	const originalFlowNodesMap = new Map<string, Node>(nodes.map((node) => [node.id, node]));
-
-	const elkNodesForLayout = convertToElkNodes(nodes);
-
-	const graphToLayout: ElkNode = {
-		id: "root",
-		layoutOptions: options,
-		children: elkNodesForLayout,
-		edges: edges.map((edge) => ({
-			id: edge.id,
-			sources: [edge.source],
-			targets: [edge.target],
-		})),
-	};
-
-	try {
-		const layoutedGraph = (await elk.layout(graphToLayout)) as LayoutedElkNode;
-
-		const finalNodes = applyLayoutToFlowNodes(layoutedGraph.children ?? [], originalFlowNodesMap, isHorizontal);
-
-		return { nodes: finalNodes, edges: edges };
-	} catch (error) {
-		console.error("ElkJS layout failed:", error);
-		return { nodes, edges };
-	}
-};

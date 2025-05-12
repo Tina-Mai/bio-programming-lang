@@ -2,8 +2,18 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { Project, ProjectJSON, ProgramNode } from "@/types";
+import { Project } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import { SupabaseConstraintNode, SupabaseSequenceNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils/flowUtils"; // Import Supabase types
+
+// Define ProjectJSON based on what Supabase 'projects' table returns
+export interface ProjectJSON {
+	id: string;
+	name: string;
+	created_at: string; // Supabase typically returns timestamptz as string
+	updated_at: string;
+	// Add other fields if your 'projects' table has them e.g. user_id, code
+}
 
 type Mode = "blocks" | "code";
 
@@ -11,15 +21,13 @@ type Mode = "blocks" | "code";
 const mapProjectJsonToProject = (p: ProjectJSON): Project => ({
 	id: p.id,
 	name: p.name,
-	createdAt: new Date(p.createdAt),
-	updatedAt: p.updatedAt ? new Date(p.updatedAt) : new Date(p.createdAt),
+	createdAt: new Date(p.created_at),
+	updatedAt: p.updated_at ? new Date(p.updated_at) : new Date(p.created_at),
 });
 
 // sort projects
 const sortProjects = (projects: Project[]): Project[] => {
-	// TODO: remove sorting for now because it's not working :(
-	// return [...projects].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-	return projects;
+	return [...projects].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 };
 
 interface GlobalContextType {
@@ -55,111 +63,183 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		return data ? data.map(mapProjectJsonToProject) : [];
 	}, [supabase]);
 
-	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON; program: ProgramNode | null }> => {
-		// 1. Determine the next available project name
+	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON }> => {
 		const baseName = "New design";
 		let finalName = baseName;
-		let counter = 1; // Start checking from "New design 2" if "New design" exists
+		let counter = 1;
 
-		// Fetch existing names like "New design", "New design 2", ...
 		const { data: existingProjects, error: fetchError } = await supabase.from("projects").select("name").like("name", `${baseName}%`);
 
 		if (fetchError) {
 			console.error("Error fetching existing project names:", fetchError);
-			throw fetchError; // Propagate the error
+			throw fetchError;
 		}
 
 		if (existingProjects && existingProjects.length > 0) {
-			const existingNames = new Set(existingProjects.map((p) => p.name));
-
-			// Check if the base name itself exists
+			const existingNames = new Set(existingProjects.map((p: { name: string }) => p.name));
 			if (existingNames.has(baseName)) {
-				counter = 2; // Start checking from "New design 2"
+				counter = 2;
 				while (existingNames.has(`${baseName} ${counter}`)) {
 					counter++;
 				}
 				finalName = `${baseName} ${counter}`;
 			}
-			// If baseName doesn't exist, finalName remains baseName
 		}
-		// If no projects starting with baseName exist, finalName remains baseName
 
-		console.log(`Creating new project in DB with name: "${finalName}"`);
-
-		// 2. create project entry with the unique name
-		const { data: newProjectData, error: projectError } = await supabase
-			.from("projects")
-			.insert({ name: finalName }) // Use the determined finalName
-			.select()
-			.single();
+		const { data: newProjectData, error: projectError } = await supabase.from("projects").insert({ name: finalName }).select().single();
 
 		if (projectError) throw projectError;
 		if (!newProjectData) throw new Error("Failed to create project, no data returned.");
 
-		// 3. create default program entry
-		const defaultProgram: ProgramNode = { id: uuidv4(), children: [], constraints: [] };
-		const { error: programError } = await supabase.from("programs").insert({
-			project_id: newProjectData.id,
-			program: defaultProgram,
-		});
-
-		if (programError) {
-			console.error("Error creating program, attempting to roll back project creation:", programError);
-			await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
-			throw programError;
-		}
-
-		return { project: newProjectData, program: defaultProgram };
+		return { project: newProjectData as ProjectJSON }; // Cast to ProjectJSON
 	}, [supabase]);
 
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
-			console.log(`Deleting project from DB: ${projectId}...`);
-			// 1. delete associated program (handle potential non-existence gracefully)
-			const { error: programError } = await supabase.from("programs").delete().eq("project_id", projectId);
-			if (programError && programError.code !== "PGRST204") {
-				// PGRST204: No rows found - this is okay
-				throw new Error(`Failed to delete associated program: ${programError.message}`);
+			console.log(`Deleting project data from DB for project: ${projectId}...`);
+			// Delete from tables with direct project_id foreign key
+			const tablesWithProjectId = ["constraint_nodes", "sequence_nodes", "generator_nodes"];
+			for (const table of tablesWithProjectId) {
+				const { error } = await supabase.from(table).delete().eq("project_id", projectId);
+				// PGRST204: No rows found, which is okay for deletion.
+				if (error && error.code !== "PGRST204") {
+					console.warn(`Error deleting from ${table} for project ${projectId}: ${error.message}`);
+					// Consider if you should throw an error or continue
+				}
 			}
 
-			// 2. delete project
+			// Special handling for 'edges' table as it does not have a direct project_id
+			// Fetch IDs of constraint_nodes belonging to this project
+			const { data: projectConstraintNodes, error: pcnErr } = await supabase.from("constraint_nodes").select("id").eq("project_id", projectId);
+
+			if (pcnErr && pcnErr.code !== "PGRST204") {
+				console.warn("Could not fetch constraint_node IDs to delete associated edges:", pcnErr.message);
+			} else if (projectConstraintNodes && projectConstraintNodes.length > 0) {
+				const constraintNodeIds = projectConstraintNodes.map((n) => n.id);
+				// Delete edges where constraint_id is one of the project's constraint nodes
+				const { error: edgeDelError } = await supabase.from("edges").delete().in("constraint_id", constraintNodeIds);
+				if (edgeDelError && edgeDelError.code !== "PGRST204") {
+					console.warn("Error deleting edges by constraint_id:", edgeDelError.message);
+				}
+			}
+			// (Consider if you also need to delete edges based on sequence_id if they can exist independently)
+			// For now, this covers edges originating from this project's constraints.
+
+			// Finally, delete the main project entry
 			const { error: projectError } = await supabase.from("projects").delete().eq("id", projectId);
-			if (projectError) throw projectError;
+			if (projectError) {
+				console.error(`Failed to delete project ${projectId} itself:`, projectError.message);
+				throw projectError;
+			}
+			console.log(`Project ${projectId} and its associated data deleted.`);
 		},
 		[supabase]
 	);
 
 	const _duplicateProjectInDB = useCallback(
-		async (projectId: string): Promise<{ duplicatedProject: ProjectJSON; duplicatedProgram: ProgramNode | null }> => {
-			console.log(`Duplicating project in DB: ${projectId}...`);
-			// 1. fetch original project & program
-			const { data: originalProjectData, error: fetchProjectError } = await supabase.from("projects").select("name").eq("id", projectId).single();
-			if (fetchProjectError) throw new Error(`Failed to fetch original project: ${fetchProjectError.message}`);
-			if (!originalProjectData) throw new Error("Original project not found.");
+		async (originalProjectId: string): Promise<{ duplicatedProject: ProjectJSON }> => {
+			console.log(`Duplicating project in DB: ${originalProjectId}...`);
 
-			const { data: originalProgramData, error: fetchProgramError } = await supabase.from("programs").select("program").eq("project_id", projectId).maybeSingle();
-			if (fetchProgramError) throw new Error(`Failed to fetch original program: ${fetchProgramError.message}`);
-			const originalProgram = originalProgramData?.program || { id: uuidv4(), children: [], constraints: [] }; // Use default if none exists
+			// 1. Fetch original project details (just name for now, or all details if needed for copy)
+			const { data: originalProjectData, error: fetchOrigError } = await supabase.from("projects").select("name").eq("id", originalProjectId).single();
+			if (fetchOrigError) throw new Error(`Failed to fetch original project for duplication: ${fetchOrigError.message}`);
+			if (!originalProjectData) throw new Error("Original project not found for duplication.");
 
-			// 2. create new project
+			// 2. Create new project entry
 			const newProjectName = `(Copy) ${originalProjectData.name}`;
-			const { data: newProjectData, error: createProjectError } = await supabase.from("projects").insert({ name: newProjectName }).select().single();
+			const { data: newProjectResult, error: createProjectError } = await supabase
+				.from("projects")
+				.insert({ name: newProjectName })
+				.select("id, name, created_at, updated_at") // Select all fields for ProjectJSON
+				.single();
 			if (createProjectError) throw createProjectError;
-			if (!newProjectData) throw new Error("Failed to create duplicated project, no data returned.");
+			if (!newProjectResult) throw new Error("Failed to create duplicated project entry.");
+			const newProjectId = newProjectResult.id;
+			const duplicatedProjectJSON = newProjectResult as ProjectJSON;
 
-			// 3. create new program
-			const { error: createProgramError } = await supabase.from("programs").insert({
-				project_id: newProjectData.id,
-				program: originalProgram,
-			});
+			// 3. Fetch all graph components from the original project
+			const [constraintsResult, sequencesResult, generatorsResult] = await Promise.all([
+				supabase.from("constraint_nodes").select("*").eq("project_id", originalProjectId),
+				supabase.from("sequence_nodes").select("*").eq("project_id", originalProjectId),
+				supabase.from("generator_nodes").select("*").eq("project_id", originalProjectId),
+			]);
 
-			if (createProgramError) {
-				console.error("Error creating duplicated program, rolling back duplicated project:", createProgramError);
-				await supabase.from("projects").delete().eq("id", newProjectData.id); // Rollback
-				throw createProgramError;
+			if (constraintsResult.error) throw new Error("Failed to fetch original constraint nodes for duplication");
+			if (sequencesResult.error) throw new Error("Failed to fetch original sequence nodes for duplication");
+			if (generatorsResult.error) throw new Error("Failed to fetch original generator nodes for duplication");
+
+			const originalConstraints = (constraintsResult.data || []) as SupabaseConstraintNode[];
+			const originalSequences = (sequencesResult.data || []) as SupabaseSequenceNode[];
+			const originalGenerators = (generatorsResult.data || []) as SupabaseGeneratorNode[];
+
+			let originalEdges: SupabaseDBEdge[] = [];
+			const originalConstraintNodeIds = originalConstraints.map((n) => n.id);
+			const originalSequenceNodeIdsSet = new Set(originalSequences.map((n) => n.id));
+
+			if (originalConstraintNodeIds.length > 0) {
+				const { data: oeData, error: oeError } = await supabase.from("edges").select("*").in("constraint_id", originalConstraintNodeIds);
+				if (oeError) throw new Error(`Failed to fetch original edges for duplication: ${oeError.message}`);
+				if (oeData) {
+					originalEdges = (oeData as SupabaseDBEdge[]).filter((edge) => originalSequenceNodeIdsSet.has(edge.sequence_id));
+				}
 			}
 
-			return { duplicatedProject: newProjectData, duplicatedProgram: originalProgram };
+			const idMap = new Map<string, string>();
+
+			const newConstraintsToInsert = originalConstraints.map((cn) => {
+				const newId = uuidv4();
+				idMap.set(cn.id, newId);
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { id, project_id, created_at, updated_at, ...rest } = cn;
+				return { ...rest, id: newId, project_id: newProjectId };
+			});
+			if (newConstraintsToInsert.length > 0) {
+				const { error } = await supabase.from("constraint_nodes").insert(newConstraintsToInsert);
+				if (error) throw new Error(`Failed to duplicate constraint_nodes: ${error.message}`);
+			}
+
+			const newGeneratorsToInsert = originalGenerators.map((gn) => {
+				const newId = uuidv4();
+				idMap.set(gn.id, newId);
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { id, project_id, created_at, updated_at, ...rest } = gn;
+				return { ...rest, id: newId, project_id: newProjectId };
+			});
+			if (newGeneratorsToInsert.length > 0) {
+				const { error } = await supabase.from("generator_nodes").insert(newGeneratorsToInsert);
+				if (error) throw new Error(`Failed to duplicate generator_nodes: ${error.message}`);
+			}
+
+			const newSequencesToInsert = originalSequences.map((sn) => {
+				const newId = uuidv4();
+				idMap.set(sn.id, newId);
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { id, project_id, created_at, updated_at, generator_id, ...rest } = sn;
+				const newGeneratorId = sn.generator_id ? idMap.get(sn.generator_id) : undefined;
+				return { ...rest, id: newId, project_id: newProjectId, generator_id: newGeneratorId };
+			});
+			if (newSequencesToInsert.length > 0) {
+				const { error } = await supabase.from("sequence_nodes").insert(newSequencesToInsert);
+				if (error) throw new Error(`Failed to duplicate sequence_nodes: ${error.message}`);
+			}
+
+			const newEdgesToInsert = originalEdges
+				.map((edge) => {
+					const newSourceId = idMap.get(edge.constraint_id);
+					const newTargetId = idMap.get(edge.sequence_id);
+					if (!newSourceId || !newTargetId) return null;
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { id, project_id, constraint_id, sequence_id, created_at, updated_at, ...rest } = edge;
+					return { ...rest, id: uuidv4(), /* no project_id column */ constraint_id: newSourceId, sequence_id: newTargetId };
+				})
+				.filter((e) => e !== null) as Omit<SupabaseDBEdge, "project_id" | "created_at" | "updated_at">[];
+
+			if (newEdgesToInsert.length > 0) {
+				const { error } = await supabase.from("edges").insert(newEdgesToInsert);
+				if (error) throw new Error(`Failed to duplicate edges: ${error.message}`);
+			}
+
+			return { duplicatedProject: duplicatedProjectJSON };
 		},
 		[supabase]
 	);
@@ -175,7 +255,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			if (sortedProjects.length > 0) {
 				// determine the next current project
 				const currentStillExists = currentProject && sortedProjects.some((p) => p.id === currentProject.id);
-				if (!currentStillExists) {
+				if (!currentStillExists || !currentProject) {
 					setCurrentProject(sortedProjects[0]);
 				}
 			} else {
@@ -238,18 +318,16 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 	const duplicateProject = useCallback(
 		async (projectId: string) => {
-			console.log(`Duplicating project: ${projectId}...`);
+			console.log(`Attempting to duplicate project: ${projectId}...`);
 			try {
 				const { duplicatedProject: dupProjectJson } = await _duplicateProjectInDB(projectId);
 				const duplicatedProject = mapProjectJsonToProject(dupProjectJson);
-
-				// update local state
 				setProjects((prevProjects) => sortProjects([duplicatedProject, ...prevProjects]));
 				setCurrentProject(duplicatedProject);
-
 				console.log("Project duplicated successfully:", duplicatedProject.id);
 			} catch (err: unknown) {
 				console.error("Error duplicating project:", err);
+				// TODO: Add user-facing error message
 			}
 		},
 		[_duplicateProjectInDB, setProjects, setCurrentProject]

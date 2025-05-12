@@ -3,22 +3,20 @@ import ELK, { ElkNode, ElkExtendedEdge, LayoutOptions } from "elkjs/lib/elk.bund
 
 const elk = new ELK();
 
-const nodeWidth = 172;
-const nodeHeight = 60;
-const standardNodeWidth = 60; // Width of non-group nodes within a group
-const standardNodeTopPadding = 65; // Top padding for non-group nodes within a group
+// Default node dimensions (can be overridden by actual node sizes if known, or passed to ELK)
+const DEFAULT_NODE_WIDTH = 180; // Matches the width set in new node components
+const DEFAULT_NODE_HEIGHT = 100; // Approximate height for new node components
 
-// Default ElkJS options
+// Default ElkJS options for a flat graph layout
 export const defaultElkOptions: LayoutOptions = {
-	"elk.algorithm": "layered",
+	"elk.algorithm": "layered", // Good for directed graphs
 	"elk.direction": "DOWN",
-	"elk.layered.spacing.nodeNodeBetweenLayers": "100",
-	"elk.spacing.nodeNode": "80",
-	"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
+	"elk.layered.spacing.nodeNodeBetweenLayers": "80", // Spacing between layers of nodes
+	"elk.spacing.nodeNode": "60", // Spacing between nodes in the same layer
 	"elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+	"elk.edgeRouting": "ORTHOGONAL", // OR "POLYLINE" or "SPLINES"
 };
 
-// Type definition for layouted Elk nodes
 interface LayoutedElkNode extends ElkNode {
 	x?: number;
 	y?: number;
@@ -28,150 +26,70 @@ interface LayoutedElkNode extends ElkNode {
 	edges?: ElkExtendedEdge[];
 }
 
-// Build nested Elk node structure from React Flow nodes
-const buildElkHierarchy = (nodes: Node[]): ElkNode[] => {
-	const elkNodeMap = new Map<string, ElkNode>();
-	const rootElkNodes: ElkNode[] = [];
-
-	// Create ElkNode objects for all nodes
-	nodes.forEach((node) => {
-		const elkNode: ElkNode = {
-			id: node.id,
-			width: nodeWidth,
-			height: nodeHeight,
-			...(node.type === "group" && {
-				layoutOptions: {
-					"elk.padding": "[top=70,left=20,bottom=20,right=20]",
-					"org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN",
-				},
-			}),
-			children: [], // Initialize children array
-		};
-		elkNodeMap.set(node.id, elkNode);
-	});
-
-	// Build the hierarchy
-	nodes.forEach((node) => {
-		const elkNode = elkNodeMap.get(node.id)!;
-		if (node.parentId && elkNodeMap.has(node.parentId)) {
-			const parentElkNode = elkNodeMap.get(node.parentId)!;
-			parentElkNode.children = parentElkNode.children || []; // Ensure children array exists
-			parentElkNode.children.push(elkNode);
-		} else {
-			rootElkNodes.push(elkNode);
-		}
-	});
-
-	return rootElkNodes;
+// Converts React Flow nodes to a flat list of ElkNodes for layouting.
+// Hierarchy is no longer built here as the graph is flat.
+const convertToElkNodes = (nodes: Node[]): ElkNode[] => {
+	return nodes.map((node) => ({
+		id: node.id,
+		width: node.width || DEFAULT_NODE_WIDTH,
+		height: node.height || DEFAULT_NODE_HEIGHT,
+	}));
 };
 
-// Recursively flatten layouted nodes and adjust positions for React Flow
-const flattenLayoutedNodes = (layoutedElkNodes: LayoutedElkNode[], isHorizontal: boolean, rfNodeMap: Map<string, Node>, layoutedGroupMap: Map<string, LayoutedElkNode>): Node[] => {
-	let rfNodes: Node[] = [];
-	layoutedElkNodes.forEach((elkNode) => {
-		const originalNode = rfNodeMap.get(elkNode.id);
-		if (!originalNode) {
-			console.warn(`Original RF node not found for Elk node ID: ${elkNode.id}`);
-			return;
-		}
-
-		let calculatedPosition = { x: elkNode.x ?? 0, y: elkNode.y ?? 0 };
-		const isGroup = originalNode.type === "group";
-
-		// Adjust position for non-group nodes inside groups
-		if (!isGroup && originalNode.parentId) {
-			const parentGroup = layoutedGroupMap.get(originalNode.parentId);
-			if (parentGroup) {
-				const parentWidth = parentGroup.width ?? 0;
-				calculatedPosition = {
-					x: parentWidth / 2 - standardNodeWidth / 2,
-					y: standardNodeTopPadding,
-				};
-			} else {
-				console.warn(`Parent group layout data not found for standard node ID: ${elkNode.id}`);
+// Converts layouted ElkNodes back to React Flow nodes, applying positions.
+const applyLayoutToFlowNodes = (layoutedElkNodes: LayoutedElkNode[], originalFlowNodesMap: Map<string, Node>, isHorizontal: boolean): Node[] => {
+	return layoutedElkNodes
+		.map((elkNode) => {
+			const originalNode = originalFlowNodesMap.get(elkNode.id);
+			if (!originalNode) {
+				console.warn(`Original RF node not found for Elk node ID: ${elkNode.id}`);
+				return null; // Or some default error node
 			}
-		}
 
-		rfNodes.push({
-			...originalNode,
-			position: calculatedPosition,
-			targetPosition: isHorizontal ? Position.Left : Position.Top,
-			sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-			style: {
-				...originalNode.style,
-				...(isGroup && {
-					width: elkNode.width,
-					height: elkNode.height,
-				}),
-			},
-		});
-
-		if (elkNode.children && elkNode.children.length > 0) {
-			rfNodes = rfNodes.concat(flattenLayoutedNodes(elkNode.children, isHorizontal, rfNodeMap, layoutedGroupMap));
-		}
-	});
-	return rfNodes;
+			return {
+				...originalNode,
+				position: { x: elkNode.x ?? 0, y: elkNode.y ?? 0 },
+				targetPosition: isHorizontal ? Position.Left : Position.Top,
+				sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+				style: {
+					...originalNode.style,
+					width: elkNode.width || originalNode.width,
+					height: elkNode.height || originalNode.height,
+				},
+			};
+		})
+		.filter((node) => node !== null) as Node[];
 };
 
-// Main function to get layouted elements using ElkJS
 export const getLayoutedElements = async (nodes: Node[], edges: Edge[], options: LayoutOptions = defaultElkOptions): Promise<{ nodes: Node[]; edges: Edge[] }> => {
 	if (nodes.length === 0) {
 		return { nodes: [], edges: [] };
 	}
 
 	const isHorizontal = options?.["elk.direction"] === "RIGHT" || options?.["elk.direction"] === "LEFT";
-	const rfNodeMap = new Map<string, Node>(nodes.map((node) => [node.id, node]));
-	const rfEdgeMap = new Map<string, Edge>(edges.map((edge) => [edge.id, edge]));
+	const originalFlowNodesMap = new Map<string, Node>(nodes.map((node) => [node.id, node]));
 
-	// Build the hierarchical structure for ElkJS
-	const elkNodesHierarchy = buildElkHierarchy(nodes);
+	const elkNodesForLayout = convertToElkNodes(nodes);
 
-	const graph: ElkNode = {
+	const graphToLayout: ElkNode = {
 		id: "root",
 		layoutOptions: options,
-		children: elkNodesHierarchy,
-		edges: edges.map(
-			(edge): ElkExtendedEdge => ({
-				id: edge.id,
-				sources: [edge.source],
-				targets: [edge.target],
-			})
-		),
+		children: elkNodesForLayout,
+		edges: edges.map((edge) => ({
+			id: edge.id,
+			sources: [edge.source],
+			targets: [edge.target],
+		})),
 	};
 
 	try {
-		const layoutedGraph = (await elk.layout(graph)) as LayoutedElkNode;
+		const layoutedGraph = (await elk.layout(graphToLayout)) as LayoutedElkNode;
 
-		// Create a map of layouted group nodes for position calculation
-		const layoutedGroupMap = new Map<string, LayoutedElkNode>();
-		const collectGroups = (elkNodes: LayoutedElkNode[]) => {
-			elkNodes.forEach((node) => {
-				if (rfNodeMap.get(node.id)?.type === "group") {
-					// Check original node type
-					layoutedGroupMap.set(node.id, node);
-				}
-				if (node.children) {
-					collectGroups(node.children);
-				}
-			});
-		};
-		collectGroups(layoutedGraph.children ?? []);
+		const finalNodes = applyLayoutToFlowNodes(layoutedGraph.children ?? [], originalFlowNodesMap, isHorizontal);
 
-		// Flatten the layouted nodes and adjust standard node positions
-		const finalNodes = flattenLayoutedNodes(layoutedGraph.children ?? [], isHorizontal, rfNodeMap, layoutedGroupMap);
-
-		// Map layouted Elk edges back (retrieve original edge data from map)
-		const finalEdges =
-			layoutedGraph.edges
-				?.map((elkEdge: ElkExtendedEdge): Edge | undefined => {
-					return rfEdgeMap.get(elkEdge.id);
-				})
-				.filter((edge): edge is Edge => edge !== undefined) ?? [];
-
-		return { nodes: finalNodes, edges: finalEdges };
+		return { nodes: finalNodes, edges: edges };
 	} catch (error) {
 		console.error("ElkJS layout failed:", error);
-		// Fallback to original nodes/edges if layout fails
 		return { nodes, edges };
 	}
 };

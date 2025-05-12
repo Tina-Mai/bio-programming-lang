@@ -703,7 +703,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 			// update currentProjectGraphData
 			setCurrentProjectGraphData((prevData) => {
-				if (!prevData) return null; // Should not happen if project is selected
+				if (!prevData) return null;
 				return {
 					...prevData,
 					constraintNodes: [...prevData.constraintNodes, newDbNode],
@@ -711,6 +711,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			});
 
 			await _markProjectUpdated();
+			applyLayout();
 			console.log(`Constraint node added successfully with ID: ${newNode.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add constraint node: ${error instanceof Error ? error.message : String(error)}`);
@@ -718,7 +719,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated, applyLayout]);
 
 	const addSequenceNode = useCallback(async () => {
 		if (!currentProject?.id) {
@@ -729,8 +730,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		setGraphError(null);
 		try {
 			const payload = {
-				type: "dna", // Default type, user can change later
-				sequence: "", // Default empty sequence
+				type: null,
+				sequence: null,
 				project_id: currentProject.id,
 				generator_id: null,
 			};
@@ -742,13 +743,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newNode: FlowNode = {
 				id: newDbNode.id,
 				type: "sequence",
-				position: { x: 150, y: 150 }, // Default position, offset from constraint
+				position: { x: 150, y: 150 },
 				data: {
 					sequence: {
 						id: newDbNode.id,
 						type: newDbNode.type,
 						sequence: newDbNode.sequence,
-						// No generator initially
 					},
 				},
 			};
@@ -762,11 +762,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return {
 					...prevData,
 					sequenceNodes: [...prevData.sequenceNodes, newDbNode],
-					// No generator node to add initially
 				};
 			});
 
 			await _markProjectUpdated();
+			applyLayout();
 			console.log(`Sequence node added successfully with ID: ${newNode.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add sequence node: ${error instanceof Error ? error.message : String(error)}`);
@@ -774,7 +774,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated, applyLayout]);
 	// --- End add new node functions ---
 
 	const value: ProjectContextProps = {

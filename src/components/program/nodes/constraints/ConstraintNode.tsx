@@ -6,7 +6,7 @@ import Node from "@/components/program/nodes/Node";
 
 export interface ConstraintNodeData {
 	name: Constraint["name"];
-	constraints?: Constraint[];
+	constraint?: Constraint;
 	[key: string]: unknown;
 }
 
@@ -20,7 +20,7 @@ const ConstraintNodeComponent: React.FC<NodeProps<ConstraintNodeType>> = ({ data
 
 	return (
 		<Node type="constraint" selected={selected} handlePosition="bottom" id={id}>
-			<ConstraintDropdown constraints={data.constraints} setConstraints={updateConstraint} />
+			<ConstraintDropdown constraint={data.constraint} setConstraint={updateConstraint} />
 		</Node>
 	);
 };

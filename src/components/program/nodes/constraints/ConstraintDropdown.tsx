@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "@carbon/icons-react";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,8 @@ const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstrai
 			}}
 		>
 			<DropdownMenuTrigger>
-				<Button size="sm" variant="outline" className="bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
-					<div className={`flex items-center gap-1 ${currentSelectedConstraint ? "text-slate-900" : "text-slate-500/80"}`}>
+				<Button size="sm" variant="outline" className="w-full bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
+					<div className={`horizontal w-full justify-between items-center gap-1 ${currentSelectedConstraint ? "text-slate-900" : "text-slate-500/80"}`}>
 						<div className="text-xs">{currentSelectedConstraint ? currentSelectedConstraint.name : "Select constraint"}</div>
 						<ChevronDown />
 					</div>
@@ -42,17 +42,14 @@ const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstrai
 				/>
 				<DropdownMenuSeparator />
 				{filteredConstraints.map((constraint) => (
-					<DropdownMenuCheckboxItem
+					<DropdownMenuItem
 						key={constraint.name}
-						checked={currentSelectedConstraint?.name === constraint.name}
-						onCheckedChange={(isChecked) => {
-							if (isChecked) {
-								setConstraint(constraint);
-							}
+						onClick={() => {
+							setConstraint(constraint);
 						}}
 					>
 						{constraint.name}
-					</DropdownMenuCheckboxItem>
+					</DropdownMenuItem>
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>

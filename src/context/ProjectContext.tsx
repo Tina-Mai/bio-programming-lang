@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 // structure for the raw graph data fetched from Supabase (using types from flowUtils)
-export interface ProjectGraphData {
+export interface GraphData {
 	sequenceNodes: SupabaseSequenceNode[];
 	constraintNodes: SupabaseConstraintNode[];
 	generatorNodes: SupabaseGeneratorNode[];
@@ -25,7 +25,11 @@ interface ProjectContextProps {
 
 	isGraphLoading: boolean;
 	graphError: string | null;
-	currentProjectGraphData: ProjectGraphData | null;
+	currentProjectGraphData: GraphData | null;
+
+	updateConstraintNodeConstraint: (nodeId: string, constraint: import("@/types/Constraint").Constraint) => Promise<void>;
+	updateSequenceNodeType: (nodeId: string, type: import("@/types/Node").SequenceType) => Promise<void>;
+	updateSequenceNodeGenerator: (nodeId: string, generator: import("@/types/Generator").Generator) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -35,13 +39,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
 
-	const [currentProjectGraphData, setCurrentProjectGraphData] = useState<ProjectGraphData | null>(null);
+	const [currentProjectGraphData, setCurrentProjectGraphData] = useState<GraphData | null>(null);
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
 
-	// Simplified helper for now, mainly for timestamp updates after an operation.
-	// Specific DB operations will be more direct.
 	const _markProjectUpdated = useCallback(async () => {
 		if (!currentProject?.id) return;
 		const newTimestamp = new Date();
@@ -52,7 +54,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateProjectTimestamp(currentProject.id, newTimestamp);
 	}, [currentProject, supabase, updateProjectTimestamp]);
 
-	// Fetch project graph data when current project changes
+	// fetch project graph data when current project changes
 	useEffect(() => {
 		const fetchProjectGraphData = async () => {
 			if (!currentProject?.id) {
@@ -75,7 +77,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			try {
 				const projectId = currentProject.id;
 
-				// Fetch constraint_nodes and sequence_nodes first
+				// fetch constraint_nodes and sequence_nodes first
 				const [cnResult, snResult] = await Promise.all([
 					supabase.from("constraint_nodes").select("*").eq("project_id", projectId),
 					supabase.from("sequence_nodes").select("*").eq("project_id", projectId),
@@ -91,10 +93,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const generatorIds = fetchedSequenceNodes.map((sn) => sn.generator_id).filter((id): id is string => typeof id === "string" && id !== ""); // Get unique, non-null/empty generator_ids
 
 				if (generatorIds.length > 0) {
-					// Deduplicate IDs before fetching
+					// deduplicate IDs before fetching
 					const uniqueGeneratorIds = [...new Set(generatorIds)];
-					const { data: gnData, error: gnError } = await supabase.from("generator_nodes").select("*").in("id", uniqueGeneratorIds);
-					if (gnError) throw new Error(`Supabase fetch error (generator_nodes): ${gnError.message}`);
+					const { data: gnData, error: gnError } = await supabase.from("generators").select("*").in("id", uniqueGeneratorIds);
+					if (gnError) throw new Error(`Supabase fetch error (generators): ${gnError.message}`);
 					fetchedGeneratorNodes = (gnData as SupabaseGeneratorNode[]) || [];
 				}
 
@@ -108,15 +110,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					if (edgeError) throw new Error(`Supabase fetch error (edges): ${edgeError.message}`);
 
 					if (dbEdges) {
-						// Filter edges to ensure they connect to sequence nodes also in this project
+						// filter edges to ensure they connect to sequence nodes also in this project
 						fetchedEdges = (dbEdges as SupabaseDBEdge[]).filter((edge) => sequenceNodeIdsSet.has(edge.sequence_id));
 					}
 				} else {
-					// No constraint nodes, so no edges to fetch based on them
 					fetchedEdges = [];
 				}
 
-				const fetchedData: ProjectGraphData = {
+				const fetchedData: GraphData = {
 					constraintNodes: fetchedConstraintNodes,
 					sequenceNodes: fetchedSequenceNodes,
 					generatorNodes: fetchedGeneratorNodes,
@@ -136,12 +137,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		fetchProjectGraphData();
 	}, [currentProject?.id, supabase, setNodes, setEdges]);
 
-	// Layout calculation effect
+	// layout calculation effect
 	useEffect(() => {
 		let isMounted = true;
 		if (!currentProjectGraphData || isGraphLoading) {
 			if (!isGraphLoading && isMounted) {
-				// Only clear if not loading and no data
 				setNodes([]);
 				setEdges([]);
 			}
@@ -198,7 +198,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newEdgePayload = {
 				constraint_id: connection.source,
 				sequence_id: connection.target,
-				// project_id: currentProject.id, // Not needed if edges table doesn't have it
 			};
 
 			setIsGraphLoading(true);
@@ -235,6 +234,159 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[currentProject, supabase, _markProjectUpdated, setEdges, nodes, setCurrentProjectGraphData]
 	);
 
+	// --- Update Functions ---
+	const updateConstraintNodeConstraint = useCallback(
+		async (nodeId: string, constraint: import("@/types/Constraint").Constraint) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				const { error } = await supabase.from("constraint_nodes").update({ key: constraint.key }).eq("id", nodeId);
+				if (error) throw new Error(error.message);
+
+				// Update currentProjectGraphData
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData) return null;
+					return {
+						...prevData,
+						constraintNodes: prevData.constraintNodes.map((cn) => (cn.id === nodeId ? { ...cn, key: constraint.key } : cn)),
+					};
+				});
+
+				// Update React Flow nodes state
+				setNodes((prevNodes) => prevNodes.map((node) => (node.id === nodeId && node.type === "constraint" ? { ...node, data: { ...node.data, constraint } } : node)));
+				await _markProjectUpdated();
+			} catch (error: unknown) {
+				setGraphError(`Failed to update constraint: ${error instanceof Error ? error.message : String(error)}`);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
+	const updateSequenceNodeType = useCallback(
+		async (nodeId: string, type: import("@/types/Node").SequenceType) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				const { error } = await supabase.from("sequence_nodes").update({ type }).eq("id", nodeId);
+				if (error) throw new Error(error.message);
+
+				// Update currentProjectGraphData
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData) return null;
+					return {
+						...prevData,
+						sequenceNodes: prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, type: type } : sn)),
+					};
+				});
+
+				// Update React Flow nodes state
+				setNodes((prevNodes) =>
+					prevNodes.map((node) => {
+						if (node.id === nodeId && node.type === "sequence") {
+							const currentSequenceData = (node.data && (node.data as { sequence?: Record<string, unknown> }).sequence) || {};
+							return {
+								...node,
+								data: {
+									...node.data,
+									sequence: { ...currentSequenceData, type },
+								},
+							};
+						}
+						return node;
+					})
+				);
+				await _markProjectUpdated();
+			} catch (error: unknown) {
+				setGraphError(`Failed to update sequence type: ${error instanceof Error ? error.message : String(error)}`);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
+	const updateSequenceNodeGenerator = useCallback(
+		async (nodeId: string, generator: import("@/types/Generator").Generator) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				const userId = user?.id;
+				const currentHyperparams = generator.hyperparameters || {};
+				let dbGeneratorId: string | null = null;
+
+				let findQuery = supabase.from("generators").select("id").eq("key", generator.key);
+				const selectedHParams = generator.hyperparameters;
+				if (selectedHParams === undefined || (typeof selectedHParams === "object" && Object.keys(selectedHParams).length === 0)) {
+					findQuery = findQuery.or("hyperparameters.is.null,hyperparameters.eq.{}");
+				} else {
+					findQuery = findQuery.eq("hyperparameters", selectedHParams);
+				}
+				findQuery = findQuery.or(userId ? `user_id.eq.${userId},user_id.is.null` : "user_id.is.null").limit(1);
+				const { data: existingGenerators, error: fetchGenError } = await findQuery;
+
+				if (fetchGenError) throw new Error(`Supabase fetch error (generators): ${fetchGenError.message}`);
+
+				if (existingGenerators && existingGenerators.length > 0) {
+					dbGeneratorId = existingGenerators[0].id;
+				} else {
+					const { data: newGeneratorData, error: insertGenError } = await supabase
+						.from("generators")
+						.insert({ key: generator.key, name: generator.name, hyperparameters: currentHyperparams, user_id: userId })
+						.select("id")
+						.single();
+					if (insertGenError) throw new Error(`Supabase generator insert error: ${insertGenError.message}`);
+					if (!newGeneratorData) throw new Error("No data returned from generator insertion.");
+					dbGeneratorId = newGeneratorData.id;
+				}
+
+				const { error: updateSeqError } = await supabase.from("sequence_nodes").update({ generator_id: dbGeneratorId }).eq("id", nodeId);
+				if (updateSeqError) throw new Error(`Supabase sequence_node update error: ${updateSeqError.message}`);
+
+				// Update currentProjectGraphData
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData) return null;
+					return {
+						...prevData,
+						sequenceNodes: prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, generator_id: dbGeneratorId === null ? undefined : dbGeneratorId } : sn)),
+						// Also, if a new generator was created, we might need to add it to prevData.generatorNodes
+						// For simplicity now, we assume convertProjectDataToFlow will handle resolving it,
+						// but a more robust solution might update generatorNodes here if a new one was added to the DB.
+						// This is especially true if the new generator isn't immediately re-fetched.
+					};
+				});
+
+				// Update React Flow nodes state
+				setNodes((prevNodes) =>
+					prevNodes.map((node) => {
+						if (node.id === nodeId && node.type === "sequence") {
+							const currentSequenceData = (node.data && (node.data as { sequence?: Record<string, unknown> }).sequence) || {};
+							return {
+								...node,
+								data: {
+									...node.data,
+									sequence: { ...currentSequenceData, generator: generator }, // Use the full generator object for UI
+								},
+							};
+						}
+						return node;
+					})
+				);
+				await _markProjectUpdated();
+			} catch (error: unknown) {
+				setGraphError(`Failed to update generator: ${error instanceof Error ? error.message : String(error)}`);
+				console.error("Failed to update generator:", error);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -246,6 +398,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		isGraphLoading,
 		graphError,
 		currentProjectGraphData,
+		updateConstraintNodeConstraint,
+		updateSequenceNodeType,
+		updateSequenceNodeGenerator,
 	};
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

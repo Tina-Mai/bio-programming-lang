@@ -6,14 +6,13 @@ export interface SupabaseBase {
 	id: string;
 	project_id: string;
 	created_at?: string;
-	updated_at?: string;
 }
 
 export interface SupabaseSequenceNode extends SupabaseBase {
 	type: "dna" | "rna" | "protein";
 	sequence: string;
 	metadata?: Record<string, unknown>;
-	generator_id?: string; // FK to generator_nodes
+	generator_id?: string; // FK to generators
 }
 
 export interface SupabaseConstraintNode extends SupabaseBase {

@@ -5,6 +5,7 @@ import { Chip } from "@carbon/icons-react";
 import Node from "@/components/program/nodes/Node";
 import SequenceTypeDropdown from "./SequenceTypeDropdown";
 import GeneratorDropdown from "../generators/GeneratorDropdown";
+import { useProject } from "@/context/ProjectContext";
 // import StatusDot from "@/components/global/StatusDot";
 
 export interface SequenceNodeData {
@@ -15,9 +16,9 @@ export interface SequenceNodeData {
 export type SequenceNodeType = ReactFlowNode<SequenceNodeData, "sequence">;
 
 const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id, selected }) => {
+	const { updateSequenceNodeType, updateSequenceNodeGenerator } = useProject();
 	const updateSequenceType = (sequenceType: SequenceType) => {
-		// TODO: get this working in ProjectContext and actually update the data in the database
-		console.log(sequenceType);
+		updateSequenceNodeType(id, sequenceType);
 	};
 
 	return (
@@ -33,7 +34,7 @@ const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id
 					<GeneratorDropdown
 						generator={data.sequence?.generator || undefined}
 						setGenerator={(generator) => {
-							data.generator = generator;
+							updateSequenceNodeGenerator(id, generator);
 						}}
 					/>
 					{/* {!data.generator && <StatusDot />} */}

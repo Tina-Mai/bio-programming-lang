@@ -96,7 +96,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
 			console.log(`Deleting project data from DB for project: ${projectId}...`);
-			const tablesWithProjectId = ["constraint_nodes", "sequence_nodes", "generator_nodes"];
+			const tablesWithProjectId = ["constraint_nodes", "sequence_nodes", "generators"];
 			for (const table of tablesWithProjectId) {
 				const { error } = await supabase.from(table).delete().eq("project_id", projectId);
 				if (error && error.code !== "PGRST204") {
@@ -157,7 +157,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			const [constraintsResult, sequencesResult, generatorsResult] = await Promise.all([
 				supabase.from("constraint_nodes").select("*").eq("project_id", originalProjectId),
 				supabase.from("sequence_nodes").select("*").eq("project_id", originalProjectId),
-				supabase.from("generator_nodes").select("*").eq("project_id", originalProjectId),
+				supabase.from("generators").select("*").eq("project_id", originalProjectId),
 			]);
 
 			if (constraintsResult.error) throw new Error("Failed to fetch original constraint nodes for duplication");
@@ -186,7 +186,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				const newId = uuidv4();
 				idMap.set(cn.id, newId);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { id, project_id, created_at, updated_at, ...rest } = cn;
+				const { id, project_id, created_at, ...rest } = cn;
 				return { ...rest, id: newId, project_id: newProjectId };
 			});
 			if (newConstraintsToInsert.length > 0) {
@@ -198,19 +198,19 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				const newId = uuidv4();
 				idMap.set(gn.id, newId);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { id, project_id, created_at, updated_at, ...rest } = gn;
+				const { id, project_id, created_at, ...rest } = gn;
 				return { ...rest, id: newId, project_id: newProjectId };
 			});
 			if (newGeneratorsToInsert.length > 0) {
-				const { error } = await supabase.from("generator_nodes").insert(newGeneratorsToInsert);
-				if (error) throw new Error(`Failed to duplicate generator_nodes: ${error.message}`);
+				const { error } = await supabase.from("generators").insert(newGeneratorsToInsert);
+				if (error) throw new Error(`Failed to duplicate generators: ${error.message}`);
 			}
 
 			const newSequencesToInsert = originalSequences.map((sn) => {
 				const newId = uuidv4();
 				idMap.set(sn.id, newId);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { id, project_id, created_at, updated_at, generator_id, ...rest } = sn;
+				const { id, project_id, created_at, generator_id, ...rest } = sn;
 				const newGeneratorId = sn.generator_id ? idMap.get(sn.generator_id) : undefined;
 				return { ...rest, id: newId, project_id: newProjectId, generator_id: newGeneratorId };
 			});
@@ -225,7 +225,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					const newTargetId = idMap.get(edge.sequence_id);
 					if (!newSourceId || !newTargetId) return null;
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { id, project_id, constraint_id, sequence_id, created_at, updated_at, ...rest } = edge;
+					const { id, project_id, constraint_id, sequence_id, created_at, ...rest } = edge;
 					return { ...rest, id: uuidv4(), /* no project_id column */ constraint_id: newSourceId, sequence_id: newTargetId };
 				})
 				.filter((e) => e !== null) as Omit<SupabaseDBEdge, "project_id" | "created_at" | "updated_at">[];

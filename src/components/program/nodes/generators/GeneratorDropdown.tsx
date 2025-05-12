@@ -3,11 +3,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "@carbon/icons-react";
 import { Input } from "@/components/ui/input";
-import { Generator, generatorOptions } from "@/types";
+import { Generator, generatorOptions, SequenceType } from "@/types";
 
-const GeneratorDropdown = ({ generator: currentSelectedGenerator, setGenerator }: { generator?: Generator; setGenerator: (generator: Generator) => void }) => {
+const GeneratorDropdown = ({
+	generator: currentSelectedGenerator,
+	setGenerator,
+	sequenceType,
+}: {
+	generator?: Generator;
+	setGenerator: (generator: Generator) => void;
+	sequenceType: SequenceType;
+}) => {
 	const [searchTerm, setSearchTerm] = useState("");
-	const filteredGenerators = generatorOptions.filter((generator) => generator.name.toLowerCase().includes(searchTerm.toLowerCase()));
+	const allowedGenerators = generatorOptions.filter((generator) => generator.types?.includes(sequenceType) || !generator.types);
+	const filteredGenerators = allowedGenerators.filter((generator) => generator.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+	// TODO: if the selected generator is not meant for the sequence type, show error
 
 	return (
 		<DropdownMenu

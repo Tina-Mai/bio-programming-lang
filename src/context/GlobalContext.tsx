@@ -198,7 +198,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				const newId = uuidv4();
 				idMap.set(gn.id, newId);
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { id, project_id, created_at, ...rest } = gn;
+				const { id, user_id, created_at, ...rest } = gn;
 				return { ...rest, id: newId, project_id: newProjectId };
 			});
 			if (newGeneratorsToInsert.length > 0) {

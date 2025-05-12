@@ -36,6 +36,7 @@ const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id
 						setGenerator={(generator) => {
 							updateSequenceNodeGenerator(id, generator);
 						}}
+						sequenceType={data.sequence?.type as SequenceType}
 					/>
 					{/* {!data.generator && <StatusDot />} */}
 				</div>

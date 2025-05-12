@@ -711,7 +711,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			});
 
 			await _markProjectUpdated();
-			applyLayout();
 			console.log(`Constraint node added successfully with ID: ${newNode.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add constraint node: ${error instanceof Error ? error.message : String(error)}`);
@@ -719,7 +718,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated, applyLayout]);
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
 
 	const addSequenceNode = useCallback(async () => {
 		if (!currentProject?.id) {
@@ -766,7 +765,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			});
 
 			await _markProjectUpdated();
-			applyLayout();
 			console.log(`Sequence node added successfully with ID: ${newNode.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add sequence node: ${error instanceof Error ? error.message : String(error)}`);
@@ -774,7 +772,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated, applyLayout]);
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
 	// --- End add new node functions ---
 
 	const value: ProjectContextProps = {

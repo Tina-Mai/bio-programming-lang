@@ -22,6 +22,7 @@ interface ProjectContextProps {
 	onNodesChange: OnNodesChange;
 	onEdgesChange: OnEdgesChange;
 	onConnect: (connection: Connection) => Promise<void>;
+	deleteEdge: (edgeId: string) => Promise<void>;
 
 	isGraphLoading: boolean;
 	graphError: string | null;
@@ -214,12 +215,38 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData);
 		console.log("Converted to flow: ", { convertedNodes, convertedEdges });
 
-		if (convertedNodes.length > 0 || convertedEdges.length > 0) {
+		// Preserve existing node positions from the previous update
+		const preservePositions = (newNodes: FlowNode[]) => {
+			const existingNodeMap = new Map();
+			setNodes((oldNodes) => {
+				// Create a map of existing positions first
+				oldNodes.forEach((node) => {
+					existingNodeMap.set(node.id, node.position);
+				});
+
+				// Apply existing positions to new nodes where applicable
+				return newNodes.map((node) => {
+					const existingPosition = existingNodeMap.get(node.id);
+					if (existingPosition) {
+						return { ...node, position: existingPosition };
+					}
+					return node;
+				});
+			});
+		};
+
+		// Only apply layout if there are at least some nodes without positions
+		if (convertedNodes.length > 0) {
+			// First, directly use existing positions for what we have
+			preservePositions(convertedNodes);
+
+			// For initial layout or when there are new nodes, apply auto-layout
 			getLayoutedElements(convertedNodes, convertedEdges, defaultElkOptions)
 				.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
 					if (isMounted) {
 						console.log("Applying layout: ", { layoutedNodes, layoutedEdges });
-						setNodes(layoutedNodes);
+						// Apply layout but preserve any existing positions
+						preservePositions(layoutedNodes);
 						setEdges(layoutedEdges);
 					}
 				})
@@ -227,16 +254,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					console.error("Error during layout calculation:", error);
 					if (isMounted) {
 						console.warn("Falling back to non-layouted nodes/edges due to layout error.");
-						setNodes(convertedNodes);
+						// Still use the preservePositions function to maintain positions
 						setEdges(convertedEdges);
 					}
 				});
 		} else {
+			// Empty flow
 			if (isMounted) {
 				setNodes([]);
 				setEdges([]);
 			}
 		}
+
 		return () => {
 			isMounted = false;
 		};
@@ -439,6 +468,40 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData, _getOrCreateGenerator]
 	);
 
+	// Add deleteEdge function
+	const deleteEdge = useCallback(
+		async (edgeId: string) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				// Delete the edge from the database
+				const { error } = await supabase.from("edges").delete().eq("id", edgeId);
+				if (error) throw new Error(`Supabase edge delete error: ${error.message}`);
+
+				// Simply filter out the deleted edge without affecting nodes
+				setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+
+				// Update currentProjectGraphData but don't trigger node layout
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData) return null;
+					return {
+						...prevData,
+						edges: prevData.edges.filter((e) => e.id !== edgeId),
+					};
+				});
+
+				await _markProjectUpdated();
+				console.log(`Edge ${edgeId} deleted successfully`);
+			} catch (error: unknown) {
+				setGraphError(`Failed to delete edge: ${error instanceof Error ? error.message : String(error)}`);
+				console.error("Failed to delete edge:", error);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -447,6 +510,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		onNodesChange,
 		onEdgesChange,
 		onConnect,
+		deleteEdge,
 		isGraphLoading,
 		graphError,
 		currentProjectGraphData,

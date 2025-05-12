@@ -4,10 +4,15 @@ import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
+import CustomEdge from "./edges/CustomEdge";
 
 const nodeTypes = {
 	constraint: ConstraintNode,
 	sequence: SequenceNode,
+};
+
+const edgeTypes = {
+	default: CustomEdge,
 };
 
 const GraphEditor = () => {
@@ -39,6 +44,7 @@ const GraphEditor = () => {
 				onEdgesChange={onEdgesChange}
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
+				edgeTypes={edgeTypes}
 				fitView
 				fitViewOptions={{ padding: 0.2 }}
 				proOptions={{ hideAttribution: true }}

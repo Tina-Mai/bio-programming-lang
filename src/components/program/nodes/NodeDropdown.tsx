@@ -1,5 +1,5 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { OverflowMenuHorizontal, Copy, Close } from "@carbon/icons-react";
+import { OverflowMenuHorizontal, Copy, TrashCan } from "@carbon/icons-react";
 import { useState } from "react";
 
 const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
@@ -25,7 +25,7 @@ const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 	return (
 		<DropdownMenu open={open} onOpenChange={setOpen}>
 			<DropdownMenuTrigger onClick={handleClick}>
-				<OverflowMenuHorizontal size={16} className="shrink-0 hover:text-foreground text-slate-500 invisible group-hover:visible" />
+				<OverflowMenuHorizontal size={16} className="shrink-0 hover:text-foreground text-slate-500" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent onClick={handleClick}>
 				<DropdownMenuItem onClick={handleDuplicate}>
@@ -33,7 +33,7 @@ const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 					Duplicate node
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={handleDelete}>
-					<Close size={16} />
+					<TrashCan size={16} />
 					Delete node
 				</DropdownMenuItem>
 			</DropdownMenuContent>

@@ -113,10 +113,11 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 	// convert Edges
 	projectData.edges.forEach((dbEdge) => {
 		flowEdges.push({
-			id: `e-${dbEdge.constraint_id}-${dbEdge.sequence_id}`,
+			id: dbEdge.id,
 			source: dbEdge.constraint_id,
 			target: dbEdge.sequence_id,
 			animated: true,
+			type: "default",
 			style: {
 				stroke: "oklch(70.4% 0.04 256.788)",
 			},

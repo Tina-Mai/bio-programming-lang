@@ -219,7 +219,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		});
 	}, [setNodes, setEdges, edges, nodes]);
 
-	// layout calculation effect
+	// effect to convert raw graph data to flow elements
 	useEffect(() => {
 		let isMounted = true;
 		if (!currentProjectGraphData || isGraphLoading) {
@@ -230,19 +230,21 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			return;
 		}
 
-		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData);
-		console.log("Converted to flow: ", { convertedNodes, convertedEdges });
+		// MODIFIED: Pass current nodes state to preserve positions
+		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData, nodes);
+		console.log("Converted to flow (preserving positions): ", { convertedNodes, convertedEdges });
 
 		// Apply the converted nodes and edges directly
 		if (isMounted) {
 			setNodes(convertedNodes);
 			setEdges(convertedEdges);
-			// Layout is already applied by convertProjectDataToFlow
+			// REMOVED comment about layout being applied here
 		}
 
 		return () => {
 			isMounted = false;
 		};
+		// MODIFIED: Removed nodes from dependency array to break loop
 	}, [currentProjectGraphData, isGraphLoading, setNodes, setEdges]);
 
 	const onConnect = useCallback(

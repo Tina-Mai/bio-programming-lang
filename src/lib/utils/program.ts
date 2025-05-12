@@ -1,7 +1,6 @@
-import { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
+import { Node as FlowNode, Edge as FlowEdge, XYPosition } from "@xyflow/react";
 import { Constraint, constraintOptions } from "@/types/Constraint";
 import { Generator, generatorOptions } from "@/types/Generator";
-import { getLayoutedElements } from "./layout";
 
 export interface SupabaseBase {
 	id: string;
@@ -13,7 +12,7 @@ export interface SupabaseSequenceNode extends SupabaseBase {
 	type: "dna" | "rna" | "protein";
 	sequence: string;
 	metadata?: Record<string, unknown>;
-	generator_id?: string; // FK to generator_nodes
+	generator_id?: string | null;
 }
 
 export interface SupabaseConstraintNode extends SupabaseBase {
@@ -47,9 +46,17 @@ interface FlowData {
 }
 
 // convert data fetched from Supabase into React Flow compatible nodes and edges
-export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowData {
+export function convertProjectDataToFlow(projectData: ProjectGraphData, currentFlowNodes: FlowNode[]): FlowData {
 	const flowNodes: FlowNode[] = [];
 	const flowEdges: FlowEdge[] = [];
+
+	// Create a map of current node positions for quick lookup
+	const currentNodePositionMap = new Map<string, XYPosition>();
+	currentFlowNodes.forEach((node) => {
+		if (node.position) {
+			currentNodePositionMap.set(node.id, node.position);
+		}
+	});
 
 	// create map for quick lookup of generators if they need to be embedded
 	const generatorMap = new Map<string, SupabaseGeneratorNode>();
@@ -70,11 +77,11 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 			console.warn(`Constraint with key ${dbNode.key} not found in constraintOptions.`);
 			return;
 		}
+		const position: XYPosition = currentNodePositionMap.get(dbNode.id) || { x: 0, y: 0 };
 		flowNodes.push({
 			id: dbNode.id,
 			type: "constraint",
-			// Initialize with position {0,0}, will be calculated by layout algorithm
-			position: { x: 0, y: 0 },
+			position: position,
 			data: {
 				constraint: constraint,
 			},
@@ -96,11 +103,11 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 			}
 		}
 
+		const position: XYPosition = currentNodePositionMap.get(dbNode.id) || { x: 0, y: 0 };
 		flowNodes.push({
 			id: dbNode.id,
 			type: "sequence",
-			// Initialize with position {0,0}, will be calculated by layout algorithm
-			position: { x: 0, y: 0 },
+			position: position,
 			data: {
 				sequence: {
 					id: dbNode.id,
@@ -127,8 +134,5 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 		});
 	});
 
-	// Apply auto-layout
-	const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(flowNodes, flowEdges);
-
-	return { nodes: layoutedNodes, edges: layoutedEdges };
+	return { nodes: flowNodes, edges: flowEdges };
 }

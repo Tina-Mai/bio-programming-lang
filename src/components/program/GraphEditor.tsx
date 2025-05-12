@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, Panel, useReactFlow } from "@xyflow/react";
+import { ReactFlow, Background, MiniMap, ReactFlowProvider, Panel, useReactFlow } from "@xyflow/react";
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
+import { Button } from "@/components/ui/button";
+import { Template } from "@carbon/icons-react";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
 import Edge from "./edges/Edge";
@@ -51,11 +53,11 @@ const GraphEditor = () => {
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
 				edgeTypes={edgeTypes}
-				fitViewOptions={{ padding: 0.2 }}
+				fitViewOptions={{ padding: 0.4 }}
 				proOptions={{ hideAttribution: true }}
 			>
 				<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />
-				<Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} />
+				{/* <Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} /> */}
 				<MiniMap
 					nodeColor={"oklch(70.4% 0.04 256.788 / 0.15)"}
 					nodeStrokeWidth={3}
@@ -66,10 +68,11 @@ const GraphEditor = () => {
 					nodeBorderRadius={2}
 					maskColor="oklch(92.9% 0.013 255.508 / 0.7)"
 				/>
-				<Panel position="top-right">
-					<button onClick={handleAutoLayout} className="px-4 py-2 bg-oklch-70.4%-0.04-256.788 text-white rounded-md shadow hover:bg-oklch-60%-0.06-256.788 transition-colors">
+				<Panel position="bottom-left" style={{ marginBottom: "125px" }}>
+					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="text-xs !px-1.5 h-6 bg-white text-slate-600 font-medium">
+						<Template className="text-slate-400" />
 						Auto Layout
-					</button>
+					</Button>
 				</Panel>
 			</ReactFlow>
 		</div>

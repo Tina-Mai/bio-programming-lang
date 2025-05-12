@@ -7,7 +7,6 @@ import { Constraint, constraintOptions } from "@/types";
 
 const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstraint }: { constraint?: Constraint; setConstraint: (constraint: Constraint) => void }) => {
 	const [searchTerm, setSearchTerm] = useState("");
-
 	const filteredConstraints = constraintOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (

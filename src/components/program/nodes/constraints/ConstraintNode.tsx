@@ -20,7 +20,9 @@ const ConstraintNodeComponent: React.FC<NodeProps<ConstraintNodeType>> = ({ data
 
 	return (
 		<Node type="constraint" selected={selected} handlePosition="bottom" id={id}>
-			<ConstraintDropdown constraint={data.constraint} setConstraint={updateConstraint} />
+			<div className="p-3">
+				<ConstraintDropdown constraint={data.constraint} setConstraint={updateConstraint} />
+			</div>
 		</Node>
 	);
 };

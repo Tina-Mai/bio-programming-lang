@@ -30,7 +30,7 @@ const Node = ({
 				{type === "constraint" ? <SettingsAdjust className="text-zinc-500/75" /> : type === "sequence" ? <Term className="text-zinc-500/75" /> : null}
 				{type}
 			</div>
-			<div className="vertical p-3 text-center text-slate-800">
+			<div className="vertical text-slate-800">
 				{handlePosition === "top" && id && <Handle type="target" position={Position.Top} id={`${id}-target`} className="!bg-slate-500/80 !size-2.5" />}
 				{children}
 				{handlePosition === "bottom" && id && <Handle type="source" position={Position.Bottom} id={`${id}-source`} className="!bg-slate-500/80 !size-2.5" />}

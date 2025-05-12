@@ -3,7 +3,7 @@ import { EdgeProps, BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/r
 import { CloseFilled } from "@carbon/icons-react";
 import { useProject } from "@/context/ProjectContext";
 
-const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgeProps) => {
+const Edge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgeProps) => {
 	const [hovered, setHovered] = useState(false);
 	const { deleteEdge } = useProject();
 
@@ -17,9 +17,10 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgePr
 
 	const isVisible = selected || hovered;
 
+	// TODO: add hover detection for the edge
+
 	return (
 		<>
-			{/* Invisible wider path for better hover detection */}
 			<path d={edgePath} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: "pointer" }} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} />
 			<BaseEdge
 				id={id}
@@ -42,7 +43,7 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgePr
 						onClick={() => deleteEdge(id)}
 						title="Remove edge"
 					>
-						<CloseFilled size={18} className="text-slate-500" />
+						<CloseFilled size={18} className="text-slate-500 hover:text-slate-700 transition-colors duration-200" />
 					</div>
 				</EdgeLabelRenderer>
 			)}
@@ -50,4 +51,4 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgePr
 	);
 };
 
-export default CustomEdge;
+export default Edge;

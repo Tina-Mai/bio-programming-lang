@@ -4,7 +4,7 @@ import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
-import CustomEdge from "./edges/CustomEdge";
+import Edge from "./edges/Edge";
 
 const nodeTypes = {
 	constraint: ConstraintNode,
@@ -12,7 +12,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-	default: CustomEdge,
+	default: Edge,
 };
 
 const GraphEditor = () => {

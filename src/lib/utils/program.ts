@@ -20,12 +20,12 @@ export interface SupabaseConstraintNode extends SupabaseBase {
 }
 
 export interface SupabaseGeneratorNode {
-	id: string; // PK
+	id: string;
 	created_at?: string;
-	key: string; // Corresponds to GeneratorOptions key
-	name?: string; // The display name, if stored directly, matches GeneratorOptions name
+	key: string;
+	name?: string;
 	hyperparameters?: Record<string, unknown>;
-	user_id?: string | null; // FK to auth.users.id, null if public/template
+	user_id?: string | null; // FK to user, null if public/template
 }
 
 export interface SupabaseDBEdge extends SupabaseBase {

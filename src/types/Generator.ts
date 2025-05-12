@@ -15,7 +15,6 @@ export const generatorOptions: Generator[] = [
 	{
 		key: "evo-2",
 		name: "Evo 2",
-		types: ["dna", "rna"],
 	},
 	{
 		key: "program-mcmc",

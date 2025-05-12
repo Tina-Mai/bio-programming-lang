@@ -55,7 +55,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateProjectTimestamp(currentProject.id, newTimestamp);
 	}, [currentProject, supabase, updateProjectTimestamp]);
 
-	// Helper function to get an existing generator or create a new one
+	// get an existing generator or create a new one
 	const _getOrCreateGenerator = useCallback(
 		async (
 			generator: import("@/types/Generator").Generator,
@@ -66,7 +66,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			isNew: boolean;
 		}> => {
 			const currentHyperparams = generator.hyperparameters || {};
-			// Try to find an existing generator first
+			// try to find an existing generator first
 			let findQuery = supabase.from("generators").select("*").eq("key", generator.key);
 
 			const selectedHParams = generator.hyperparameters;
@@ -76,13 +76,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				findQuery = findQuery.eq("hyperparameters", selectedHParams);
 			}
 
-			// Add user ownership / public constraint
+			// add user ownership / public constraint
 			findQuery = findQuery.or(userId ? `user_id.eq.${userId},user_id.is.null` : "user_id.is.null").limit(1);
 			const { data: existingGenerators, error: fetchGenError } = await findQuery;
 
 			if (fetchGenError) throw new Error(`Supabase fetch error (generators): ${fetchGenError.message}`);
 
-			// If existing generator found, return it
+			// if existing generator found, return it
 			if (existingGenerators && existingGenerators.length > 0) {
 				return {
 					generatorId: existingGenerators[0].id,
@@ -91,7 +91,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				};
 			}
 
-			// Otherwise create a new generator
+			// otherwise create new generator
 			const { data: newGeneratorData, error: insertGenError } = await supabase
 				.from("generators")
 				.insert({
@@ -100,7 +100,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					hyperparameters: currentHyperparams,
 					user_id: userId,
 				})
-				.select("*") // Get all fields for the new generator
+				.select("*")
 				.single();
 
 			if (insertGenError) throw new Error(`Supabase generator insert error: ${insertGenError.message}`);
@@ -108,7 +108,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				throw new Error("No valid ID returned from generator insertion.");
 			}
 
-			// Return the new generator data
+			// return new generator data
 			return {
 				generatorId: newGeneratorData.id,
 				generatorNode: newGeneratorData as SupabaseGeneratorNode,
@@ -215,16 +215,15 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData);
 		console.log("Converted to flow: ", { convertedNodes, convertedEdges });
 
-		// Preserve existing node positions from the previous update
+		// preserve existing node positions from the previous update
 		const preservePositions = (newNodes: FlowNode[]) => {
 			const existingNodeMap = new Map();
 			setNodes((oldNodes) => {
-				// Create a map of existing positions first
 				oldNodes.forEach((node) => {
 					existingNodeMap.set(node.id, node.position);
 				});
 
-				// Apply existing positions to new nodes where applicable
+				// apply existing positions to new nodes where applicable
 				return newNodes.map((node) => {
 					const existingPosition = existingNodeMap.get(node.id);
 					if (existingPosition) {
@@ -235,17 +234,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			});
 		};
 
-		// Only apply layout if there are at least some nodes without positions
+		// only apply layout if there are at least some nodes without positions
 		if (convertedNodes.length > 0) {
-			// First, directly use existing positions for what we have
 			preservePositions(convertedNodes);
-
-			// For initial layout or when there are new nodes, apply auto-layout
 			getLayoutedElements(convertedNodes, convertedEdges, defaultElkOptions)
 				.then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
 					if (isMounted) {
 						console.log("Applying layout: ", { layoutedNodes, layoutedEdges });
-						// Apply layout but preserve any existing positions
 						preservePositions(layoutedNodes);
 						setEdges(layoutedEdges);
 					}
@@ -254,12 +249,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					console.error("Error during layout calculation:", error);
 					if (isMounted) {
 						console.warn("Falling back to non-layouted nodes/edges due to layout error.");
-						// Still use the preservePositions function to maintain positions
 						setEdges(convertedEdges);
 					}
 				});
 		} else {
-			// Empty flow
 			if (isMounted) {
 				setNodes([]);
 				setEdges([]);
@@ -409,22 +402,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				} = await supabase.auth.getUser();
 				const userId = user?.id;
 
-				// Find or create the generator
+				// find or create the generator
 				const { generatorId, generatorNode, isNew } = await _getOrCreateGenerator(generator, userId);
 
-				// Update the sequence node with the generator ID
+				// update sequence node with generator ID
 				const { error: updateSeqError } = await supabase.from("sequence_nodes").update({ generator_id: generatorId }).eq("id", nodeId);
 
 				if (updateSeqError) throw new Error(`Supabase sequence_node update error: ${updateSeqError.message}`);
 
-				// Update currentProjectGraphData
+				// update currentProjectGraphData
 				setCurrentProjectGraphData((prevData) => {
 					if (!prevData) return null;
 
-					// Update sequence node to point to this generator
 					const updatedSequenceNodes = prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, generator_id: generatorId } : sn));
-
-					// Add generator to generatorNodes if not already there
 					const updatedGeneratorNodes = [...prevData.generatorNodes];
 					const generatorExists = updatedGeneratorNodes.some((gn) => gn.id === generatorId);
 
@@ -440,7 +430,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				// Update React Flow nodes state
+				// update React Flow nodes state
 				setNodes((prevNodes) =>
 					prevNodes.map((node) => {
 						if (node.id === nodeId && node.type === "sequence") {
@@ -468,20 +458,20 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData, _getOrCreateGenerator]
 	);
 
-	// Add deleteEdge function
+	// delete an edge
 	const deleteEdge = useCallback(
 		async (edgeId: string) => {
 			setIsGraphLoading(true);
 			setGraphError(null);
 			try {
-				// Delete the edge from the database
+				// delete from database
 				const { error } = await supabase.from("edges").delete().eq("id", edgeId);
 				if (error) throw new Error(`Supabase edge delete error: ${error.message}`);
 
-				// Simply filter out the deleted edge without affecting nodes
+				// filter out deleted edge without affecting nodes
 				setEdges((eds) => eds.filter((e) => e.id !== edgeId));
 
-				// Update currentProjectGraphData but don't trigger node layout
+				// update currentProjectGraphData
 				setCurrentProjectGraphData((prevData) => {
 					if (!prevData) return null;
 					return {

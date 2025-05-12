@@ -34,6 +34,9 @@ interface ProjectContextProps {
 
 	// Add a new method to trigger layout
 	applyLayout: () => void;
+
+	// Add a new method to delete a node
+	deleteNode: (nodeId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -484,6 +487,75 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[supabase, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
 	);
 
+	// delete a node and its connected edges
+	const deleteNode = useCallback(
+		async (nodeId: string) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				const nodeToDelete = nodes.find((n) => n.id === nodeId);
+				if (!nodeToDelete) {
+					throw new Error(`Node with ID ${nodeId} not found in local state.`);
+				}
+
+				// Determine node type and table
+				let nodeTable: string;
+				if (nodeToDelete.type === "constraint") {
+					nodeTable = "constraint_nodes";
+				} else if (nodeToDelete.type === "sequence") {
+					nodeTable = "sequence_nodes";
+				} else {
+					throw new Error(`Unknown node type: ${nodeToDelete.type}`);
+				}
+
+				// 1. Delete connected edges from Supabase
+				// Edges are stored with constraint_id and sequence_id.
+				// If it's a constraint node, find edges where constraint_id = nodeId
+				// If it's a sequence node, find edges where sequence_id = nodeId
+				const { error: edgeDeleteError } = await supabase.from("edges").delete().or(`constraint_id.eq.${nodeId},sequence_id.eq.${nodeId}`);
+
+				if (edgeDeleteError) {
+					throw new Error(`Supabase edge delete error for node ${nodeId}: ${edgeDeleteError.message}`);
+				}
+
+				// 2. Delete the node from Supabase
+				const { error: nodeDeleteError } = await supabase.from(nodeTable).delete().eq("id", nodeId);
+
+				if (nodeDeleteError) {
+					throw new Error(`Supabase ${nodeTable} delete error: ${nodeDeleteError.message}`);
+				}
+
+				// 3. Update local React Flow state
+				setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+				setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+
+				// 4. Update currentProjectGraphData
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData) return null;
+					const updatedConstraintNodes = prevData.constraintNodes.filter((cn) => cn.id !== nodeId);
+					const updatedSequenceNodes = prevData.sequenceNodes.filter((sn) => sn.id !== nodeId);
+					const updatedEdges = prevData.edges.filter((e) => e.constraint_id !== nodeId && e.sequence_id !== nodeId);
+
+					return {
+						...prevData,
+						constraintNodes: updatedConstraintNodes,
+						sequenceNodes: updatedSequenceNodes,
+						edges: updatedEdges,
+					};
+				});
+
+				await _markProjectUpdated();
+				console.log(`Node ${nodeId} and its connected edges deleted successfully`);
+			} catch (error: unknown) {
+				setGraphError(`Failed to delete node: ${error instanceof Error ? error.message : String(error)}`);
+				console.error("Failed to delete node:", error);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, nodes, setNodes, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -500,6 +572,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateSequenceNodeType,
 		updateSequenceNodeGenerator,
 		applyLayout,
+		deleteNode,
 	};
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

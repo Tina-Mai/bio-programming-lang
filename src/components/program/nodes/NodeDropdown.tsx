@@ -1,9 +1,11 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { OverflowMenuHorizontal, Copy, TrashCan } from "@carbon/icons-react";
 import { useState } from "react";
+import { useProject } from "@/context/ProjectContext";
 
 const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 	const [open, setOpen] = useState(false);
+	const { deleteNode } = useProject();
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -18,7 +20,8 @@ const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 
 	const handleDelete = async (e: React.MouseEvent) => {
 		handleClick(e);
-		console.log(`Delete node: ${nodeId}`);
+		console.log(`Attempting to delete node: ${nodeId}`);
+		await deleteNode(nodeId);
 		setOpen(false);
 	};
 

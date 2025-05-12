@@ -12,16 +12,20 @@ export interface SupabaseSequenceNode extends SupabaseBase {
 	type: "dna" | "rna" | "protein";
 	sequence: string;
 	metadata?: Record<string, unknown>;
-	generator_id?: string; // FK to generators
+	generator_id?: string; // FK to generator_nodes
 }
 
 export interface SupabaseConstraintNode extends SupabaseBase {
 	key: string;
 }
 
-export interface SupabaseGeneratorNode extends SupabaseBase {
-	key: string;
+export interface SupabaseGeneratorNode {
+	id: string; // PK
+	created_at?: string;
+	key: string; // Corresponds to GeneratorOptions key
+	name?: string; // The display name, if stored directly, matches GeneratorOptions name
 	hyperparameters?: Record<string, unknown>;
+	user_id?: string | null; // FK to auth.users.id, null if public/template
 }
 
 export interface SupabaseDBEdge extends SupabaseBase {

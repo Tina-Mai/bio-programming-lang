@@ -1,5 +1,6 @@
 import { Handle, Position } from "@xyflow/react";
 import { SettingsAdjust, Term } from "@carbon/icons-react";
+import NodeDropdown from "./NodeDropdown";
 
 const Node = ({
 	children,
@@ -13,7 +14,7 @@ const Node = ({
 	selected: boolean;
 	type: "constraint" | "sequence";
 	handlePosition?: "top" | "bottom";
-	id?: string;
+	id: string;
 	invalid?: boolean;
 }) => {
 	return (
@@ -23,12 +24,15 @@ const Node = ({
 			} rounded-md text-xs backdrop-blur relative`}
 		>
 			<div
-				className={`horizontal ${
+				className={`horizontal justify-between ${
 					type === "constraint" ? "bg-system-yellow/75" : type === "sequence" ? "bg-system-blue/75" : "bg-system-slate/75"
-				} text-slate-500 px-3 py-2 items-center font-mono border-b border-slate-300 gap-2 rounded-t-md capitalize`}
+				} text-slate-500 px-3 py-2 items-center border-b border-slate-300 rounded-t-md`}
 			>
-				{type === "constraint" ? <SettingsAdjust className="text-zinc-500/75" /> : type === "sequence" ? <Term className="text-zinc-500/75" /> : null}
-				{type}
+				<div className="horizontal items-center gap-2 font-mono capitalize">
+					{type === "constraint" ? <SettingsAdjust className="text-zinc-500/75" /> : type === "sequence" ? <Term className="text-zinc-500/75" /> : null}
+					{type}
+				</div>
+				<NodeDropdown nodeId={id} />
 			</div>
 			<div className="vertical text-slate-800">
 				{handlePosition === "top" && id && <Handle type="target" position={Position.Top} id={`${id}-target`} className="!bg-slate-500/80 !size-2.5" />}

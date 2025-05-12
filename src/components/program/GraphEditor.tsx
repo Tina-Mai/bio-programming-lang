@@ -32,6 +32,7 @@ const GraphEditor = () => {
 	return (
 		<div style={{ height: "100%", width: "100%" }}>
 			<ReactFlow
+				className="bg-slate-50"
 				nodes={nodes}
 				edges={edges}
 				onNodesChange={onNodesChange}
@@ -39,7 +40,7 @@ const GraphEditor = () => {
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
 				fitView
-				className="bg-slate-50"
+				fitViewOptions={{ padding: 0.2 }}
 				proOptions={{ hideAttribution: true }}
 			>
 				<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />

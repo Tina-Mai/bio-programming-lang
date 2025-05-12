@@ -54,6 +54,69 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateProjectTimestamp(currentProject.id, newTimestamp);
 	}, [currentProject, supabase, updateProjectTimestamp]);
 
+	// Helper function to get an existing generator or create a new one
+	const _getOrCreateGenerator = useCallback(
+		async (
+			generator: import("@/types/Generator").Generator,
+			userId: string | undefined | null
+		): Promise<{
+			generatorId: string;
+			generatorNode: SupabaseGeneratorNode;
+			isNew: boolean;
+		}> => {
+			const currentHyperparams = generator.hyperparameters || {};
+			// Try to find an existing generator first
+			let findQuery = supabase.from("generators").select("*").eq("key", generator.key);
+
+			const selectedHParams = generator.hyperparameters;
+			if (selectedHParams === undefined || (typeof selectedHParams === "object" && Object.keys(selectedHParams).length === 0)) {
+				findQuery = findQuery.or("hyperparameters.is.null,hyperparameters.eq.{}");
+			} else {
+				findQuery = findQuery.eq("hyperparameters", selectedHParams);
+			}
+
+			// Add user ownership / public constraint
+			findQuery = findQuery.or(userId ? `user_id.eq.${userId},user_id.is.null` : "user_id.is.null").limit(1);
+			const { data: existingGenerators, error: fetchGenError } = await findQuery;
+
+			if (fetchGenError) throw new Error(`Supabase fetch error (generators): ${fetchGenError.message}`);
+
+			// If existing generator found, return it
+			if (existingGenerators && existingGenerators.length > 0) {
+				return {
+					generatorId: existingGenerators[0].id,
+					generatorNode: existingGenerators[0] as SupabaseGeneratorNode,
+					isNew: false,
+				};
+			}
+
+			// Otherwise create a new generator
+			const { data: newGeneratorData, error: insertGenError } = await supabase
+				.from("generators")
+				.insert({
+					key: generator.key,
+					name: generator.name,
+					hyperparameters: currentHyperparams,
+					user_id: userId,
+				})
+				.select("*") // Get all fields for the new generator
+				.single();
+
+			if (insertGenError) throw new Error(`Supabase generator insert error: ${insertGenError.message}`);
+			if (!newGeneratorData || typeof newGeneratorData.id !== "string") {
+				throw new Error("No valid ID returned from generator insertion.");
+			}
+
+			// Return the new generator data
+			return {
+				generatorId: newGeneratorData.id,
+				generatorNode: newGeneratorData as SupabaseGeneratorNode,
+				isNew: true,
+			};
+		},
+		[supabase]
+	);
+
 	// fetch project graph data when current project changes
 	useEffect(() => {
 		const fetchProjectGraphData = async () => {
@@ -243,7 +306,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const { error } = await supabase.from("constraint_nodes").update({ key: constraint.key }).eq("id", nodeId);
 				if (error) throw new Error(error.message);
 
-				// Update currentProjectGraphData
+				// update currentProjectGraphData
 				setCurrentProjectGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
@@ -252,7 +315,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				// Update React Flow nodes state
+				// update React Flow nodes state
 				setNodes((prevNodes) => prevNodes.map((node) => (node.id === nodeId && node.type === "constraint" ? { ...node, data: { ...node.data, constraint } } : node)));
 				await _markProjectUpdated();
 			} catch (error: unknown) {
@@ -272,7 +335,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const { error } = await supabase.from("sequence_nodes").update({ type }).eq("id", nodeId);
 				if (error) throw new Error(error.message);
 
-				// Update currentProjectGraphData
+				// update currentProjectGraphData
 				setCurrentProjectGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
@@ -281,7 +344,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				// Update React Flow nodes state
+				// update React Flow nodes state
 				setNodes((prevNodes) =>
 					prevNodes.map((node) => {
 						if (node.id === nodeId && node.type === "sequence") {
@@ -316,47 +379,35 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					data: { user },
 				} = await supabase.auth.getUser();
 				const userId = user?.id;
-				const currentHyperparams = generator.hyperparameters || {};
-				let dbGeneratorId: string | null = null;
 
-				let findQuery = supabase.from("generators").select("id").eq("key", generator.key);
-				const selectedHParams = generator.hyperparameters;
-				if (selectedHParams === undefined || (typeof selectedHParams === "object" && Object.keys(selectedHParams).length === 0)) {
-					findQuery = findQuery.or("hyperparameters.is.null,hyperparameters.eq.{}");
-				} else {
-					findQuery = findQuery.eq("hyperparameters", selectedHParams);
-				}
-				findQuery = findQuery.or(userId ? `user_id.eq.${userId},user_id.is.null` : "user_id.is.null").limit(1);
-				const { data: existingGenerators, error: fetchGenError } = await findQuery;
+				// Find or create the generator
+				const { generatorId, generatorNode, isNew } = await _getOrCreateGenerator(generator, userId);
 
-				if (fetchGenError) throw new Error(`Supabase fetch error (generators): ${fetchGenError.message}`);
+				// Update the sequence node with the generator ID
+				const { error: updateSeqError } = await supabase.from("sequence_nodes").update({ generator_id: generatorId }).eq("id", nodeId);
 
-				if (existingGenerators && existingGenerators.length > 0) {
-					dbGeneratorId = existingGenerators[0].id;
-				} else {
-					const { data: newGeneratorData, error: insertGenError } = await supabase
-						.from("generators")
-						.insert({ key: generator.key, name: generator.name, hyperparameters: currentHyperparams, user_id: userId })
-						.select("id")
-						.single();
-					if (insertGenError) throw new Error(`Supabase generator insert error: ${insertGenError.message}`);
-					if (!newGeneratorData) throw new Error("No data returned from generator insertion.");
-					dbGeneratorId = newGeneratorData.id;
-				}
-
-				const { error: updateSeqError } = await supabase.from("sequence_nodes").update({ generator_id: dbGeneratorId }).eq("id", nodeId);
 				if (updateSeqError) throw new Error(`Supabase sequence_node update error: ${updateSeqError.message}`);
 
 				// Update currentProjectGraphData
 				setCurrentProjectGraphData((prevData) => {
 					if (!prevData) return null;
+
+					// Update sequence node to point to this generator
+					const updatedSequenceNodes = prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, generator_id: generatorId } : sn));
+
+					// Add generator to generatorNodes if not already there
+					const updatedGeneratorNodes = [...prevData.generatorNodes];
+					const generatorExists = updatedGeneratorNodes.some((gn) => gn.id === generatorId);
+
+					if (!generatorExists) {
+						console.log(`Adding ${isNew ? "new" : "existing"} generator with ID ${generatorId} to currentProjectGraphData`);
+						updatedGeneratorNodes.push(generatorNode);
+					}
+
 					return {
 						...prevData,
-						sequenceNodes: prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, generator_id: dbGeneratorId === null ? undefined : dbGeneratorId } : sn)),
-						// Also, if a new generator was created, we might need to add it to prevData.generatorNodes
-						// For simplicity now, we assume convertProjectDataToFlow will handle resolving it,
-						// but a more robust solution might update generatorNodes here if a new one was added to the DB.
-						// This is especially true if the new generator isn't immediately re-fetched.
+						sequenceNodes: updatedSequenceNodes,
+						generatorNodes: updatedGeneratorNodes,
 					};
 				});
 
@@ -369,13 +420,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 								...node,
 								data: {
 									...node.data,
-									sequence: { ...currentSequenceData, generator: generator }, // Use the full generator object for UI
+									sequence: { ...currentSequenceData, generator: generator },
 								},
 							};
 						}
 						return node;
 					})
 				);
+
 				await _markProjectUpdated();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update generator: ${error instanceof Error ? error.message : String(error)}`);
@@ -384,7 +436,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData, _getOrCreateGenerator]
 	);
 
 	const value: ProjectContextProps = {

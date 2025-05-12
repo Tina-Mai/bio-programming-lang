@@ -244,15 +244,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		if (isMounted) {
 			setNodes(convertedNodes);
 			setEdges(convertedEdges);
-			// Apply layout only if nodes were previously empty (initial load)
-			// and we actually have nodes to layout
-			if (convertedNodes.length > 0) {
-				// Use a microtask to ensure layout runs after state updates are processed
-				queueMicrotask(() => {
-					console.log("Applying layout after data conversion...");
-					applyLayout();
-				});
-			}
+			// The automatic applyLayout call previously here has been removed.
+			// Initial layout is handled by GraphEditor.tsx's useEffect.
+			// Subsequent layouts are triggered manually or by specific logic if needed elsewhere.
 		}
 
 		return () => {
@@ -689,7 +683,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		setGraphError(null);
 		try {
 			const payload = {
-				key: "select_constraint", // Default key, user can change later
+				key: null,
 				project_id: currentProject.id,
 			};
 			const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
@@ -700,8 +694,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newNode: FlowNode = {
 				id: newDbNode.id,
 				type: "constraint",
-				position: { x: 100, y: 100 }, // Default position, layout will adjust
-				data: { constraint: { key: newDbNode.key } }, // Use the key from DB
+				position: { x: 100, y: 100 },
+				data: { constraint: null },
 			};
 
 			// update local React Flow state

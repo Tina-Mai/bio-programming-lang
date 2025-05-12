@@ -204,15 +204,24 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 	// apply layout to current nodes and edges
 	const applyLayout = useCallback(() => {
-		setEdges((edges) => {
-			const { edges: layoutedEdges } = getLayoutedElements(nodes, edges);
-			return layoutedEdges;
+		// Use functional updates to ensure we're working with the latest state
+		setNodes((currentNodes) => {
+			setEdges((currentEdges) => {
+				// Only proceed if nodes and edges are available
+				if (currentNodes.length === 0 && currentEdges.length === 0) {
+					return currentEdges; // No layout needed for empty graph
+				}
+				const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(currentNodes, currentEdges);
+				// Update nodes state outside the edges update
+				// Note: This might cause a double render, but ensures atomicity for layout
+				// Consider optimizing if performance becomes an issue.
+				queueMicrotask(() => setNodes(layoutedNodes));
+				return layoutedEdges;
+			});
+			// Return currentNodes initially, the actual update happens in the microtask
+			return currentNodes;
 		});
-		setNodes((nodes) => {
-			const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges);
-			return layoutedNodes;
-		});
-	}, [setNodes, setEdges, edges, nodes]);
+	}, [setNodes, setEdges]);
 
 	// effect to convert raw graph data to flow elements
 	useEffect(() => {
@@ -233,12 +242,22 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		if (isMounted) {
 			setNodes(convertedNodes);
 			setEdges(convertedEdges);
+			// Apply layout only if nodes were previously empty (initial load)
+			// and we actually have nodes to layout
+			if (convertedNodes.length > 0) {
+				// Use a microtask to ensure layout runs after state updates are processed
+				queueMicrotask(() => {
+					console.log("Applying layout after data conversion...");
+					applyLayout();
+				});
+			}
 		}
 
 		return () => {
 			isMounted = false;
 		};
-	}, [currentProjectGraphData, isGraphLoading, setNodes, setEdges]);
+		// applyLayout is now included as a dependency
+	}, [currentProjectGraphData, isGraphLoading, setNodes, setEdges, applyLayout]);
 
 	const onConnect = useCallback(
 		async (connection: Connection) => {

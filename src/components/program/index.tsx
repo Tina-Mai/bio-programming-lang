@@ -67,7 +67,8 @@ const Program = () => {
 
 			<div className="relative vertical h-full w-full">
 				<div className="relative h-full w-full overflow-hidden">
-					<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "graph" ? "code" : "graph")} disabled={transitioning}>
+					{/* TODO: hiding this button for now, decide whether to bring back graph <> code toggle later */}
+					<Button size="sm" className="hidden z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "graph" ? "code" : "graph")} disabled={transitioning}>
 						{mode === "graph" ? (
 							<div className="horizontal items-center gap-2">
 								<Code />

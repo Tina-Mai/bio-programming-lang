@@ -3,7 +3,7 @@ import { ReactFlow, Background, MiniMap, ReactFlowProvider, Panel, useReactFlow 
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Template } from "@carbon/icons-react";
+import { Grid } from "@carbon/icons-react";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
 import Edge from "./edges/Edge";
@@ -66,11 +66,11 @@ const GraphEditor = () => {
 					position="bottom-left"
 					style={{ width: 125, height: 100 }}
 					nodeBorderRadius={2}
-					maskColor="oklch(92.9% 0.013 255.508 / 0.7)"
+					maskColor="oklch(86.9% 0.022 252.894 / 0.5)"
 				/>
 				<Panel position="bottom-left" style={{ marginBottom: "125px" }}>
 					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="text-xs !px-1.5 h-6 bg-white text-slate-600 font-medium">
-						<Template className="text-slate-400" />
+						<Grid className="text-slate-400" />
 						Auto Layout
 					</Button>
 				</Panel>

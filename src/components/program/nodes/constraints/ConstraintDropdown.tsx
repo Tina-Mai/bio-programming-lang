@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Add } from "@carbon/icons-react";
+import { ChevronDown } from "@carbon/icons-react";
 import { Input } from "@/components/ui/input";
-import { constraints as constraintsOptions } from "@/data/constraints";
-import { Constraint } from "@/types";
+import { Constraint, constraintOptions } from "@/types";
 
-const ConstraintDropdown = ({ constraints = [], setConstraints }: { constraints?: Constraint[]; setConstraints: (constraints: Constraint[]) => void }) => {
+const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstraint }: { constraint?: Constraint; setConstraint: (constraint: Constraint) => void }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 
-	const filteredConstraints = constraintsOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
+	const filteredConstraints = constraintOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (
 		<DropdownMenu
@@ -20,8 +19,11 @@ const ConstraintDropdown = ({ constraints = [], setConstraints }: { constraints?
 			}}
 		>
 			<DropdownMenuTrigger>
-				<Button size="icon" variant="outline" className="!px-0 !py-0 !size-5 !rounded-xs mt-1 bg-slate-50/85" onClick={(e) => e.stopPropagation()}>
-					<Add size={4} />
+				<Button size="sm" variant="outline" className="bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
+					<div className={`flex items-center gap-1 ${currentSelectedConstraint ? "text-slate-900" : "text-slate-500/80"}`}>
+						<div className="text-xs">{currentSelectedConstraint ? currentSelectedConstraint.name : "Select constraint"}</div>
+						<ChevronDown />
+					</div>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent>
@@ -42,15 +44,10 @@ const ConstraintDropdown = ({ constraints = [], setConstraints }: { constraints?
 				{filteredConstraints.map((constraint) => (
 					<DropdownMenuCheckboxItem
 						key={constraint.name}
-						checked={constraints.map((c) => c.name.toLowerCase()).includes(constraint.name.toLowerCase())}
-						onCheckedChange={(checked) => {
-							const constraintNameLower = constraint.name.toLowerCase();
-							if (checked) {
-								if (!constraints.some((c) => c.name.toLowerCase() === constraintNameLower)) {
-									setConstraints([...constraints, constraint]);
-								}
-							} else {
-								setConstraints(constraints.filter((c) => c.name.toLowerCase() !== constraintNameLower));
+						checked={currentSelectedConstraint?.name === constraint.name}
+						onCheckedChange={(isChecked) => {
+							if (isChecked) {
+								setConstraint(constraint);
 							}
 						}}
 					>

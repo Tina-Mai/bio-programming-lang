@@ -3,7 +3,7 @@ import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Folder, Settings, AddLarge, Information, Book } from "@carbon/icons-react";
-import Canvas from "@/components/canvas";
+import Program from "@/components/program";
 import { useGlobal } from "@/context/GlobalContext";
 import ProjectDropdown from "@/components/projects/ProjectDropdown";
 import { motion, AnimatePresence } from "motion/react";
@@ -62,7 +62,7 @@ export default function Home() {
 					</div>
 				</div>
 			</div>
-			<Canvas />
+			<Program />
 		</div>
 	);
 }

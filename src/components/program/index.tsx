@@ -6,10 +6,10 @@ import { Code, Folder, ParentChild, ChevronDown, ChevronUp } from "@carbon/icons
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EnergyDialog from "@/components/energy/EnergyDialog";
-import BlockEditor from "@/components/canvas/BlockEditor";
-import CodeEditor from "@/components/canvas/CodeEditor";
-import ProjectTabs from "@/components/canvas/ProjectTabs";
-import Sequence from "@/components/canvas/Sequence";
+import BlockEditor from "@/components/program/BlockEditor";
+import CodeEditor from "@/components/program/CodeEditor";
+import ProjectTabs from "@/components/program/ProjectTabs";
+import Sequence from "@/components/program/Sequence";
 
 const mockSequence = {
 	id: "1",
@@ -17,7 +17,7 @@ const mockSequence = {
 		"ATTGGATGTGAATAAAGCGTATAGGTTTACCTCAAACTGCGCGGCTGTGTTATAATTTGCGACCTTTGAATCCGGGATACAGTAGAGGGATAGCGGTTAGATGAGCGACCTTGCGAGAGAAATTACACCGGTCAACATTGAGGAAGAGCTGAAGAGCTCCTATCTGGATTATGCGATGTCGGTCATTGTTGGCCGTGCGCTGCCAGATGTCCGAGATGGCCTGAAGCCGGTACACCGTCGCGTACTTTACGCCATGAACGTACTAGGCAATGACTGGAACAAAGCCTATAAAAAATCTGCCCGTGTCGTTGGTGACGTAATCGGTAAATACCATCCCCATGGTGACTCGGCGGTCTATGACACGATCGTCCGCATGGCGCAGCCATTCTCGCTGCGTTATATGCTGGTAGACGGTCAGGGTAACTTCGGTTCTATCGACGGCGACTCTGCGGCGGCAATGCGTTATACGGAAATCCGTCTGGCGAAAATTGCCCATGAAC",
 };
 
-const Canvas = () => {
+const Program = () => {
 	const { mode, setMode, currentProject } = useGlobal();
 	const [showBlockEditor, setShowBlockEditor] = useState(mode === "blocks");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
@@ -134,4 +134,4 @@ const Canvas = () => {
 	);
 };
 
-export default Canvas;
+export default Program;

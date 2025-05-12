@@ -8,7 +8,7 @@ import HelpTooltip from "@/components/global/HelpTooltip";
 import { cn } from "@/lib/utils";
 
 /*
-	Sequence Canvas
+	Sequence Component
 	Displays a sequence of nucleotides in a canvas with zoom functionality.
 	- Dynamic width based on zoom level
 	- Zoom in/out with scroll or pinch gestures

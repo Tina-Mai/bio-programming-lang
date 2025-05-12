@@ -1,11 +1,4 @@
 import { Node as FlowNode, Edge as FlowEdge } from "@xyflow/react";
-import {
-	// Assuming these are the camelCase types defined in @/types/Node.ts
-	SequenceNode as AppSequenceNode,
-	ConstraintNode as AppConstraintNode,
-	GeneratorNode as AppGeneratorNode,
-	Edge as AppEdge, // This is the DB edge structure
-} from "@/types"; // Adjust path if your types are structured differently
 
 export interface SupabaseBase {
 	id: string;

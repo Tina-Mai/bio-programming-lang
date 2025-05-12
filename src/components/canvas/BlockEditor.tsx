@@ -2,18 +2,12 @@ import React from "react";
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider } from "@xyflow/react";
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
+import ConstraintNode from "./nodes/ConstraintNode";
+import SequenceNode from "./nodes/SequenceNode";
 
-// Import the new node components
-import ConstraintNodeComponent from "./nodes/ConstraintNodeComponent";
-import SequenceNodeComponent from "./nodes/SequenceNodeComponent";
-
-// Define the node types for React Flow
 const nodeTypes = {
-	constraint: ConstraintNodeComponent,
-	sequence: SequenceNodeComponent,
-	// Remove old types: e.g., 'standard' and 'group' if they existed
-	// standard: StandardNode, // Assuming StandardNode was an old type
-	// group: ContainerNode,    // ContainerNode was deleted
+	constraint: ConstraintNode,
+	sequence: SequenceNode,
 };
 
 const BlockEditor = () => {
@@ -42,8 +36,8 @@ const BlockEditor = () => {
 				edges={edges}
 				onNodesChange={onNodesChange}
 				onEdgesChange={onEdgesChange}
-				onConnect={onConnect} // This will handle new edge creation
-				nodeTypes={nodeTypes} // Register the new node types
+				onConnect={onConnect}
+				nodeTypes={nodeTypes}
 				fitView
 				className="bg-slate-50"
 				proOptions={{ hideAttribution: true }}
@@ -60,7 +54,6 @@ const BlockEditor = () => {
 	);
 };
 
-// Wrap with ReactFlowProvider if BlockEditor is the root for React Flow hooks like useReactFlow
 const BlockEditorWrapper = () => (
 	<ReactFlowProvider>
 		<BlockEditor />

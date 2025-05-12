@@ -3,7 +3,7 @@ import { ReactFlow, Background, MiniMap, ReactFlowProvider, Panel, useReactFlow 
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Grid } from "@carbon/icons-react";
+import { Grid, Term, SettingsAdjust } from "@carbon/icons-react";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
 import Edge from "./edges/Edge";
@@ -69,9 +69,29 @@ const GraphEditor = () => {
 					maskColor="oklch(86.9% 0.022 252.894 / 0.5)"
 				/>
 				<Panel position="bottom-left" style={{ marginBottom: "125px" }}>
-					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="text-xs !px-1.5 h-6 bg-white !text-slate-500 hover:!text-slate-600 font-medium">
-						<Grid className="text-slate-400" />
+					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="group text-xs !px-1.5 h-6 bg-white !text-slate-500 hover:!text-slate-600 font-medium">
+						<Grid className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
 						Auto Layout
+					</Button>
+				</Panel>
+				<Panel position="top-left" style={{ marginTop: "60px" }} className="horizontal items-center gap-2">
+					<Button
+						onClick={handleAutoLayout}
+						variant="outline"
+						size="sm"
+						className="group text-xs bg-system-yellow/50 hover:bg-system-yellow/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-md"
+					>
+						<SettingsAdjust className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
+						New constraint
+					</Button>
+					<Button
+						onClick={handleAutoLayout}
+						variant="outline"
+						size="sm"
+						className="group text-xs bg-system-blue/50 hover:bg-system-blue/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-md"
+					>
+						<Term className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
+						New sequence
 					</Button>
 				</Panel>
 			</ReactFlow>

@@ -1,7 +1,8 @@
 import React from "react";
 import { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
-import { GeneratorNode } from "@/types";
+import { GeneratorNode, SequenceType } from "@/types";
 import Node from "@/components/program/nodes/Node";
+import SequenceTypeDropdown from "./SequenceTypeDropdown";
 
 export interface SequenceNodeData {
 	type: string;
@@ -19,9 +20,12 @@ const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id
 	return (
 		<Node type="sequence" selected={selected} handlePosition="top" id={id}>
 			<div className="vertical items-center justify-center gap-2">
-				<div className="vertical gap-1">
-					<div>{data.type === "dna" ? "DNA" : data.type === "rna" ? "RNA" : "Protein"}</div>
-				</div>
+				<SequenceTypeDropdown
+					sequenceType={data.type as SequenceType}
+					setSequenceType={(sequenceType) => {
+						data.type = sequenceType;
+					}}
+				/>
 				<GeneratorDropdownPlaceholder />
 			</div>
 		</Node>

@@ -18,7 +18,7 @@ const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstrai
 				}
 			}}
 		>
-			<DropdownMenuTrigger>
+			<DropdownMenuTrigger className="w-full">
 				<Button size="sm" variant="outline" className="w-full bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
 					<div className={`horizontal w-full justify-between items-center gap-1 ${currentSelectedConstraint ? "text-slate-900" : "text-slate-500/80"}`}>
 						<div className="text-xs">{currentSelectedConstraint ? currentSelectedConstraint.name : "Select constraint"}</div>

@@ -18,7 +18,7 @@ const Node = ({
 }) => {
 	return (
 		<div
-			className={`${type === "constraint" ? "bg-system-yellow/50" : type === "sequence" ? "bg-system-blue/50" : "bg-system-slate/50"} w-48 ${
+			className={`${type === "constraint" ? "bg-system-yellow/50" : type === "sequence" ? "bg-system-blue/50" : "bg-system-slate/50"} w-52 ${
 				invalid ? (selected ? "border-2 border-rose-600/50" : "border border-rose-600/50") : selected ? "border-2 border-blue-800/50" : " border border-slate-300"
 			} rounded-md text-xs backdrop-blur relative`}
 		>

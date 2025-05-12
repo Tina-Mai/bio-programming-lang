@@ -1,19 +1,8 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
-import {
-	// Types from @/types/Node.ts representing DB table structures (camelCased)
-	SequenceNode as AppSequenceNode,
-	ConstraintNode as AppConstraintNode,
-	GeneratorNode as AppGeneratorNode,
-	Edge as AppDBEdgeDefinition, // Renamed to avoid confusion with FlowEdge
-	Constraint, // General Constraint type for constraint definitions within a node, if needed.
-} from "@/types";
-
 import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils/flowUtils";
 import { getLayoutedElements, defaultElkOptions } from "@/lib/utils/layout";
-
 import { useGlobal } from "./GlobalContext";
-import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 

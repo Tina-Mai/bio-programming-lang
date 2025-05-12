@@ -7,6 +7,7 @@ import { Grid, Term, SettingsAdjust } from "@carbon/icons-react";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
 import SequenceNode from "./nodes/sequences/SequenceNode";
 import Edge from "./edges/Edge";
+import { useGlobal } from "@/context/GlobalContext";
 
 const nodeTypes = {
 	constraint: ConstraintNode,
@@ -21,8 +22,15 @@ const GraphEditor = () => {
 	const { nodes, edges, onNodesChange, onEdgesChange, onConnect, applyLayout, isGraphLoading, addConstraintNode, addSequenceNode } = useProject();
 	const { fitView } = useReactFlow();
 	const [isInitialLayoutDone, setIsInitialLayoutDone] = useState(false);
+	const { currentProject } = useGlobal();
 
-	// Apply layout and fit view ONCE on initial load
+	// Reset layout flag when project changes
+	useEffect(() => {
+		setIsInitialLayoutDone(false);
+		console.log(`Project changed to ${currentProject?.id}, resetting initial layout flag.`);
+	}, [currentProject?.id]);
+
+	// Apply layout and fit view ONCE after initial load OR project change
 	useEffect(() => {
 		if (!isGraphLoading && nodes.length > 0 && !isInitialLayoutDone) {
 			const timer = setTimeout(() => {
@@ -30,10 +38,11 @@ const GraphEditor = () => {
 				// Fit view immediately after layout
 				requestAnimationFrame(() => fitView({ padding: 0.2 }));
 				setIsInitialLayoutDone(true);
+				console.log(`Initial layout applied for project ${currentProject?.id}`);
 			}, 100);
 			return () => clearTimeout(timer);
 		}
-	}, [isGraphLoading, nodes.length, applyLayout, fitView, isInitialLayoutDone]);
+	}, [isGraphLoading, nodes.length, applyLayout, fitView, isInitialLayoutDone, currentProject?.id]);
 
 	// Handler for the manual layout button
 	const handleAutoLayout = () => {
@@ -74,7 +83,7 @@ const GraphEditor = () => {
 						Auto Layout
 					</Button>
 				</Panel>
-				<Panel position="top-left" style={{ marginTop: "60px" }} className="horizontal items-center gap-2">
+				<Panel position="top-left" style={{ marginTop: "60px" }} className="vertical items-center gap-2">
 					{/* <div className="vertical bg-white border border-slate-300 rounded-sm px-3 py-2 gap-2">
 						<div className="text-xs font-medium text-slate-500">New nodes</div> */}
 					<Button

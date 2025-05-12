@@ -3,9 +3,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "@carbon/icons-react";
 import { Input } from "@/components/ui/input";
-import { Constraint, constraintOptions } from "@/types";
+import { Constraint, ConstraintNode, constraintOptions } from "@/types";
 
-const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstraint }: { constraint?: Constraint; setConstraint: (constraint: Constraint) => void }) => {
+const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstraint }: { constraint?: Constraint | ConstraintNode; setConstraint: (constraint: Constraint) => void }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredConstraints = constraintOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -20,7 +20,7 @@ const ConstraintDropdown = ({ constraint: currentSelectedConstraint, setConstrai
 			<DropdownMenuTrigger className="w-full">
 				<Button size="sm" variant="outline" className="w-full bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70" onClick={(e) => e.stopPropagation()}>
 					<div className={`horizontal w-full justify-between items-center gap-1 ${currentSelectedConstraint ? "text-slate-900" : "text-slate-500/80"}`}>
-						<div className="text-xs">{currentSelectedConstraint ? currentSelectedConstraint.name : "Select constraint"}</div>
+						<div className="text-xs">{currentSelectedConstraint ? (currentSelectedConstraint as Constraint).name : "Select constraint"}</div>
 						<ChevronDown />
 					</div>
 				</Button>

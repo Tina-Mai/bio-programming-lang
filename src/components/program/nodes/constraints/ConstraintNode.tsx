@@ -6,7 +6,6 @@ import Node from "@/components/program/nodes/Node";
 // import StatusDot from "@/components/global/StatusDot";
 
 export interface ConstraintNodeData {
-	name: Constraint["name"];
 	constraint?: Constraint;
 	[key: string]: unknown;
 }

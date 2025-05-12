@@ -1,4 +1,4 @@
-import { SequenceNode, ConstraintNode, GeneratorNode } from "@/types";
+import { SequenceNode, ConstraintNode } from "@/types";
 export interface Project {
 	id: string;
 	name: string;
@@ -8,6 +8,5 @@ export interface Project {
 	program?: {
 		sequences: SequenceNode[];
 		constraints: ConstraintNode[];
-		generators: GeneratorNode[];
 	};
 }

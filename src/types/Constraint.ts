@@ -1,32 +1,32 @@
 export interface Constraint {
-	id: string;
+	key: string;
 	name: string;
 	scoring_function: string; // function name
 }
 
 export const constraintOptions: Constraint[] = [
 	{
-		id: "sequence-length",
+		key: "sequence-length",
 		name: "Sequence Length",
 		scoring_function: "SequenceLengthConstraint",
 	},
 	{
-		id: "gc-content",
+		key: "gc-content",
 		name: "GC Content",
 		scoring_function: "GCContentConstraint",
 	},
 	{
-		id: "max-homopolymer",
+		key: "max-homopolymer",
 		name: "Max Homopolymer",
 		scoring_function: "MaxHomopolymerConstraint",
 	},
 	{
-		id: "dinucleotide-frequency",
+		key: "dinucleotide-frequency",
 		name: "Dinucleotide Frequency",
 		scoring_function: "DinucleotideFrequencyConstraint",
 	},
 	{
-		id: "tetranucleotide-usage",
+		key: "tetranucleotide-usage",
 		name: "Tetranucleotide Usage",
 		scoring_function: "TetranucleotideUsageConstraint",
 	},

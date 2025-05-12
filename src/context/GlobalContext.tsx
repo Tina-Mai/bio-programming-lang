@@ -4,15 +4,14 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Project } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { SupabaseConstraintNode, SupabaseSequenceNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils/flowUtils"; // Import Supabase types
+import { SupabaseConstraintNode, SupabaseSequenceNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils";
 
-// Define ProjectJSON based on what Supabase 'projects' table returns
+// define ProjectJSON based on what Supabase 'projects' table returns
 export interface ProjectJSON {
 	id: string;
 	name: string;
-	created_at: string; // Supabase typically returns timestamptz as string
+	created_at: string;
 	updated_at: string;
-	// Add other fields if your 'projects' table has them e.g. user_id, code
 }
 
 type Mode = "graph" | "code";
@@ -91,41 +90,38 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		if (projectError) throw projectError;
 		if (!newProjectData) throw new Error("Failed to create project, no data returned.");
 
-		return { project: newProjectData as ProjectJSON }; // Cast to ProjectJSON
+		return { project: newProjectData as ProjectJSON };
 	}, [supabase]);
 
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
 			console.log(`Deleting project data from DB for project: ${projectId}...`);
-			// Delete from tables with direct project_id foreign key
 			const tablesWithProjectId = ["constraint_nodes", "sequence_nodes", "generator_nodes"];
 			for (const table of tablesWithProjectId) {
 				const { error } = await supabase.from(table).delete().eq("project_id", projectId);
-				// PGRST204: No rows found, which is okay for deletion.
 				if (error && error.code !== "PGRST204") {
 					console.warn(`Error deleting from ${table} for project ${projectId}: ${error.message}`);
-					// Consider if you should throw an error or continue
+					// TODO: throw an error or continue?
 				}
 			}
 
-			// Special handling for 'edges' table as it does not have a direct project_id
-			// Fetch IDs of constraint_nodes belonging to this project
+			// handling edges
 			const { data: projectConstraintNodes, error: pcnErr } = await supabase.from("constraint_nodes").select("id").eq("project_id", projectId);
 
 			if (pcnErr && pcnErr.code !== "PGRST204") {
 				console.warn("Could not fetch constraint_node IDs to delete associated edges:", pcnErr.message);
 			} else if (projectConstraintNodes && projectConstraintNodes.length > 0) {
 				const constraintNodeIds = projectConstraintNodes.map((n) => n.id);
-				// Delete edges where constraint_id is one of the project's constraint nodes
+				// delete edges where constraint_id is one of the project's constraint nodes
 				const { error: edgeDelError } = await supabase.from("edges").delete().in("constraint_id", constraintNodeIds);
 				if (edgeDelError && edgeDelError.code !== "PGRST204") {
 					console.warn("Error deleting edges by constraint_id:", edgeDelError.message);
 				}
 			}
-			// (Consider if you also need to delete edges based on sequence_id if they can exist independently)
-			// For now, this covers edges originating from this project's constraints.
+			// TODO: consider if you also need to delete edges based on sequence_id if they can exist independently
+			// for now, this covers edges originating from this project's constraints
 
-			// Finally, delete the main project entry
+			// finally, delete the main project entry
 			const { error: projectError } = await supabase.from("projects").delete().eq("id", projectId);
 			if (projectError) {
 				console.error(`Failed to delete project ${projectId} itself:`, projectError.message);
@@ -140,12 +136,12 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		async (originalProjectId: string): Promise<{ duplicatedProject: ProjectJSON }> => {
 			console.log(`Duplicating project in DB: ${originalProjectId}...`);
 
-			// 1. Fetch original project details (just name for now, or all details if needed for copy)
+			// 1. fetch original project details (just name for now, or all details if needed for copy)
 			const { data: originalProjectData, error: fetchOrigError } = await supabase.from("projects").select("name").eq("id", originalProjectId).single();
 			if (fetchOrigError) throw new Error(`Failed to fetch original project for duplication: ${fetchOrigError.message}`);
 			if (!originalProjectData) throw new Error("Original project not found for duplication.");
 
-			// 2. Create new project entry
+			// 2. create new project entry
 			const newProjectName = `(Copy) ${originalProjectData.name}`;
 			const { data: newProjectResult, error: createProjectError } = await supabase
 				.from("projects")
@@ -157,7 +153,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			const newProjectId = newProjectResult.id;
 			const duplicatedProjectJSON = newProjectResult as ProjectJSON;
 
-			// 3. Fetch all graph components from the original project
+			// 3. fetch all graph components from the original project
 			const [constraintsResult, sequencesResult, generatorsResult] = await Promise.all([
 				supabase.from("constraint_nodes").select("*").eq("project_id", originalProjectId),
 				supabase.from("sequence_nodes").select("*").eq("project_id", originalProjectId),
@@ -327,7 +323,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				console.log("Project duplicated successfully:", duplicatedProject.id);
 			} catch (err: unknown) {
 				console.error("Error duplicating project:", err);
-				// TODO: Add user-facing error message
+				// TODO: add user-facing error message
 			}
 		},
 		[_duplicateProjectInDB, setProjects, setCurrentProject]

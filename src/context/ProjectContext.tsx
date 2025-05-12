@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
-import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils/flowUtils";
+import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils";
 import { getLayoutedElements, defaultElkOptions } from "@/lib/utils/layout";
 import { useGlobal } from "./GlobalContext";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 
-// Structure for the raw graph data fetched from Supabase (using types from flowUtils)
+// structure for the raw graph data fetched from Supabase (using types from flowUtils)
 export interface ProjectGraphData {
 	sequenceNodes: SupabaseSequenceNode[];
 	constraintNodes: SupabaseConstraintNode[];

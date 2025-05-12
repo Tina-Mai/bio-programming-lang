@@ -1,23 +1,17 @@
 import { Constraint } from "./Constraint";
 export type SequenceType = "dna" | "rna" | "protein";
+
 export interface SequenceNode {
 	id: string;
-	type: SequenceType;
-	sequence: string;
+	type?: SequenceType;
+	sequence?: string;
 	metadata?: Record<string, unknown>;
-	generator: GeneratorNode;
+	generator?: Generator;
 }
 
 export interface ConstraintNode {
 	id: string;
-	name: string;
-	constraint: Constraint;
-}
-
-export interface GeneratorNode {
-	id: string;
-	name: string;
-	hyperparameters?: Record<string, unknown>;
+	constraint?: Constraint;
 }
 
 export interface Edge {

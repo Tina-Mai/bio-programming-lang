@@ -21,7 +21,7 @@ const Node = ({
 		<div
 			className={`${type === "constraint" ? "bg-system-yellow/30" : type === "sequence" ? "bg-system-blue/30" : "bg-system-slate/30"} w-52 ${
 				invalid ? (selected ? "border-2 border-rose-600/50" : "border border-rose-600/50") : selected ? "border-2 border-blue-900/30" : " border border-slate-300"
-			} rounded-md text-xs backdrop-blur relative`}
+			} rounded-md text-xs backdrop-blur-sm relative`}
 		>
 			<div
 				className={`horizontal justify-between ${

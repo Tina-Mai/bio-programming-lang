@@ -5,7 +5,7 @@ import { useProject } from "@/context/ProjectContext";
 
 const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 	const [open, setOpen] = useState(false);
-	const { deleteNode } = useProject();
+	const { deleteNode, duplicateNode } = useProject();
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -14,7 +14,8 @@ const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 
 	const handleDuplicate = async (e: React.MouseEvent) => {
 		handleClick(e);
-		console.log(`Duplicate node: ${nodeId}`);
+		console.log(`Attempting to duplicate node: ${nodeId}`);
+		await duplicateNode(nodeId);
 		setOpen(false);
 	};
 

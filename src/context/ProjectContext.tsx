@@ -37,6 +37,9 @@ interface ProjectContextProps {
 
 	// Add a new method to delete a node
 	deleteNode: (nodeId: string) => Promise<void>;
+
+	// Add a new method to duplicate a node
+	duplicateNode: (nodeId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -556,6 +559,118 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[supabase, nodes, setNodes, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
 	);
 
+	// duplicate a node
+	const duplicateNode = useCallback(
+		async (nodeId: string) => {
+			setIsGraphLoading(true);
+			setGraphError(null);
+			try {
+				const nodeToDuplicate = nodes.find((n) => n.id === nodeId);
+				if (!nodeToDuplicate) {
+					throw new Error(`Node with ID ${nodeId} not found in local state.`);
+				}
+
+				const originalNodeData =
+					currentProjectGraphData &&
+					(nodeToDuplicate.type === "constraint"
+						? currentProjectGraphData.constraintNodes.find((cn) => cn.id === nodeId)
+						: currentProjectGraphData.sequenceNodes.find((sn) => sn.id === nodeId));
+
+				if (!originalNodeData || !currentProject?.id) {
+					throw new Error(`Original node data for ID ${nodeId} not found or project ID missing.`);
+				}
+
+				let newNode: FlowNode | null = null;
+				let newDbNode: SupabaseConstraintNode | SupabaseSequenceNode | null = null;
+
+				const positionOffset = 20;
+				const newPosition = {
+					x: (nodeToDuplicate.position?.x ?? 0) + positionOffset,
+					y: (nodeToDuplicate.position?.y ?? 0) + positionOffset,
+				};
+
+				if (nodeToDuplicate.type === "constraint" && "key" in originalNodeData) {
+					// duplicate constraint node
+					const payload = {
+						key: originalNodeData.key,
+						project_id: currentProject.id,
+					};
+					const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
+					if (error) throw new Error(`Supabase constraint_node insert error: ${error.message}`);
+					if (!data) throw new Error("No data returned from constraint_node insertion.");
+					newDbNode = data as SupabaseConstraintNode;
+					newNode = {
+						id: newDbNode.id,
+						type: "constraint",
+						position: newPosition,
+						data: { constraint: { key: newDbNode.key } },
+					};
+				} else if (nodeToDuplicate.type === "sequence" && "type" in originalNodeData) {
+					// duplicate sequence node
+					const payload = {
+						type: originalNodeData.type,
+						generator_id: originalNodeData.generator_id,
+						project_id: currentProject.id,
+					};
+					const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
+					if (error) throw new Error(`Supabase sequence_node insert error: ${error.message}`);
+					if (!data) throw new Error("No data returned from sequence_node insertion.");
+					newDbNode = data as SupabaseSequenceNode;
+
+					// find the generator data for the FlowNode
+					const generatorData = currentProjectGraphData?.generatorNodes.find((gn) => gn.id === (newDbNode && "generator_id" in newDbNode ? newDbNode.generator_id : undefined));
+
+					newNode = {
+						id: newDbNode.id,
+						type: "sequence",
+						position: newPosition,
+						data: {
+							sequence: {
+								id: newDbNode.id,
+								type: newDbNode.type,
+								generator_id: newDbNode.generator_id,
+								generator: generatorData ? { id: generatorData.id, key: generatorData.key, name: generatorData.name, hyperparameters: generatorData.hyperparameters } : undefined,
+							},
+						},
+					};
+				} else {
+					throw new Error(`Unknown or mismatched node type for duplication: ${nodeToDuplicate.type}`);
+				}
+
+				// update local React Flow state
+				setNodes((nds) => [...nds, newNode as FlowNode]);
+
+				// update currentProjectGraphData
+				setCurrentProjectGraphData((prevData) => {
+					if (!prevData || !newDbNode) return prevData;
+					const updatedConstraintNodes = [...prevData.constraintNodes];
+					const updatedSequenceNodes = [...prevData.sequenceNodes];
+
+					if (newDbNode.project_id === currentProject?.id && "key" in newDbNode) {
+						updatedConstraintNodes.push(newDbNode as SupabaseConstraintNode);
+					} else if (newDbNode.project_id === currentProject?.id && "type" in newDbNode) {
+						updatedSequenceNodes.push(newDbNode as SupabaseSequenceNode);
+					}
+
+					return {
+						...prevData,
+						constraintNodes: updatedConstraintNodes,
+						sequenceNodes: updatedSequenceNodes,
+					};
+				});
+
+				await _markProjectUpdated();
+				console.log(`Node ${nodeId} duplicated successfully with new ID: ${newNode?.id}`);
+			} catch (error: unknown) {
+				setGraphError(`Failed to duplicate node: ${error instanceof Error ? error.message : String(error)}`);
+				console.error("Failed to duplicate node:", error);
+			} finally {
+				setIsGraphLoading(false);
+			}
+		},
+		[supabase, nodes, currentProject?.id, currentProjectGraphData, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+	);
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -573,6 +688,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		updateSequenceNodeGenerator,
 		applyLayout,
 		deleteNode,
+		duplicateNode,
 	};
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

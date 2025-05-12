@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, Panel } from "@xyflow/react";
+import React, { useEffect, useState } from "react";
+import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, Panel, useReactFlow } from "@xyflow/react";
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
 import ConstraintNode from "./nodes/constraints/ConstraintNode";
@@ -17,17 +17,28 @@ const edgeTypes = {
 
 const GraphEditor = () => {
 	const { nodes, edges, onNodesChange, onEdgesChange, onConnect, applyLayout, isGraphLoading } = useProject();
+	const { fitView } = useReactFlow();
+	const [isInitialLayoutDone, setIsInitialLayoutDone] = useState(false);
 
-	// Apply layout when the component mounts or when nodes/edges change significantly
+	// Apply layout and fit view ONCE on initial load
 	useEffect(() => {
-		if (!isGraphLoading && nodes.length > 0) {
-			// Small delay to ensure nodes are properly rendered with dimensions
+		if (!isGraphLoading && nodes.length > 0 && !isInitialLayoutDone) {
 			const timer = setTimeout(() => {
 				applyLayout();
+				// Fit view immediately after layout
+				requestAnimationFrame(() => fitView({ padding: 0.2 }));
+				setIsInitialLayoutDone(true);
 			}, 100);
 			return () => clearTimeout(timer);
 		}
-	}, [isGraphLoading, nodes.length, applyLayout]);
+	}, [isGraphLoading, nodes.length, applyLayout, fitView, isInitialLayoutDone]);
+
+	// Handler for the manual layout button
+	const handleAutoLayout = () => {
+		applyLayout();
+		// Also fit the view after manual layout
+		requestAnimationFrame(() => fitView({ padding: 0.2 }));
+	};
 
 	return (
 		<div style={{ height: "100%", width: "100%" }}>
@@ -40,7 +51,6 @@ const GraphEditor = () => {
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
 				edgeTypes={edgeTypes}
-				fitView
 				fitViewOptions={{ padding: 0.2 }}
 				proOptions={{ hideAttribution: true }}
 			>
@@ -57,7 +67,7 @@ const GraphEditor = () => {
 					maskColor="oklch(92.9% 0.013 255.508 / 0.7)"
 				/>
 				<Panel position="top-right">
-					<button onClick={applyLayout} className="px-4 py-2 bg-oklch-70.4%-0.04-256.788 text-white rounded-md shadow hover:bg-oklch-60%-0.06-256.788 transition-colors">
+					<button onClick={handleAutoLayout} className="px-4 py-2 bg-oklch-70.4%-0.04-256.788 text-white rounded-md shadow hover:bg-oklch-60%-0.06-256.788 transition-colors">
 						Auto Layout
 					</button>
 				</Panel>

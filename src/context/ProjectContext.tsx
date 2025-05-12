@@ -263,6 +263,15 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
+			// Check for existing edge
+			const existingEdge = currentProjectGraphData?.edges.find((edge) => edge.constraint_id === connection.source && edge.sequence_id === connection.target);
+
+			if (existingEdge) {
+				setGraphError("An edge already exists between these two nodes.");
+				console.warn("Attempt to create duplicate edge prevented:", connection);
+				return;
+			}
+
 			const newEdgePayload = {
 				constraint_id: connection.source,
 				sequence_id: connection.target,

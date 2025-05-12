@@ -69,7 +69,7 @@ const GraphEditor = () => {
 					maskColor="oklch(86.9% 0.022 252.894 / 0.5)"
 				/>
 				<Panel position="bottom-left" style={{ marginBottom: "125px" }}>
-					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="text-xs !px-1.5 h-6 bg-white text-slate-600 font-medium">
+					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="text-xs !px-1.5 h-6 bg-white !text-slate-500 hover:!text-slate-600 font-medium">
 						<Grid className="text-slate-400" />
 						Auto Layout
 					</Button>

@@ -6,7 +6,7 @@ import { Code, Folder, ParentChild, ChevronDown, ChevronUp } from "@carbon/icons
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EnergyDialog from "@/components/energy/EnergyDialog";
-import BlockEditor from "@/components/program/BlockEditor";
+import GraphEditor from "@/components/program/GraphEditor";
 import CodeEditor from "@/components/program/CodeEditor";
 import ProjectTabs from "@/components/program/ProjectTabs";
 import Sequence from "@/components/program/Sequence";
@@ -19,7 +19,7 @@ const mockSequence = {
 
 const Program = () => {
 	const { mode, setMode, currentProject } = useGlobal();
-	const [showBlockEditor, setShowBlockEditor] = useState(mode === "blocks");
+	const [showGraphEditor, setShowGraphEditor] = useState(mode === "graph");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
 	const [showSequence, setShowSequence] = useState(false);
@@ -27,17 +27,17 @@ const Program = () => {
 
 	// handle mode switch animation
 	useEffect(() => {
-		if (mode === "blocks" && !showBlockEditor) {
+		if (mode === "graph" && !showGraphEditor) {
 			setTransitioning(true);
 			setShowCodeEditor(false);
 
 			setTimeout(() => {
-				setShowBlockEditor(true);
+				setShowGraphEditor(true);
 				setTransitioning(false);
 			}, 300);
 		} else if (mode === "code" && !showCodeEditor) {
 			setTransitioning(true);
-			setShowBlockEditor(false);
+			setShowGraphEditor(false);
 
 			setTimeout(() => {
 				setShowCodeEditor(true);
@@ -50,7 +50,7 @@ const Program = () => {
 				}, 50);
 			}, 300);
 		}
-	}, [mode, showBlockEditor, showCodeEditor]);
+	}, [mode, showGraphEditor, showCodeEditor]);
 
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
@@ -67,15 +67,15 @@ const Program = () => {
 
 			<div className="relative vertical h-full w-full">
 				<div className="relative h-full w-full overflow-hidden">
-					<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "blocks" ? "code" : "blocks")} disabled={transitioning}>
-						{mode === "blocks" ? (
+					<Button size="sm" className="z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "graph" ? "code" : "graph")} disabled={transitioning}>
+						{mode === "graph" ? (
 							<div className="horizontal items-center gap-2">
 								<Code />
 								Show code
 							</div>
 						) : (
 							<div className="horizontal items-center gap-2">
-								<ParentChild /> Show blocks
+								<ParentChild /> Show graph
 							</div>
 						)}
 					</Button>
@@ -85,16 +85,16 @@ const Program = () => {
 
 					<ProjectProvider>
 						<div className="relative h-full w-full">
-							{/* Block Editor with animation */}
+							{/* Graph Editor with animation */}
 							<div
 								className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
-									showBlockEditor
+									showGraphEditor
 										? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 								}`}
 							>
-								<BlockEditor />
+								<GraphEditor />
 							</div>
 
 							{/* Code Editor with animation */}

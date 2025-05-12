@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { constraints as constraintsOptions } from "@/data/constraints";
 import { Constraint } from "@/types";
 
-const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: Constraint[]; setConstraints: (constraints: Constraint[]) => void }) => {
+const ConstraintDropdown = ({ constraints = [], setConstraints }: { constraints?: Constraint[]; setConstraints: (constraints: Constraint[]) => void }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 
 	const filteredConstraints = constraintsOptions.filter((constraint) => constraint.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -62,4 +62,4 @@ const AddConstraint = ({ constraints = [], setConstraints }: { constraints?: Con
 	);
 };
 
-export default AddConstraint;
+export default ConstraintDropdown;

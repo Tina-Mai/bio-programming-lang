@@ -2,15 +2,15 @@ import React from "react";
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider } from "@xyflow/react";
 import { useProject } from "@/context/ProjectContext";
 import "@xyflow/react/dist/style.css";
-import ConstraintNode from "./nodes/ConstraintNode";
-import SequenceNode from "./nodes/SequenceNode";
+import ConstraintNode from "./nodes/constraints/ConstraintNode";
+import SequenceNode from "./nodes/sequences/SequenceNode";
 
 const nodeTypes = {
 	constraint: ConstraintNode,
 	sequence: SequenceNode,
 };
 
-const BlockEditor = () => {
+const GraphEditor = () => {
 	const {
 		nodes,
 		edges,
@@ -38,7 +38,6 @@ const BlockEditor = () => {
 				onEdgesChange={onEdgesChange}
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
-				defaultEdgeOptions={{ animated: true, style: { stroke: "oklch(70.4% 0.04 256.788)" } }}
 				fitView
 				className="bg-slate-50"
 				proOptions={{ hideAttribution: true }}
@@ -60,10 +59,10 @@ const BlockEditor = () => {
 	);
 };
 
-const BlockEditorWrapper = () => (
+const GraphEditorWrapper = () => (
 	<ReactFlowProvider>
-		<BlockEditor />
+		<GraphEditor />
 	</ReactFlowProvider>
 );
 
-export default BlockEditorWrapper;
+export default GraphEditorWrapper;

@@ -15,7 +15,7 @@ export interface ProjectJSON {
 	// Add other fields if your 'projects' table has them e.g. user_id, code
 }
 
-type Mode = "blocks" | "code";
+type Mode = "graph" | "code";
 
 // convert ProjectJSON to Project
 const mapProjectJsonToProject = (p: ProjectJSON): Project => ({
@@ -46,7 +46,7 @@ interface GlobalContextType {
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
-	const [mode, setMode] = useState<Mode>("blocks");
+	const [mode, setMode] = useState<Mode>("graph");
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [currentProject, setCurrentProject] = useState<Project | null>(null);
 	const supabase: SupabaseClient = createClient();

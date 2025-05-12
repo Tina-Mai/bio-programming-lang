@@ -1,6 +1,6 @@
 import React from "react";
 import { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
-import Node from "./Node";
+import Node from "../Node";
 import { GeneratorNode } from "@/types";
 
 export interface SequenceNodeData {

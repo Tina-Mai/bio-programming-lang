@@ -5,6 +5,7 @@ import { Chip } from "@carbon/icons-react";
 import Node from "@/components/program/nodes/Node";
 import SequenceTypeDropdown from "./SequenceTypeDropdown";
 import GeneratorDropdown from "../generators/GeneratorDropdown";
+// import StatusDot from "@/components/global/StatusDot";
 
 export interface SequenceNodeData {
 	type: string;
@@ -29,13 +30,14 @@ const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id
 				<div className="horizontal bg-system-slate/50 text-slate-500 px-3 py-2 items-center font-mono border-y border-slate-300 gap-2 capitalize">
 					<Chip className="text-zinc-500/75" /> Generator
 				</div>
-				<div className="vertical bg-system-slate/25 justify-start items-start gap-1 p-3">
+				<div className="horizontal bg-system-slate/25 justify-start items-center gap-3 p-3">
 					<GeneratorDropdown
 						generator={data.generator}
 						setGenerator={(generator) => {
 							data.generator = generator;
 						}}
 					/>
+					{/* {!data.generator && <StatusDot />} */}
 				</div>
 			</div>
 		</Node>

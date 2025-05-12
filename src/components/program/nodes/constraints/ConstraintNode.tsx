@@ -3,6 +3,7 @@ import { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
 import ConstraintDropdown from "./ConstraintDropdown";
 import { Constraint } from "@/types";
 import Node from "@/components/program/nodes/Node";
+// import StatusDot from "@/components/global/StatusDot";
 
 export interface ConstraintNodeData {
 	name: Constraint["name"];
@@ -20,8 +21,9 @@ const ConstraintNodeComponent: React.FC<NodeProps<ConstraintNodeType>> = ({ data
 
 	return (
 		<Node type="constraint" selected={selected} handlePosition="bottom" id={id}>
-			<div className="p-3">
+			<div className="horizontal gap-3 items-center p-3">
 				<ConstraintDropdown constraint={data.constraint} setConstraint={updateConstraint} />
+				{/* {!data.constraint && <StatusDot />} */}
 			</div>
 		</Node>
 	);

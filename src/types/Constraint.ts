@@ -1,11 +1,10 @@
 export interface Constraint {
 	id: string;
 	name: string;
-	description?: string;
 	scoring_function: string; // function name
 }
 
-export const constraintOptions = [
+export const constraintOptions: Constraint[] = [
 	{
 		id: "sequence-length",
 		name: "Sequence Length",

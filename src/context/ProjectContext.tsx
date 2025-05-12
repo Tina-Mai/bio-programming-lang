@@ -32,6 +32,8 @@ interface ProjectContextProps {
 	applyLayout: () => void;
 	deleteNode: (nodeId: string) => Promise<void>;
 	duplicateNode: (nodeId: string) => Promise<void>;
+	addConstraintNode: () => Promise<void>;
+	addSequenceNode: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -677,6 +679,110 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[supabase, nodes, currentProject?.id, currentProjectGraphData, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
 	);
 
+	// --- Add new node functions ---
+	const addConstraintNode = useCallback(async () => {
+		if (!currentProject?.id) {
+			setGraphError("Cannot add node: No active project selected.");
+			return;
+		}
+		setIsGraphLoading(true);
+		setGraphError(null);
+		try {
+			const payload = {
+				key: "select_constraint", // Default key, user can change later
+				project_id: currentProject.id,
+			};
+			const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
+			if (error) throw new Error(`Supabase constraint_node insert error: ${error.message}`);
+			if (!data) throw new Error("No data returned from constraint_node insertion.");
+
+			const newDbNode = data as SupabaseConstraintNode;
+			const newNode: FlowNode = {
+				id: newDbNode.id,
+				type: "constraint",
+				position: { x: 100, y: 100 }, // Default position, layout will adjust
+				data: { constraint: { key: newDbNode.key } }, // Use the key from DB
+			};
+
+			// update local React Flow state
+			setNodes((nds) => [...nds, newNode]);
+
+			// update currentProjectGraphData
+			setCurrentProjectGraphData((prevData) => {
+				if (!prevData) return null; // Should not happen if project is selected
+				return {
+					...prevData,
+					constraintNodes: [...prevData.constraintNodes, newDbNode],
+				};
+			});
+
+			await _markProjectUpdated();
+			console.log(`Constraint node added successfully with ID: ${newNode.id}`);
+		} catch (error: unknown) {
+			setGraphError(`Failed to add constraint node: ${error instanceof Error ? error.message : String(error)}`);
+			console.error("Failed to add constraint node:", error);
+		} finally {
+			setIsGraphLoading(false);
+		}
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+
+	const addSequenceNode = useCallback(async () => {
+		if (!currentProject?.id) {
+			setGraphError("Cannot add node: No active project selected.");
+			return;
+		}
+		setIsGraphLoading(true);
+		setGraphError(null);
+		try {
+			const payload = {
+				type: "dna", // Default type, user can change later
+				sequence: "", // Default empty sequence
+				project_id: currentProject.id,
+				generator_id: null,
+			};
+			const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
+			if (error) throw new Error(`Supabase sequence_node insert error: ${error.message}`);
+			if (!data) throw new Error("No data returned from sequence_node insertion.");
+
+			const newDbNode = data as SupabaseSequenceNode;
+			const newNode: FlowNode = {
+				id: newDbNode.id,
+				type: "sequence",
+				position: { x: 150, y: 150 }, // Default position, offset from constraint
+				data: {
+					sequence: {
+						id: newDbNode.id,
+						type: newDbNode.type,
+						sequence: newDbNode.sequence,
+						// No generator initially
+					},
+				},
+			};
+
+			// update local React Flow state
+			setNodes((nds) => [...nds, newNode]);
+
+			// update currentProjectGraphData
+			setCurrentProjectGraphData((prevData) => {
+				if (!prevData) return null;
+				return {
+					...prevData,
+					sequenceNodes: [...prevData.sequenceNodes, newDbNode],
+					// No generator node to add initially
+				};
+			});
+
+			await _markProjectUpdated();
+			console.log(`Sequence node added successfully with ID: ${newNode.id}`);
+		} catch (error: unknown) {
+			setGraphError(`Failed to add sequence node: ${error instanceof Error ? error.message : String(error)}`);
+			console.error("Failed to add sequence node:", error);
+		} finally {
+			setIsGraphLoading(false);
+		}
+	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+	// --- End add new node functions ---
+
 	const value: ProjectContextProps = {
 		nodes,
 		edges,
@@ -695,6 +801,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		applyLayout,
 		deleteNode,
 		duplicateNode,
+		addConstraintNode,
+		addSequenceNode,
 	};
 	return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

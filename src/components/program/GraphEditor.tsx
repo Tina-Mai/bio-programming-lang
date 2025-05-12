@@ -18,7 +18,7 @@ const edgeTypes = {
 };
 
 const GraphEditor = () => {
-	const { nodes, edges, onNodesChange, onEdgesChange, onConnect, applyLayout, isGraphLoading } = useProject();
+	const { nodes, edges, onNodesChange, onEdgesChange, onConnect, applyLayout, isGraphLoading, addConstraintNode, addSequenceNode } = useProject();
 	const { fitView } = useReactFlow();
 	const [isInitialLayoutDone, setIsInitialLayoutDone] = useState(false);
 
@@ -70,29 +70,32 @@ const GraphEditor = () => {
 				/>
 				<Panel position="bottom-left" style={{ marginBottom: "125px" }}>
 					<Button onClick={handleAutoLayout} variant="outline" size="sm" className="group text-xs !px-1.5 h-6 bg-white !text-slate-500 hover:!text-slate-600 font-medium">
-						<Grid className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
+						<Grid className="text-slate-400" />
 						Auto Layout
 					</Button>
 				</Panel>
 				<Panel position="top-left" style={{ marginTop: "60px" }} className="horizontal items-center gap-2">
+					{/* <div className="vertical bg-white border border-slate-300 rounded-sm px-3 py-2 gap-2">
+						<div className="text-xs font-medium text-slate-500">New nodes</div> */}
 					<Button
-						onClick={handleAutoLayout}
+						onClick={addConstraintNode}
 						variant="outline"
 						size="sm"
-						className="group text-xs bg-system-yellow/50 hover:bg-system-yellow/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-md"
+						className="group text-xs bg-system-yellow/50 hover:bg-system-yellow/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-sm"
 					>
 						<SettingsAdjust className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
-						New constraint
+						New Constraint
 					</Button>
 					<Button
-						onClick={handleAutoLayout}
+						onClick={addSequenceNode}
 						variant="outline"
 						size="sm"
-						className="group text-xs bg-system-blue/50 hover:bg-system-blue/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-md"
+						className="group text-xs bg-system-blue/50 hover:bg-system-blue/70 backdrop-blur-sm !text-slate-500 hover:!text-slate-600 gap-2 rounded-sm"
 					>
 						<Term className="text-slate-400 group-hover:text-slate-500 transition-all duration-200" />
-						New sequence
+						New Sequence
 					</Button>
+					{/* </div> */}
 				</Panel>
 			</ReactFlow>
 		</div>

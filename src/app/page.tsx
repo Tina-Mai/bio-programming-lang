@@ -18,7 +18,7 @@ export default function Home() {
 					<Image src="/logo.svg" alt="Logo" width={50} height={50} className="mb-5" />
 					<Button variant="outline" size="sm" className="w-full text-slate-600" onClick={createNewProject}>
 						<AddLarge size={20} />
-						New design
+						New Design
 					</Button>
 					<div className="vertical">
 						<div className="horizontal items-center gap-2 mb-3 text-slate-500">

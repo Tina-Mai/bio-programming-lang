@@ -43,13 +43,18 @@ const BlockEditor = () => {
 				className="bg-slate-50"
 				proOptions={{ hideAttribution: true }}
 			>
-				<Background />
-				<Controls />
-				<MiniMap nodeStrokeWidth={3} zoomable pannable />
-				{/* <Panel position="top-left">
-					<button onClick={() => onLayout("TB")}>Vertical Layout</button>
-					<button onClick={() => onLayout("LR")}>Horizontal Layout</button>
-				</Panel> */}
+				<Background color="oklch(70.4% 0.04 256.788 / 0.6)" gap={20} size={2} style={{ opacity: 1 }} />
+				<Controls position="bottom-left" style={{ display: "flex", flexDirection: "row", marginBottom: "125px" }} showZoom={true} showFitView={true} showInteractive={true} />
+				<MiniMap
+					nodeColor={"oklch(70.4% 0.04 256.788 / 0.15)"}
+					nodeStrokeWidth={3}
+					zoomable
+					pannable
+					position="bottom-left"
+					style={{ width: 125, height: 100 }}
+					nodeBorderRadius={2}
+					maskColor="oklch(92.9% 0.013 255.508 / 0.7)"
+				/>
 			</ReactFlow>
 		</div>
 	);

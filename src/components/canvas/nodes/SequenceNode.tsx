@@ -21,7 +21,7 @@ const GeneratorDropdownPlaceholder: React.FC = () => {
 
 const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id, selected }) => {
 	return (
-		<Node bgClassName="bg-system-blue/50" selected={selected} title="Sequence" handlePosition="top" id={id}>
+		<Node type="sequence" selected={selected} handlePosition="top" id={id}>
 			<div className="vertical items-center justify-center gap-2">
 				<div className="vertical gap-1">
 					<div>{data.label}</div>

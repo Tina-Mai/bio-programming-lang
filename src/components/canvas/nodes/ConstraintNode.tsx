@@ -16,7 +16,7 @@ export type ConstraintNodeType = ReactFlowNode<ConstraintNodeData, "constraint">
 // The component receives NodeProps which includes id, data, selected, etc.
 const ConstraintNodeComponent: React.FC<NodeProps<ConstraintNodeType>> = ({ data, id, selected }) => {
 	return (
-		<Node bgClassName="bg-system-yellow/50" selected={selected} title="Constraint" handlePosition="bottom" id={id}>
+		<Node type="constraint" selected={selected} handlePosition="bottom" id={id}>
 			<div>
 				<div>{data.label}</div>
 			</div>

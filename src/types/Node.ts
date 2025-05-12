@@ -1,3 +1,4 @@
+import { Constraint } from "./Constraint";
 export type SequenceType = "dna" | "rna" | "protein";
 export interface SequenceNode {
 	id: string;
@@ -10,7 +11,7 @@ export interface SequenceNode {
 export interface ConstraintNode {
 	id: string;
 	name: string;
-	scoring_function: string; // function name
+	constraint: Constraint;
 }
 
 export interface GeneratorNode {

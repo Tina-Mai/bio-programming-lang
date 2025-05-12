@@ -1,6 +1,6 @@
 import React from "react";
 import { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
-import { SequenceNode, SequenceType, Generator } from "@/types";
+import { SequenceNode, SequenceType } from "@/types";
 import { Chip } from "@carbon/icons-react";
 import Node from "@/components/program/nodes/Node";
 import SequenceTypeDropdown from "./SequenceTypeDropdown";
@@ -9,7 +9,6 @@ import GeneratorDropdown from "../generators/GeneratorDropdown";
 
 export interface SequenceNodeData {
 	sequence?: SequenceNode;
-	generator?: Generator;
 	[key: string]: unknown;
 }
 
@@ -32,12 +31,11 @@ const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id
 				</div>
 				<div className="horizontal bg-system-slate/25 justify-start items-center gap-3 p-3">
 					<GeneratorDropdown
-						generator={data.generator || undefined}
+						generator={data.sequence?.generator || undefined}
 						setGenerator={(generator) => {
 							data.generator = generator;
 						}}
 					/>
-					<div>{data.generator?.name}</div>
 					{/* {!data.generator && <StatusDot />} */}
 				</div>
 			</div>

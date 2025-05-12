@@ -1,4 +1,5 @@
 import { Constraint } from "./Constraint";
+import { Generator } from "./Generator";
 export type SequenceType = "dna" | "rna" | "protein";
 
 export interface SequenceNode {

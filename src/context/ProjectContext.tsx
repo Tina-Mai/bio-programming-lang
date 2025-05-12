@@ -75,20 +75,28 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			try {
 				const projectId = currentProject.id;
 
-				// Fetch nodes first
-				const [cnResult, snResult, gnResult] = await Promise.all([
+				// Fetch constraint_nodes and sequence_nodes first
+				const [cnResult, snResult] = await Promise.all([
 					supabase.from("constraint_nodes").select("*").eq("project_id", projectId),
 					supabase.from("sequence_nodes").select("*").eq("project_id", projectId),
-					supabase.from("generator_nodes").select("*").eq("project_id", projectId),
 				]);
 
 				if (cnResult.error) throw new Error(`Supabase fetch error (constraint_nodes): ${cnResult.error.message}`);
 				if (snResult.error) throw new Error(`Supabase fetch error (sequence_nodes): ${snResult.error.message}`);
-				if (gnResult.error) throw new Error(`Supabase fetch error (generator_nodes): ${gnResult.error.message}`);
 
 				const fetchedConstraintNodes = (cnResult.data as SupabaseConstraintNode[]) || [];
 				const fetchedSequenceNodes = (snResult.data as SupabaseSequenceNode[]) || [];
-				const fetchedGeneratorNodes = (gnResult.data as SupabaseGeneratorNode[]) || [];
+
+				let fetchedGeneratorNodes: SupabaseGeneratorNode[] = [];
+				const generatorIds = fetchedSequenceNodes.map((sn) => sn.generator_id).filter((id): id is string => typeof id === "string" && id !== ""); // Get unique, non-null/empty generator_ids
+
+				if (generatorIds.length > 0) {
+					// Deduplicate IDs before fetching
+					const uniqueGeneratorIds = [...new Set(generatorIds)];
+					const { data: gnData, error: gnError } = await supabase.from("generator_nodes").select("*").in("id", uniqueGeneratorIds);
+					if (gnError) throw new Error(`Supabase fetch error (generator_nodes): ${gnError.message}`);
+					fetchedGeneratorNodes = (gnData as SupabaseGeneratorNode[]) || [];
+				}
 
 				let fetchedEdges: SupabaseDBEdge[] = [];
 				const constraintNodeIds = fetchedConstraintNodes.map((n) => n.id);

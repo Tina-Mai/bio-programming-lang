@@ -101,8 +101,8 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData): FlowDat
 					type: dbNode.type,
 					sequence: dbNode.sequence,
 					metadata: dbNode.metadata,
+					generator: resolvedGenerator,
 				},
-				generator: resolvedGenerator,
 			},
 		});
 	});

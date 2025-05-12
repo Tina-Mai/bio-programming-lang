@@ -7,17 +7,6 @@ import { Button } from "@/components/ui/button";
 import HelpTooltip from "@/components/global/HelpTooltip";
 import { cn } from "@/lib/utils";
 
-/*
-	Sequence Component
-	Displays a sequence of nucleotides in a canvas with zoom functionality.
-	- Dynamic width based on zoom level
-	- Zoom in/out with scroll or pinch gestures
-	- Horizontal scrolling to move along the sequence
-	- Ruler at the bottom showing nucleotide positions
-	- Zooms in/out from cursor position
-	- Smooth animations for zooming and transitions
-*/
-
 const SequenceKey = () => {
 	return (
 		<div className="horizontal gap-1.5 items-center justify-center text-[10px]">
@@ -67,7 +56,7 @@ const NucleotideTooltip = ({ tooltipPosition, hoveredNucleotide }: { tooltipPosi
 	);
 };
 
-const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: SequenceType; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
+const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: SequenceType; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
 	const sequenceString: string = sequence?.sequence || "";
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -151,37 +140,28 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 		[isHovering, zoomLevel, offset, sequenceString, nucleotideWidth, baseWidth, visibleWidth, calculateMinZoomLevel]
 	);
 
-	// Get nucleotide at position
+	// get nucleotide at position
 	const getNucleotideAtPosition = useCallback(
 		(x: number, y: number) => {
 			const canvas = canvasRef.current;
 			if (!canvas || !sequenceString) return null;
-
-			const height = (canvas.height * 0.65) / dpr; // Same height ratio as in drawSequence
-
-			// Check if y coordinate is in the nucleotide area
+			const height = (canvas.height * 0.65) / dpr;
 			if (y < 0 || y > height) return null;
-
-			// Calculate nucleotide index
 			const nucleotideIndex = Math.floor((x + offset) / nucleotideWidth);
-
-			// Check if index is valid
 			if (nucleotideIndex < 0 || nucleotideIndex >= sequenceString.length) return null;
 
 			return {
 				position: nucleotideIndex,
 				base: sequenceString[nucleotideIndex],
 				x: nucleotideIndex * nucleotideWidth - offset + nucleotideWidth / 2,
-				y: 5, // Fixed Y position just above the nucleotide
+				y: 5,
 			};
 		},
 		[sequenceString, offset, nucleotideWidth, dpr]
 	);
 
-	// Handle updating the tooltip - simpler, more reliable version
 	const updateTooltip = useCallback(
 		(nucleotide: { position: number; base: string; x: number; y: number } | null) => {
-			// If we're moving away from a nucleotide
 			if (!nucleotide) {
 				if (tooltipOpen) {
 					setTooltipOpen(false);
@@ -196,7 +176,6 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 				return;
 			}
 
-			// If it's the same nucleotide, just make sure tooltip is shown
 			if (lastHoveredPositionRef.current === nucleotide.position) {
 				if (!tooltipOpen) {
 					setTooltipOpen(true);
@@ -204,7 +183,6 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 				return;
 			}
 
-			// Update for a new nucleotide
 			lastHoveredPositionRef.current = nucleotide.position;
 			setTooltipPosition({
 				x: nucleotide.x,
@@ -222,7 +200,7 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 			if (!isHovering) return;
 			setIsDragging(true);
 			setLastMouseX(e.clientX);
-			setTooltipOpen(false); // Hide tooltip when dragging starts
+			setTooltipOpen(false);
 		},
 		[isHovering]
 	);
@@ -237,7 +215,6 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 			const x = e.clientX - rect.left;
 			const y = e.clientY - rect.top;
 
-			// If dragging, hide tooltip and handle drag
 			if (isDragging) {
 				if (tooltipOpen) {
 					setTooltipOpen(false);
@@ -251,7 +228,6 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 				return;
 			}
 
-			// If not dragging, handle tooltip
 			const nucleotide = getNucleotideAtPosition(x, y);
 			updateTooltip(nucleotide);
 		},
@@ -263,7 +239,7 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 		setIsDragging(false);
 	}, []);
 
-	// Handle mouse enter/leave
+	// handle mouse enter/leave
 	const handleMouseEnter = useCallback(() => {
 		setIsHovering(true);
 	}, []);
@@ -552,4 +528,4 @@ const Sequence = ({ sequence, showSequence, setShowSequence }: { sequence: Seque
 	);
 };
 
-export default Sequence;
+export default SequenceViewer;

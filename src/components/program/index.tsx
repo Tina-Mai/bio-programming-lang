@@ -9,7 +9,7 @@ import EnergyDialog from "@/components/energy/EnergyDialog";
 import GraphEditor from "@/components/program/GraphEditor";
 import CodeEditor from "@/components/program/CodeEditor";
 import ProjectTabs from "@/components/program/ProjectTabs";
-import Sequence from "@/components/program/Sequence";
+import SequenceViewer from "@/components/program/SequenceViewer";
 
 const mockSequence = {
 	id: "1",
@@ -42,7 +42,6 @@ const Program = () => {
 			setTimeout(() => {
 				setShowCodeEditor(true);
 				setTransitioning(false);
-				// Force editor refresh after animation
 				setTimeout(() => {
 					if (editorRef.current) {
 						editorRef.current.requestMeasure();
@@ -86,7 +85,7 @@ const Program = () => {
 
 					<ProjectProvider>
 						<div className="relative h-full w-full">
-							{/* Graph Editor with animation */}
+							{/* graph editor with animation */}
 							<div
 								className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
@@ -98,7 +97,7 @@ const Program = () => {
 								<GraphEditor />
 							</div>
 
-							{/* Code Editor with animation */}
+							{/* code editor with animation */}
 							<div
 								className={`absolute overflow-y-auto inset-0 mt-12 pb-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 								${
@@ -112,10 +111,10 @@ const Program = () => {
 						</div>
 					</ProjectProvider>
 				</div>
-				{/* Sequence viewer */}
+				{/* sequence viewer */}
 				<div className={`relative vertical border-t border-slate-300 py-3 ${showSequence ? "h-36" : "h-min cursor-pointer"}`} onClick={() => !showSequence && setShowSequence(!showSequence)}>
 					{showSequence ? (
-						<Sequence sequence={mockSequence} showSequence={showSequence} setShowSequence={setShowSequence} />
+						<SequenceViewer sequence={mockSequence} showSequence={showSequence} setShowSequence={setShowSequence} />
 					) : (
 						<div className="horizontal items-center justify-between text-slate-400 text-sm px-5">
 							<div className="flex horizontal items-center gap-1.5">

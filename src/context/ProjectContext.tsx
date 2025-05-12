@@ -23,22 +23,14 @@ interface ProjectContextProps {
 	onEdgesChange: OnEdgesChange;
 	onConnect: (connection: Connection) => Promise<void>;
 	deleteEdge: (edgeId: string) => Promise<void>;
-
 	isGraphLoading: boolean;
 	graphError: string | null;
 	currentProjectGraphData: GraphData | null;
-
 	updateConstraintNodeConstraint: (nodeId: string, constraint: import("@/types/Constraint").Constraint) => Promise<void>;
 	updateSequenceNodeType: (nodeId: string, type: import("@/types/Node").SequenceType) => Promise<void>;
 	updateSequenceNodeGenerator: (nodeId: string, generator: import("@/types/Generator").Generator) => Promise<void>;
-
-	// Add a new method to trigger layout
 	applyLayout: () => void;
-
-	// Add a new method to delete a node
 	deleteNode: (nodeId: string) => Promise<void>;
-
-	// Add a new method to duplicate a node
 	duplicateNode: (nodeId: string) => Promise<void>;
 }
 
@@ -210,15 +202,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		fetchProjectGraphData();
 	}, [currentProject?.id, supabase, setNodes, setEdges]);
 
-	// Apply layout to current nodes and edges
+	// apply layout to current nodes and edges
 	const applyLayout = useCallback(() => {
-		// Apply layout to edges
 		setEdges((edges) => {
 			const { edges: layoutedEdges } = getLayoutedElements(nodes, edges);
 			return layoutedEdges;
 		});
-
-		// Apply layout to nodes
 		setNodes((nodes) => {
 			const { nodes: layoutedNodes } = getLayoutedElements(nodes, edges);
 			return layoutedNodes;
@@ -236,21 +225,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			return;
 		}
 
-		// MODIFIED: Pass current nodes state to preserve positions
+		// pass current nodes state to preserve positions
 		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData, nodes);
 		console.log("Converted to flow (preserving positions): ", { convertedNodes, convertedEdges });
 
-		// Apply the converted nodes and edges directly
+		// apply the converted nodes and edges directly
 		if (isMounted) {
 			setNodes(convertedNodes);
 			setEdges(convertedEdges);
-			// REMOVED comment about layout being applied here
 		}
 
 		return () => {
 			isMounted = false;
 		};
-		// MODIFIED: Removed nodes from dependency array to break loop
 	}, [currentProjectGraphData, isGraphLoading, setNodes, setEdges]);
 
 	const onConnect = useCallback(
@@ -269,7 +256,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
-			// Check for existing edge
+			// check for existing edge
 			const existingEdge = currentProjectGraphData?.edges.find((edge) => edge.constraint_id === connection.source && edge.sequence_id === connection.target);
 
 			if (existingEdge) {

@@ -38,6 +38,7 @@ const BlockEditor = () => {
 				onEdgesChange={onEdgesChange}
 				onConnect={onConnect}
 				nodeTypes={nodeTypes}
+				defaultEdgeOptions={{ animated: true }}
 				fitView
 				className="bg-slate-50"
 				proOptions={{ hideAttribution: true }}

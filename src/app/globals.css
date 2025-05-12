@@ -9,6 +9,10 @@
 }
 
 :root {
+	--system-yellow: rgba(255, 250, 227);
+	--system-blue: rgba(235, 244, 255);
+	--system-blue-2: rgba(220, 240, 255);
+	--system-slate: rgba(226, 232, 240);
 	--radius: 0.625rem;
 	--background: oklch(96.8% 0.007 247.896); /* slate-100 */
 	--foreground: oklch(12.9% 0.042 264.695); /* slate-950 */
@@ -49,6 +53,10 @@
 }
 
 @theme inline {
+	--color-system-yellow: var(--system-yellow);
+	--color-system-blue: var(--system-blue);
+	--color-system-blue-2: var(--system-blue-2);
+	--color-system-slate: var(--system-slate);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--font-sans: var(--font-geist-sans);

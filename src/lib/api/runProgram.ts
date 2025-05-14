@@ -89,5 +89,6 @@ export async function runProgram(programId: string) {
 		const errorMessage = errorPayload.message || errorPayload.detail || errorPayload.error || `API error: ${res.status}`;
 		throw new Error(errorMessage);
 	}
-	return res.json();
+	// Expecting { final_output_id: string, status: "complete" } or an error structure
+	return res.json() as Promise<{ final_output_id: string; status: string; message?: string }>;
 }

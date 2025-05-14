@@ -31,11 +31,17 @@ export async function POST(request: Request) {
 
 		if (!fastApiResponse.ok) {
 			console.error(`FastAPI backend error for program_id ${program_id}: status=${fastApiResponse.status} body=${JSON.stringify(responseData, null, 2)}`);
-			return NextResponse.json(responseData, { status: fastApiResponse.status });
+			const errorDetail = responseData.detail || responseData.message || `FastAPI error: ${fastApiResponse.statusText}`;
+			return NextResponse.json({ message: errorDetail, ...(typeof responseData === "object" && responseData) }, { status: fastApiResponse.status });
 		}
 
-		// successfully proxied, return FastAPI's response
-		return NextResponse.json(responseData, { status: fastApiResponse.status });
+		if (responseData.final_output_id) {
+			console.log(`FastAPI backend returned final_output_id: ${responseData.final_output_id} for program_id: ${program_id}`);
+			return NextResponse.json({ final_output_id: responseData.final_output_id, status: "complete" }, { status: 200 });
+		} else {
+			console.error(`FastAPI backend did not return final_output_id for program_id ${program_id}. Response: ${JSON.stringify(responseData)}`);
+			return NextResponse.json({ message: "FastAPI backend did not return the expected final_output_id.", details: responseData }, { status: 500 });
+		}
 	} catch (error) {
 		console.error("Error in Next.js proxy /api/run_program:", error);
 		const errorMessage = error instanceof Error ? error.message : "An unknown error occurred in proxy";

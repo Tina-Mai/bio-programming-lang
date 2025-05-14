@@ -1,6 +1,16 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState, useRef } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
-import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge, RawProgramGraphData, SupabaseProgram, SupabaseDBOutput } from "@/lib/utils";
+import {
+	convertProjectDataToFlow,
+	SupabaseSequenceNode,
+	SupabaseConstraintNode,
+	SupabaseGeneratorNode,
+	SupabaseDBEdge,
+	RawProgramGraphData,
+	SupabaseProgram,
+	SupabaseDBOutput,
+	parseOutputMetadata,
+} from "@/lib/utils/program";
 import { getLayoutedElements } from "@/lib/utils/layout";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
@@ -14,7 +24,7 @@ interface ProgramProviderProps {
 	children: ReactNode;
 	currentProgram: SupabaseProgram | null;
 	currentProjectId: string | undefined;
-	onProgramModified: () => Promise<void>;
+	onProgramModified: (updatedProgramWithFullOutput?: SupabaseProgram) => Promise<void>;
 }
 
 interface ProgramContextProps {
@@ -68,7 +78,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "finalizing" | "completed" | "error" | "validation_error">("idle");
 	const [programRunError, setProgramRunError] = useState<string | null>(null);
 	const [programOutputs, setProgramOutputs] = useState<SupabaseDBOutput[]>([]);
-	const [pendingFinalOutputData, setPendingFinalOutputData] = useState<{ _metadata: unknown } | null>(null);
 	const outputsSubscriptionRef = useRef<RealtimeChannel | null>(null);
 	const [validationErrors, setValidationErrors] = useState<ProgramValidationError[] | null>(null);
 
@@ -76,11 +85,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	useEffect(() => {
 		currentProgramRef.current = currentProgram;
 	}, [currentProgram]);
-
-	const pendingFinalOutputDataRef = useRef(pendingFinalOutputData);
-	useEffect(() => {
-		pendingFinalOutputDataRef.current = pendingFinalOutputData;
-	}, [pendingFinalOutputData]);
 
 	const finalizeProgramRunWithOutput = useCallback(
 		async (finalOutputObject: SupabaseDBOutput) => {
@@ -92,6 +96,12 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				toast.error("Internal error during finalization.", { id: "program-run" });
 				return;
 			}
+
+			const programWithFullOutput: SupabaseProgram = {
+				...progToUpdate,
+				output: finalOutputObject,
+			};
+
 			try {
 				// Update the 'programs' table in DB with the ID of the output
 				const { error: updateError } = await supabase.from("programs").update({ output: finalOutputObject.id }).eq("id", progToUpdate.id);
@@ -100,18 +110,12 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 				console.log(`Successfully updated program ${progToUpdate.id} in DB with final output ID ${finalOutputObject.id}`);
 
-				// Update local state of currentProgramGraphData.program.output with the full object
-				// This assumes SupabaseProgram.output type is compatible with SupabaseDBOutput
 				setCurrentProgramGraphData((prevData) => {
 					if (!prevData || !prevData.program || prevData.program.id !== progToUpdate.id) return prevData;
-					const updatedProgram: SupabaseProgram = {
-						...prevData.program,
-						output: finalOutputObject, // Assign the full object
-					};
-					return { ...prevData, program: updatedProgram };
+					return { ...prevData, program: programWithFullOutput };
 				});
 
-				await onProgramModified();
+				await onProgramModified(programWithFullOutput);
 
 				setProgramRunStatus("completed");
 				toast.success("Program completed and final output recorded!", { id: "program-run" });
@@ -121,11 +125,9 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				setProgramRunError(message);
 				setProgramRunStatus("error");
 				toast.error(message, { id: "program-run" });
-			} finally {
-				setPendingFinalOutputData(null); // Clear pending data
 			}
 		},
-		[supabase, onProgramModified, setProgramRunStatus, setProgramRunError, setCurrentProgramGraphData]
+		[supabase, onProgramModified, setProgramRunStatus, setProgramRunError, setCurrentProgramGraphData, currentProgramRef]
 	);
 
 	const _getOrCreateGenerator = useCallback(
@@ -665,7 +667,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setProgramRunStatus("loading");
 		setProgramRunError(null);
 		setProgramOutputs([]);
-		setPendingFinalOutputData(null);
 		const toastId = "program-run";
 		toast.loading("Compiling program...", { id: toastId });
 
@@ -685,27 +686,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 					console.log("New output received via subscription (raw payload):", payload.new);
 					const newOutput = payload.new as SupabaseDBOutput;
 					setProgramOutputs((prevOutputs) => [...prevOutputs, newOutput]);
-
-					// check if this is the pending final output
-					const currentPendingData = pendingFinalOutputDataRef.current;
-					const currentProg = currentProgramRef.current;
-
-					if (currentPendingData && newOutput.program_id === currentProg?.id) {
-						const pendingMetadata = currentPendingData._metadata;
-						if (pendingMetadata && newOutput.metadata) {
-							try {
-								const metadataMatch = JSON.stringify(newOutput.metadata) === JSON.stringify(pendingMetadata);
-								if (metadataMatch) {
-									console.log("Matched final output in DB via subscription:", newOutput);
-									await finalizeProgramRunWithOutput(newOutput);
-								} else {
-									console.warn("Metadata mismatch for final output. Pending metadata:", JSON.stringify(pendingMetadata), "Received metadata:", JSON.stringify(newOutput.metadata));
-								}
-							} catch (e) {
-								console.error("Error comparing metadata for final output:", e);
-							}
-						}
-					}
 				})
 				.subscribe((status, err) => {
 					if (status === "SUBSCRIBED") {
@@ -726,13 +706,39 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 			const result = await runProgramApi.runProgram(progId);
 			console.log("Program run API call returned:", result);
 
-			if (result.status === "complete" && result.final_output) {
-				setPendingFinalOutputData(result.final_output);
+			if (result.status === "complete" && result.final_output_id) {
 				setProgramRunStatus("finalizing");
-				toast.loading("Program generated, processing final output...", { id: toastId });
-				console.log("Backend processing complete. Waiting for final output (metadata below) to be saved to DB and identified via subscription.", result.final_output._metadata);
+				toast.loading("Program generated, fetching final output...", { id: toastId });
+				console.log(`Backend processing complete. Fetching final output with ID: ${result.final_output_id}`);
+
+				// Fetch the final output directly from Supabase using the ID
+				const { data: finalOutputData, error: fetchError } = await supabase
+					.from("outputs")
+					.select("*, program_id, created_at, updated_at") // Be explicit to ensure all fields for SupabaseDBOutput
+					.eq("id", result.final_output_id)
+					.single();
+
+				if (fetchError) {
+					throw new Error(`Failed to fetch final output from Supabase: ${fetchError.message}`);
+				}
+
+				if (!finalOutputData) {
+					throw new Error(`Final output with ID ${result.final_output_id} not found in Supabase.`);
+				}
+
+				// Use parseOutputMetadata to ensure the metadata structure is correct and has defaults
+				const parsedMetadata = parseOutputMetadata(finalOutputData.metadata as Record<string, unknown>);
+				const finalOutputWithParsedMetadata: SupabaseDBOutput = {
+					id: finalOutputData.id,
+					program_id: finalOutputData.program_id, // ensure program_id is selected and assigned
+					metadata: parsedMetadata,
+					created_at: finalOutputData.created_at,
+					updated_at: finalOutputData.updated_at,
+				};
+
+				await finalizeProgramRunWithOutput(finalOutputWithParsedMetadata);
 			} else {
-				const errorMessage = result.message || "Backend processing failed or did not return final output.";
+				const errorMessage = result.message || "Backend processing failed or did not return final_output_id.";
 				console.error("Program run issue:", errorMessage, "Full result:", result);
 				throw new Error(errorMessage);
 			}

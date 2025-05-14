@@ -56,8 +56,8 @@ const NucleotideTooltip = ({ tooltipPosition, hoveredNucleotide }: { tooltipPosi
 	);
 };
 
-const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: string; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
-	const sequenceString = sequence;
+const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: string | undefined; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
+	const sequenceString = sequence || "";
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number>(0);

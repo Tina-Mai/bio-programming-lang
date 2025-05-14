@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, ReactNode, useEffect, useState } from "react";
-import { SupabaseProgram } from "@/lib/utils";
+import { SupabaseProgram, SupabaseDBOutput, parseOutputMetadata } from "@/lib/utils/program";
 import { useGlobal } from "./GlobalContext";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -51,20 +51,54 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			if (programsError) throw new Error(`Supabase fetch error (programs): ${programsError.message}`);
 
 			const fetchedPrograms = (programsData as SupabaseProgram[]) || [];
-			setProjectPrograms(fetchedPrograms);
 
-			if (fetchedPrograms.length === 0) {
+			const hydratedPrograms = await Promise.all(
+				fetchedPrograms.map(async (program) => {
+					if (program.output && typeof program.output === "string") {
+						const outputId = program.output;
+						const { data: outputData, error: outputError } = await supabase.from("outputs").select("*, program_id, created_at, updated_at").eq("id", outputId).single();
+
+						if (outputError) {
+							console.error(`Failed to fetch output details for program ${program.id}, output ID ${outputId}:`, outputError.message);
+							return { ...program, output: undefined }; // Set to undefined on error
+						}
+
+						if (outputData) {
+							const parsedMeta = parseOutputMetadata(outputData.metadata as Record<string, unknown>);
+							const fullOutput: SupabaseDBOutput = {
+								id: outputData.id,
+								program_id: outputData.program_id,
+								metadata: parsedMeta,
+								created_at: outputData.created_at,
+								updated_at: outputData.updated_at,
+							};
+							return { ...program, output: fullOutput };
+						}
+						// If outputData is null/undefined (but no error), means output ID didn't match any row
+						return { ...program, output: undefined }; // Set to undefined if no data found
+					}
+					// If program.output was not a string ID, or was already null/undefined, return as is.
+					// This also handles cases where program.output might already be a SupabaseDBOutput object.
+					return program;
+				})
+			);
+
+			setProjectPrograms(hydratedPrograms as SupabaseProgram[]); // Assert type after mapping
+
+			if (hydratedPrograms.length === 0) {
 				setCurrentProgram(null);
 			} else {
 				let programToSet: SupabaseProgram | undefined = undefined;
 				if (programIdToTryAndPreserve) {
-					programToSet = fetchedPrograms.find((p) => p.id === programIdToTryAndPreserve);
+					// Ensure we are finding from the correctly typed array
+					programToSet = (hydratedPrograms as SupabaseProgram[]).find((p) => p.id === programIdToTryAndPreserve);
 				}
 
 				if (programToSet) {
 					setCurrentProgram(programToSet);
 				} else {
-					const latestProgram = fetchedPrograms[0];
+					// Ensure we are picking from the correctly typed array
+					const latestProgram = (hydratedPrograms as SupabaseProgram[])[0];
 					setCurrentProgram(latestProgram);
 				}
 			}
@@ -78,9 +112,21 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		}
 	}, [currentProject?.id, supabase]);
 
-	const handleProgramModified = useCallback(async () => {
-		await fetchProjectPrograms();
-	}, [fetchProjectPrograms]);
+	const handleProgramModified = useCallback(
+		async (updatedProgramWithFullOutput?: SupabaseProgram) => {
+			await fetchProjectPrograms();
+
+			if (updatedProgramWithFullOutput?.output && typeof updatedProgramWithFullOutput.output === "object") {
+				setCurrentProgram((prevProgramFromFetch) => {
+					if (prevProgramFromFetch && prevProgramFromFetch.id === updatedProgramWithFullOutput.id) {
+						return updatedProgramWithFullOutput;
+					}
+					return prevProgramFromFetch;
+				});
+			}
+		},
+		[fetchProjectPrograms]
+	);
 
 	useEffect(() => {
 		if (currentProject?.id) {

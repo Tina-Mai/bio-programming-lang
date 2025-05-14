@@ -7,4 +7,5 @@ export interface OutputMetadata {
 	sequence?: string;
 	num_step?: number;
 	energy_score?: number;
+	[key: string]: unknown; // catch-all for other properties
 }

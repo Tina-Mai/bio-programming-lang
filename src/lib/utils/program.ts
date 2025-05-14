@@ -1,5 +1,5 @@
 import { Node as FlowNode, Edge as FlowEdge, XYPosition } from "@xyflow/react";
-import { Constraint, constraintOptions, Generator, generatorOptions, Output } from "@/types";
+import { Constraint, constraintOptions, Generator, generatorOptions, OutputMetadata } from "@/types";
 
 // base interface for Supabase entities
 export interface SupabaseBaseMinimal {
@@ -11,7 +11,7 @@ export interface SupabaseBaseMinimal {
 export interface SupabaseProgram extends SupabaseBaseMinimal {
 	project_id: string;
 	updated_at: string;
-	output?: Output;
+	output?: string | SupabaseDBOutput;
 }
 
 export interface SupabaseSequenceNode extends SupabaseBaseMinimal {
@@ -38,10 +38,21 @@ export interface SupabaseDBEdge extends SupabaseBaseMinimal {
 	sequence_id: string;
 }
 
-// TODO: !!! handle output node (especially metadata parsing)
 export interface SupabaseDBOutput extends SupabaseBaseMinimal {
 	program_id: string;
-	metadata: Record<string, unknown>;
+	metadata: OutputMetadata;
+}
+
+// helper function to parse the raw metadata from Supabase
+export function parseOutputMetadata(rawMetadata: Record<string, unknown>): OutputMetadata {
+	const { sequence, num_step, energy_score, ...other } = rawMetadata;
+
+	return {
+		sequence: typeof sequence === "string" ? sequence : undefined,
+		num_step: typeof num_step === "number" ? num_step : undefined,
+		energy_score: typeof energy_score === "number" ? energy_score : undefined,
+		...other,
+	};
 }
 
 // represents the raw graph data for a single Program, fetched from Supabase

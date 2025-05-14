@@ -1,18 +1,13 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
-import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge } from "@/lib/utils";
+import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge, RawProgramGraphData, SupabaseProgram } from "@/lib/utils";
 import { getLayoutedElements } from "@/lib/utils/layout";
 import { useGlobal } from "./GlobalContext";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 
-// structure for the raw graph data fetched from Supabase (using types from flowUtils)
-export interface GraphData {
-	sequenceNodes: SupabaseSequenceNode[];
-	constraintNodes: SupabaseConstraintNode[];
-	generatorNodes: SupabaseGeneratorNode[];
-	edges: SupabaseDBEdge[];
-}
+// The GraphData interface that was here is now effectively RawProgramGraphData from program.ts
+// We might still need a simplified version for the context value if RawProgramGraphData is too complex
 
 interface ProjectContextProps {
 	nodes: FlowNode[];
@@ -25,7 +20,8 @@ interface ProjectContextProps {
 	deleteEdge: (edgeId: string) => Promise<void>;
 	isGraphLoading: boolean;
 	graphError: string | null;
-	currentProjectGraphData: GraphData | null;
+	currentProgramGraphData: RawProgramGraphData | null; // Updated type
+	currentProgram: SupabaseProgram | null; // New state for the current program
 	updateConstraintNodeConstraint: (nodeId: string, constraint: import("@/types/Constraint").Constraint) => Promise<void>;
 	updateSequenceNodeType: (nodeId: string, type: import("@/types/Node").SequenceType) => Promise<void>;
 	updateSequenceNodeGenerator: (nodeId: string, generator: import("@/types/Generator").Generator) => Promise<void>;
@@ -34,6 +30,7 @@ interface ProjectContextProps {
 	duplicateNode: (nodeId: string) => Promise<void>;
 	addConstraintNode: () => Promise<void>;
 	addSequenceNode: () => Promise<void>;
+	// Potentially add function to switch programs or create new one
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -43,20 +40,28 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
 
-	const [currentProjectGraphData, setCurrentProjectGraphData] = useState<GraphData | null>(null);
+	const [currentProgram, setCurrentProgram] = useState<SupabaseProgram | null>(null); // New state
+	const [currentProgramGraphData, setCurrentProgramGraphData] = useState<RawProgramGraphData | null>(null); // Updated type
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
 
-	const _markProjectUpdated = useCallback(async () => {
-		if (!currentProject?.id) return;
+	// Helper to update the 'updated_at' timestamp of the current program
+	const _markProgramUpdated = useCallback(async () => {
+		if (!currentProgram?.id) return;
 		const newTimestamp = new Date();
-		const { error: projectUpdateError } = await supabase.from("projects").update({ updated_at: newTimestamp.toISOString() }).eq("id", currentProject.id);
-		if (projectUpdateError) {
-			console.warn(`Failed to update project updated_at timestamp: ${projectUpdateError.message}`);
+		const { error: programUpdateError } = await supabase.from("programs").update({ updated_at: newTimestamp.toISOString() }).eq("id", currentProgram.id);
+
+		if (programUpdateError) {
+			console.warn(`Failed to update program updated_at timestamp: ${programUpdateError.message}`);
+		} else {
+			setCurrentProgram((prev) => (prev ? { ...prev, updated_at: newTimestamp.toISOString() } : null));
+			// Also update the project's timestamp as an activity happened within it
+			if (currentProject?.id) {
+				updateProjectTimestamp(currentProject.id, newTimestamp);
+			}
 		}
-		updateProjectTimestamp(currentProject.id, newTimestamp);
-	}, [currentProject, supabase, updateProjectTimestamp]);
+	}, [currentProgram, supabase, updateProjectTimestamp, currentProject?.id]);
 
 	// get an existing generator or create a new one
 	const _getOrCreateGenerator = useCallback(
@@ -125,7 +130,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	useEffect(() => {
 		const fetchProjectGraphData = async () => {
 			if (!currentProject?.id) {
-				setCurrentProjectGraphData(null);
+				setCurrentProgram(null);
+				setCurrentProgramGraphData(null);
 				setNodes([]);
 				setEdges([]);
 				setIsGraphLoading(false);
@@ -134,20 +140,42 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
-			console.log(`Fetching graph data for project ID: ${currentProject.id}`);
+			console.log(`Fetching programs for project ID: ${currentProject.id}`);
 			setIsGraphLoading(true);
 			setGraphError(null);
-			setCurrentProjectGraphData(null);
+			setCurrentProgram(null);
+			setCurrentProgramGraphData(null);
 			setNodes([]);
 			setEdges([]);
 
 			try {
 				const projectId = currentProject.id;
 
-				// fetch constraint_nodes and sequence_nodes first
+				// 1. Fetch all programs for the current project
+				const { data: programsData, error: programsError } = await supabase
+					.from("programs")
+					.select("*")
+					.eq("project_id", projectId)
+					.order("created_at", { ascending: false })
+					.order("updated_at", { ascending: false }); // Secondary sort by updated_at
+
+				if (programsError) throw new Error(`Supabase fetch error (programs): ${programsError.message}`);
+				if (!programsData || programsData.length === 0) {
+					console.log(`No programs found for project ${projectId}.`);
+					// Potentially create a default program here if desired, or leave graph empty
+					setIsGraphLoading(false);
+					return;
+				}
+
+				const latestProgram = programsData[0] as SupabaseProgram;
+				setCurrentProgram(latestProgram);
+				console.log(`Using program ID: ${latestProgram.id} (created: ${latestProgram.created_at}, updated: ${latestProgram.updated_at})`);
+
+				// 2. Fetch graph components for the latest program
+				const programId = latestProgram.id;
 				const [cnResult, snResult] = await Promise.all([
-					supabase.from("constraint_nodes").select("*").eq("project_id", projectId),
-					supabase.from("sequence_nodes").select("*").eq("project_id", projectId),
+					supabase.from("constraint_nodes").select("*").eq("program_id", programId),
+					supabase.from("sequence_nodes").select("*").eq("program_id", programId),
 				]);
 
 				if (cnResult.error) throw new Error(`Supabase fetch error (constraint_nodes): ${cnResult.error.message}`);
@@ -157,10 +185,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const fetchedSequenceNodes = (snResult.data as SupabaseSequenceNode[]) || [];
 
 				let fetchedGeneratorNodes: SupabaseGeneratorNode[] = [];
-				const generatorIds = fetchedSequenceNodes.map((sn) => sn.generator_id).filter((id): id is string => typeof id === "string" && id !== ""); // Get unique, non-null/empty generator_ids
+				const generatorIds = fetchedSequenceNodes.map((sn) => sn.generator_id).filter((id): id is string => typeof id === "string" && id !== "");
 
 				if (generatorIds.length > 0) {
-					// deduplicate IDs before fetching
 					const uniqueGeneratorIds = [...new Set(generatorIds)];
 					const { data: gnData, error: gnError } = await supabase.from("generators").select("*").in("id", uniqueGeneratorIds);
 					if (gnError) throw new Error(`Supabase fetch error (generators): ${gnError.message}`);
@@ -168,35 +195,35 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 
 				let fetchedEdges: SupabaseDBEdge[] = [];
-				const constraintNodeIds = fetchedConstraintNodes.map((n) => n.id);
-				const sequenceNodeIdsSet = new Set(fetchedSequenceNodes.map((n) => n.id)); // For efficient lookup
+				// Edges are linked to a program directly and connect nodes within that program.
+				// We fetch edges belonging to the current programId.
+				const { data: dbEdges, error: edgeError } = await supabase.from("edges").select("*").eq("program_id", programId);
+				if (edgeError) throw new Error(`Supabase fetch error (edges): ${edgeError.message}`);
 
-				if (constraintNodeIds.length > 0) {
-					const { data: dbEdges, error: edgeError } = await supabase.from("edges").select("*").in("constraint_id", constraintNodeIds);
+				// Filter edges to ensure their source (constraint) and target (sequence) nodes
+				// were actually fetched for this program (belt-and-suspenders, good for data integrity checks)
+				const fetchedConstraintNodeIds = new Set(fetchedConstraintNodes.map((n) => n.id));
+				const fetchedSequenceNodeIds = new Set(fetchedSequenceNodes.map((n) => n.id));
 
-					if (edgeError) throw new Error(`Supabase fetch error (edges): ${edgeError.message}`);
-
-					if (dbEdges) {
-						// filter edges to ensure they connect to sequence nodes also in this project
-						fetchedEdges = (dbEdges as SupabaseDBEdge[]).filter((edge) => sequenceNodeIdsSet.has(edge.sequence_id));
-					}
-				} else {
-					fetchedEdges = [];
+				if (dbEdges) {
+					fetchedEdges = (dbEdges as SupabaseDBEdge[]).filter((edge) => fetchedConstraintNodeIds.has(edge.constraint_id) && fetchedSequenceNodeIds.has(edge.sequence_id));
 				}
 
-				const fetchedData: GraphData = {
+				const fetchedGraphDataForProgram: RawProgramGraphData = {
+					program: latestProgram,
 					constraintNodes: fetchedConstraintNodes,
 					sequenceNodes: fetchedSequenceNodes,
 					generatorNodes: fetchedGeneratorNodes,
 					edges: fetchedEdges,
 				};
-				setCurrentProjectGraphData(fetchedData);
-				console.log(`Successfully fetched graph data for project: ${currentProject.id}`, fetchedData);
+				setCurrentProgramGraphData(fetchedGraphDataForProgram);
+				console.log(`Successfully fetched graph data for program: ${latestProgram.id} in project: ${currentProject.id}`, fetchedGraphDataForProgram);
 			} catch (error: unknown) {
-				console.error("Error fetching or processing project graph data:", error);
+				console.error("Error fetching or processing project/program graph data:", error);
 				const message = error instanceof Error ? error.message : "An unknown error occurred";
 				setGraphError(`Failed to load project graph: ${message}`);
-				setCurrentProjectGraphData(null);
+				setCurrentProgram(null);
+				setCurrentProgramGraphData(null);
 			} finally {
 				setIsGraphLoading(false);
 			}
@@ -228,7 +255,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	// effect to convert raw graph data to flow elements
 	useEffect(() => {
 		let isMounted = true;
-		if (!currentProjectGraphData || isGraphLoading) {
+		if (!currentProgramGraphData || isGraphLoading) {
 			if (!isGraphLoading && isMounted) {
 				setNodes([]);
 				setEdges([]);
@@ -237,7 +264,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		}
 
 		// pass current nodes state to preserve positions
-		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProjectGraphData, nodes);
+		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProgramGraphData, nodes);
 		console.log("Converted to flow (preserving positions): ", { convertedNodes, convertedEdges });
 
 		// apply the converted nodes and edges directly
@@ -253,12 +280,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			isMounted = false;
 		};
 		// applyLayout is now included as a dependency
-	}, [currentProjectGraphData, isGraphLoading, setNodes, setEdges, applyLayout]);
+	}, [currentProgramGraphData, isGraphLoading, setNodes, setEdges, applyLayout]);
 
 	const onConnect = useCallback(
 		async (connection: Connection) => {
-			if (!currentProject || !currentProject.id || !connection.source || !connection.target) {
-				setGraphError("Cannot connect: missing project or node information.");
+			if (!currentProject || !currentProject.id || !currentProgram || !currentProgram.id || !connection.source || !connection.target) {
+				setGraphError("Cannot connect: missing project, program, or node information.");
 				return;
 			}
 
@@ -271,8 +298,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				return;
 			}
 
-			// check for existing edge
-			const existingEdge = currentProjectGraphData?.edges.find((edge) => edge.constraint_id === connection.source && edge.sequence_id === connection.target);
+			const existingEdge = currentProgramGraphData?.edges.find((edge) => edge.constraint_id === connection.source && edge.sequence_id === connection.target);
 
 			if (existingEdge) {
 				setGraphError("An edge already exists between these two nodes.");
@@ -283,6 +309,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newEdgePayload = {
 				constraint_id: connection.source,
 				sequence_id: connection.target,
+				program_id: currentProgram.id,
 			};
 
 			setIsGraphLoading(true);
@@ -300,8 +327,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					target: insertedEdge.sequence_id,
 				};
 				setEdges((eds) => addEdge(reactFlowEdge, eds));
-				await _markProjectUpdated();
-				setCurrentProjectGraphData((prevData) => {
+				await _markProgramUpdated();
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
 						...prevData,
@@ -316,7 +343,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[currentProject, supabase, _markProjectUpdated, setEdges, nodes, setCurrentProjectGraphData]
+		[currentProject, currentProgram, supabase, _markProgramUpdated, setEdges, nodes, setCurrentProgramGraphData, currentProgramGraphData?.edges]
 	);
 
 	// --- Update Functions ---
@@ -328,8 +355,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const { error } = await supabase.from("constraint_nodes").update({ key: constraint.key }).eq("id", nodeId);
 				if (error) throw new Error(error.message);
 
-				// update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				// update currentProgramGraphData
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
 						...prevData,
@@ -339,14 +366,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 				// update React Flow nodes state
 				setNodes((prevNodes) => prevNodes.map((node) => (node.id === nodeId && node.type === "constraint" ? { ...node, data: { ...node.data, constraint } } : node)));
-				await _markProjectUpdated();
+				await _markProgramUpdated();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update constraint: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData]
 	);
 
 	const updateSequenceNodeType = useCallback(
@@ -357,8 +384,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				const { error } = await supabase.from("sequence_nodes").update({ type }).eq("id", nodeId);
 				if (error) throw new Error(error.message);
 
-				// update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				// update currentProgramGraphData
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
 						...prevData,
@@ -382,14 +409,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 						return node;
 					})
 				);
-				await _markProjectUpdated();
+				await _markProgramUpdated();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update sequence type: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData]
 	);
 
 	const updateSequenceNodeGenerator = useCallback(
@@ -410,8 +437,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 				if (updateSeqError) throw new Error(`Supabase sequence_node update error: ${updateSeqError.message}`);
 
-				// update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				// update currentProgramGraphData
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 
 					const updatedSequenceNodes = prevData.sequenceNodes.map((sn) => (sn.id === nodeId ? { ...sn, generator_id: generatorId } : sn));
@@ -419,7 +446,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					const generatorExists = updatedGeneratorNodes.some((gn) => gn.id === generatorId);
 
 					if (!generatorExists) {
-						console.log(`Adding ${isNew ? "new" : "existing"} generator with ID ${generatorId} to currentProjectGraphData`);
+						console.log(`Adding ${isNew ? "new" : "existing"} generator with ID ${generatorId} to currentProgramGraphData`);
 						updatedGeneratorNodes.push(generatorNode);
 					}
 
@@ -447,7 +474,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					})
 				);
 
-				await _markProjectUpdated();
+				await _markProgramUpdated();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update generator: ${error instanceof Error ? error.message : String(error)}`);
 				console.error("Failed to update generator:", error);
@@ -455,7 +482,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProjectUpdated, setCurrentProjectGraphData, _getOrCreateGenerator]
+		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData, _getOrCreateGenerator]
 	);
 
 	// delete an edge
@@ -471,8 +498,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				// filter out deleted edge without affecting nodes
 				setEdges((eds) => eds.filter((e) => e.id !== edgeId));
 
-				// update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				// update currentProgramGraphData
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					return {
 						...prevData,
@@ -480,7 +507,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				await _markProjectUpdated();
+				await _markProgramUpdated();
 				console.log(`Edge ${edgeId} deleted successfully`);
 			} catch (error: unknown) {
 				setGraphError(`Failed to delete edge: ${error instanceof Error ? error.message : String(error)}`);
@@ -489,12 +516,16 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, setEdges, _markProgramUpdated, setCurrentProgramGraphData]
 	);
 
 	// delete a node and its connected edges
 	const deleteNode = useCallback(
 		async (nodeId: string) => {
+			if (!currentProgram?.id) {
+				setGraphError("Cannot delete node: No active program selected.");
+				return;
+			}
 			setIsGraphLoading(true);
 			setGraphError(null);
 			try {
@@ -503,7 +534,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Node with ID ${nodeId} not found in local state.`);
 				}
 
-				// Determine node type and table
 				let nodeTable: string;
 				if (nodeToDelete.type === "constraint") {
 					nodeTable = "constraint_nodes";
@@ -513,17 +543,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Unknown node type: ${nodeToDelete.type}`);
 				}
 
-				// 1. Delete connected edges from Supabase
-				// Edges are stored with constraint_id and sequence_id.
-				// If it's a constraint node, find edges where constraint_id = nodeId
-				// If it's a sequence node, find edges where sequence_id = nodeId
-				const { error: edgeDeleteError } = await supabase.from("edges").delete().or(`constraint_id.eq.${nodeId},sequence_id.eq.${nodeId}`);
+				// 1. Delete connected edges from Supabase, ensuring they belong to the current program
+				const { error: edgeDeleteError } = await supabase.from("edges").delete().eq("program_id", currentProgram.id).or(`constraint_id.eq.${nodeId},sequence_id.eq.${nodeId}`);
 
 				if (edgeDeleteError) {
-					throw new Error(`Supabase edge delete error for node ${nodeId}: ${edgeDeleteError.message}`);
+					throw new Error(`Supabase edge delete error for node ${nodeId} in program ${currentProgram.id}: ${edgeDeleteError.message}`);
 				}
 
-				// 2. Delete the node from Supabase
+				// 2. Delete the node from Supabase (it's already scoped by its own ID, program_id is on the record)
 				const { error: nodeDeleteError } = await supabase.from(nodeTable).delete().eq("id", nodeId);
 
 				if (nodeDeleteError) {
@@ -534,11 +561,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setNodes((nds) => nds.filter((n) => n.id !== nodeId));
 				setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
 
-				// 4. Update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				// 4. Update currentProgramGraphData
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					const updatedConstraintNodes = prevData.constraintNodes.filter((cn) => cn.id !== nodeId);
 					const updatedSequenceNodes = prevData.sequenceNodes.filter((sn) => sn.id !== nodeId);
+					// Edges are already updated in React Flow state, ensure consistency here from the program data
 					const updatedEdges = prevData.edges.filter((e) => e.constraint_id !== nodeId && e.sequence_id !== nodeId);
 
 					return {
@@ -549,8 +577,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				await _markProjectUpdated();
-				console.log(`Node ${nodeId} and its connected edges deleted successfully`);
+				await _markProgramUpdated();
+				console.log(`Node ${nodeId} and its connected edges deleted successfully from program ${currentProgram.id}`);
 			} catch (error: unknown) {
 				setGraphError(`Failed to delete node: ${error instanceof Error ? error.message : String(error)}`);
 				console.error("Failed to delete node:", error);
@@ -558,12 +586,16 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, nodes, setNodes, setEdges, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, nodes, setNodes, setEdges, _markProgramUpdated, setCurrentProgramGraphData, currentProgram?.id]
 	);
 
 	// duplicate a node
 	const duplicateNode = useCallback(
 		async (nodeId: string) => {
+			if (!currentProject?.id || !currentProgram?.id) {
+				setGraphError("Cannot duplicate node: No active project or program selected.");
+				return;
+			}
 			setIsGraphLoading(true);
 			setGraphError(null);
 			try {
@@ -573,13 +605,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				}
 
 				const originalNodeData =
-					currentProjectGraphData &&
+					currentProgramGraphData &&
 					(nodeToDuplicate.type === "constraint"
-						? currentProjectGraphData.constraintNodes.find((cn) => cn.id === nodeId)
-						: currentProjectGraphData.sequenceNodes.find((sn) => sn.id === nodeId));
+						? currentProgramGraphData.constraintNodes.find((cn) => cn.id === nodeId)
+						: currentProgramGraphData.sequenceNodes.find((sn) => sn.id === nodeId));
 
-				if (!originalNodeData || !currentProject?.id) {
-					throw new Error(`Original node data for ID ${nodeId} not found or project ID missing.`);
+				if (!originalNodeData) {
+					throw new Error(`Original node data for ID ${nodeId} not found or project/program ID missing.`);
 				}
 
 				let newNode: FlowNode | null = null;
@@ -592,10 +624,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				};
 
 				if (nodeToDuplicate.type === "constraint" && "key" in originalNodeData) {
-					// duplicate constraint node
 					const payload = {
 						key: originalNodeData.key,
 						project_id: currentProject.id,
+						program_id: currentProgram.id,
 					};
 					const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
 					if (error) throw new Error(`Supabase constraint_node insert error: ${error.message}`);
@@ -608,19 +640,21 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 						data: { constraint: { key: newDbNode.key } },
 					};
 				} else if (nodeToDuplicate.type === "sequence" && "type" in originalNodeData) {
-					// duplicate sequence node
+					const typedOriginalNodeData = originalNodeData as SupabaseSequenceNode;
 					const payload = {
-						type: originalNodeData.type,
-						generator_id: originalNodeData.generator_id,
+						type: typedOriginalNodeData.type,
+						generator_id: typedOriginalNodeData.generator_id,
 						project_id: currentProject.id,
+						program_id: currentProgram.id,
+						sequence: typedOriginalNodeData.sequence,
+						metadata: typedOriginalNodeData.metadata,
 					};
 					const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 					if (error) throw new Error(`Supabase sequence_node insert error: ${error.message}`);
 					if (!data) throw new Error("No data returned from sequence_node insertion.");
 					newDbNode = data as SupabaseSequenceNode;
 
-					// find the generator data for the FlowNode
-					const generatorData = currentProjectGraphData?.generatorNodes.find((gn) => gn.id === (newDbNode && "generator_id" in newDbNode ? newDbNode.generator_id : undefined));
+					const generatorData = currentProgramGraphData?.generatorNodes.find((gn) => gn.id === typedOriginalNodeData.generator_id);
 
 					newNode = {
 						id: newDbNode.id,
@@ -630,8 +664,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 							sequence: {
 								id: newDbNode.id,
 								type: newDbNode.type,
-								generator_id: newDbNode.generator_id,
+								sequence: (newDbNode as SupabaseSequenceNode).sequence,
+								metadata: (newDbNode as SupabaseSequenceNode).metadata,
+								generator_id: (newDbNode as SupabaseSequenceNode).generator_id,
 								generator: generatorData ? { id: generatorData.id, key: generatorData.key, name: generatorData.name, hyperparameters: generatorData.hyperparameters } : undefined,
+								project_id: (newDbNode as SupabaseSequenceNode).project_id,
+								program_id: (newDbNode as SupabaseSequenceNode).program_id,
 							},
 						},
 					};
@@ -639,19 +677,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					throw new Error(`Unknown or mismatched node type for duplication: ${nodeToDuplicate.type}`);
 				}
 
-				// update local React Flow state
 				setNodes((nds) => [...nds, newNode as FlowNode]);
 
-				// update currentProjectGraphData
-				setCurrentProjectGraphData((prevData) => {
+				setCurrentProgramGraphData((prevData) => {
 					if (!prevData || !newDbNode) return prevData;
 					const updatedConstraintNodes = [...prevData.constraintNodes];
 					const updatedSequenceNodes = [...prevData.sequenceNodes];
 
-					if (newDbNode.project_id === currentProject?.id && "key" in newDbNode) {
-						updatedConstraintNodes.push(newDbNode as SupabaseConstraintNode);
-					} else if (newDbNode.project_id === currentProject?.id && "type" in newDbNode) {
-						updatedSequenceNodes.push(newDbNode as SupabaseSequenceNode);
+					if (newDbNode.program_id === currentProgram?.id) {
+						if ("key" in newDbNode) {
+							updatedConstraintNodes.push(newDbNode as SupabaseConstraintNode);
+						} else if ("type" in newDbNode) {
+							updatedSequenceNodes.push(newDbNode as SupabaseSequenceNode);
+						}
 					}
 
 					return {
@@ -661,8 +699,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 					};
 				});
 
-				await _markProjectUpdated();
-				console.log(`Node ${nodeId} duplicated successfully with new ID: ${newNode?.id}`);
+				await _markProgramUpdated();
+				console.log(`Node ${nodeId} duplicated successfully to program ${currentProgram.id} with new ID: ${newNode?.id}`);
 			} catch (error: unknown) {
 				setGraphError(`Failed to duplicate node: ${error instanceof Error ? error.message : String(error)}`);
 				console.error("Failed to duplicate node:", error);
@@ -670,21 +708,22 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, nodes, currentProject?.id, currentProjectGraphData, setNodes, _markProjectUpdated, setCurrentProjectGraphData]
+		[supabase, nodes, currentProject?.id, currentProgram?.id, currentProgramGraphData, setNodes, _markProgramUpdated, setCurrentProgramGraphData]
 	);
 
 	// --- Add new node functions ---
 	const addConstraintNode = useCallback(async () => {
-		if (!currentProject?.id) {
-			setGraphError("Cannot add node: No active project selected.");
+		if (!currentProject?.id || !currentProgram?.id) {
+			setGraphError("Cannot add node: No active project or program selected.");
 			return;
 		}
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
 			const payload = {
-				key: null,
+				key: null, // Default key, user can edit later
 				project_id: currentProject.id,
+				program_id: currentProgram.id,
 			};
 			const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
 			if (error) throw new Error(`Supabase constraint_node insert error: ${error.message}`);
@@ -694,44 +733,42 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newNode: FlowNode = {
 				id: newDbNode.id,
 				type: "constraint",
-				position: { x: 100, y: 100 },
-				data: { constraint: null },
+				position: { x: 100, y: 100 }, // Default position
+				data: { constraint: null }, // Reflects the null key
 			};
 
-			// update local React Flow state
 			setNodes((nds) => [...nds, newNode]);
-
-			// update currentProjectGraphData
-			setCurrentProjectGraphData((prevData) => {
-				if (!prevData) return null;
+			setCurrentProgramGraphData((prevData) => {
+				if (!prevData) return null; // Should not happen if currentProgram is set
 				return {
 					...prevData,
 					constraintNodes: [...prevData.constraintNodes, newDbNode],
 				};
 			});
 
-			await _markProjectUpdated();
-			console.log(`Constraint node added successfully with ID: ${newNode.id}`);
+			await _markProgramUpdated();
+			console.log(`Constraint node added successfully with ID: ${newNode.id} to program ${currentProgram.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add constraint node: ${error instanceof Error ? error.message : String(error)}`);
 			console.error("Failed to add constraint node:", error);
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+	}, [currentProject?.id, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, _markProgramUpdated]);
 
 	const addSequenceNode = useCallback(async () => {
-		if (!currentProject?.id) {
-			setGraphError("Cannot add node: No active project selected.");
+		if (!currentProject?.id || !currentProgram?.id) {
+			setGraphError("Cannot add node: No active project or program selected.");
 			return;
 		}
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
 			const payload = {
-				type: null,
-				sequence: null,
+				type: null, // Default type, user can edit later
+				sequence: null, // Default sequence, user can edit later
 				project_id: currentProject.id,
+				program_id: currentProgram.id,
 				generator_id: null,
 			};
 			const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
@@ -742,37 +779,37 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			const newNode: FlowNode = {
 				id: newDbNode.id,
 				type: "sequence",
-				position: { x: 150, y: 150 },
+				position: { x: 150, y: 150 }, // Default position
 				data: {
 					sequence: {
 						id: newDbNode.id,
 						type: newDbNode.type,
 						sequence: newDbNode.sequence,
+						// No generator by default
+						project_id: newDbNode.project_id, // Pass through for consistency if needed by component
+						program_id: newDbNode.program_id, // Pass through for consistency if needed by component
 					},
 				},
 			};
 
-			// update local React Flow state
 			setNodes((nds) => [...nds, newNode]);
-
-			// update currentProjectGraphData
-			setCurrentProjectGraphData((prevData) => {
-				if (!prevData) return null;
+			setCurrentProgramGraphData((prevData) => {
+				if (!prevData) return null; // Should not happen
 				return {
 					...prevData,
 					sequenceNodes: [...prevData.sequenceNodes, newDbNode],
 				};
 			});
 
-			await _markProjectUpdated();
-			console.log(`Sequence node added successfully with ID: ${newNode.id}`);
+			await _markProgramUpdated();
+			console.log(`Sequence node added successfully with ID: ${newNode.id} to program ${currentProgram.id}`);
 		} catch (error: unknown) {
 			setGraphError(`Failed to add sequence node: ${error instanceof Error ? error.message : String(error)}`);
 			console.error("Failed to add sequence node:", error);
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProject?.id, supabase, setNodes, setCurrentProjectGraphData, _markProjectUpdated]);
+	}, [currentProject?.id, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, _markProgramUpdated]);
 	// --- End add new node functions ---
 
 	const value: ProjectContextProps = {
@@ -786,7 +823,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		deleteEdge,
 		isGraphLoading,
 		graphError,
-		currentProjectGraphData,
+		currentProgramGraphData,
+		currentProgram,
 		updateConstraintNodeConstraint,
 		updateSequenceNodeType,
 		updateSequenceNodeGenerator,

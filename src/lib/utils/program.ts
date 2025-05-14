@@ -2,20 +2,31 @@ import { Node as FlowNode, Edge as FlowEdge, XYPosition } from "@xyflow/react";
 import { Constraint, constraintOptions } from "@/types/Constraint";
 import { Generator, generatorOptions } from "@/types/Generator";
 
-export interface SupabaseBase {
+// Minimal base interface for Supabase entities with ID and creation timestamp
+export interface SupabaseBaseMinimal {
 	id: string;
-	project_id: string;
 	created_at?: string;
 }
 
-export interface SupabaseSequenceNode extends SupabaseBase {
+// Represents a Program in the Supabase 'programs' table
+export interface SupabaseProgram extends SupabaseBaseMinimal {
+	project_id: string;
+	name?: string;
+	updated_at: string; // Tracks the last modification time of the program itself
+}
+
+export interface SupabaseSequenceNode extends SupabaseBaseMinimal {
+	project_id: string; // Link to the parent project
+	program_id: string; // Link to the specific program this node belongs to
 	type: "dna" | "rna" | "protein";
 	sequence: string;
 	metadata?: Record<string, unknown>;
 	generator_id?: string | null;
 }
 
-export interface SupabaseConstraintNode extends SupabaseBase {
+export interface SupabaseConstraintNode extends SupabaseBaseMinimal {
+	project_id: string; // Link to the parent project
+	program_id: string; // Link to the specific program this node belongs to
 	key: string;
 }
 
@@ -25,18 +36,23 @@ export interface SupabaseGeneratorNode {
 	key: string;
 	name?: string;
 	hyperparameters?: Record<string, unknown>;
-	user_id?: string | null; // FK to user, null if public/template
+	user_id?: string | null;
+	project_id?: string; // If generators can be project-specific, uncommented
 }
 
-export interface SupabaseDBEdge extends SupabaseBase {
-	constraint_id: string; // FK to constraint_nodes
-	sequence_id: string; // FK to sequence_nodes
+export interface SupabaseDBEdge extends SupabaseBaseMinimal {
+	program_id: string; // Link to the specific program this edge belongs to
+	constraint_id: string;
+	sequence_id: string;
+	// project_id?: string; // Implicitly through program_id -> program -> project_id
 }
 
-interface ProjectGraphData {
-	constraintNodes: SupabaseConstraintNode[];
+// Represents the raw graph data for a single Program, fetched from Supabase
+export interface RawProgramGraphData {
+	program: SupabaseProgram; // The program these components belong to
 	sequenceNodes: SupabaseSequenceNode[];
-	generatorNodes: SupabaseGeneratorNode[];
+	constraintNodes: SupabaseConstraintNode[];
+	generatorNodes: SupabaseGeneratorNode[]; // Assuming generators are still project-wide or global
 	edges: SupabaseDBEdge[];
 }
 
@@ -45,12 +61,11 @@ interface FlowData {
 	edges: FlowEdge[];
 }
 
-// convert data fetched from Supabase into React Flow compatible nodes and edges
-export function convertProjectDataToFlow(projectData: ProjectGraphData, currentFlowNodes: FlowNode[]): FlowData {
+// convert data fetched from Supabase for a specific Program into React Flow compatible nodes and edges
+export function convertProjectDataToFlow(programGraphData: RawProgramGraphData, currentFlowNodes: FlowNode[]): FlowData {
 	const flowNodes: FlowNode[] = [];
 	const flowEdges: FlowEdge[] = [];
 
-	// Create a map of current node positions for quick lookup
 	const currentNodePositionMap = new Map<string, XYPosition>();
 	currentFlowNodes.forEach((node) => {
 		if (node.position) {
@@ -58,67 +73,54 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData, currentF
 		}
 	});
 
-	// create map for quick lookup of generators if they need to be embedded
 	const generatorMap = new Map<string, SupabaseGeneratorNode>();
-	projectData.generatorNodes.forEach((gen) => generatorMap.set(gen.id, gen));
+	programGraphData.generatorNodes.forEach((gen) => generatorMap.set(gen.id, gen));
 
-	// create map for quick lookup of constraint options
 	const constraintMap = new Map<string, Constraint>();
 	constraintOptions.forEach((opt) => constraintMap.set(opt.key, opt));
 
-	// create map for quick lookup of generator options
 	const generatorOptionMap = new Map<string, Generator>();
 	generatorOptions.forEach((opt) => generatorOptionMap.set(opt.key, opt));
 
-	// convert Constraint Nodes
-	projectData.constraintNodes.forEach((dbNode) => {
+	programGraphData.constraintNodes.forEach((dbNode) => {
 		const position: XYPosition = currentNodePositionMap.get(dbNode.id) || { x: 0, y: 0 };
-		let constraintData: Constraint | null = null; // Default to null
+		let constraintData: Constraint | null = null;
 
 		if (dbNode.key) {
-			// If key exists, try to find it in the map
 			const foundConstraint = constraintMap.get(dbNode.key);
 			if (!foundConstraint) {
-				// Key exists but not found in options, log warning but still create node
 				console.warn(`Constraint with key ${dbNode.key} not found in constraintOptions. Node will be created without valid constraint data.`);
-				// constraintData remains null
 			} else {
-				constraintData = foundConstraint; // Use the found constraint
+				constraintData = foundConstraint;
 			}
-		} // If dbNode.key is null or empty, constraintData remains null
+		}
 
 		flowNodes.push({
 			id: dbNode.id,
 			type: "constraint",
 			position: position,
 			data: {
-				constraint: constraintData, // Use the resolved constraint data (can be null)
+				constraint: constraintData,
 			},
 		});
 	});
 
-	// convert Sequence Nodes
-	projectData.sequenceNodes.forEach((dbNode) => {
-		let resolvedGenerator: Generator | null = null; // Initialize with null
+	programGraphData.sequenceNodes.forEach((dbNode) => {
+		let resolvedGenerator: Generator | null = null;
 
 		if (dbNode.generator_id) {
 			const supabaseGenerator = generatorMap.get(dbNode.generator_id);
 			if (supabaseGenerator) {
-				// Try to find the generator option by key
 				const foundGeneratorOption = generatorOptionMap.get(supabaseGenerator.key);
 				if (foundGeneratorOption) {
-					resolvedGenerator = foundGeneratorOption; // Assign if found
+					resolvedGenerator = foundGeneratorOption;
 				} else {
-					// Generator key exists in DB but not in options
 					console.warn(`Generator with key ${supabaseGenerator.key} (ID: ${dbNode.generator_id}) found in DB but not in generatorOptions. Setting generator to null.`);
-					// resolvedGenerator remains null
 				}
 			} else {
-				// generator_id exists on sequence node, but no matching generator found in DB data
 				console.warn(`SupabaseGeneratorNode with id ${dbNode.generator_id} referenced by sequence node ${dbNode.id} not found in fetched generator data. Setting generator to null.`);
-				// resolvedGenerator remains null
 			}
-		} // If dbNode.generator_id is null or undefined, resolvedGenerator remains null
+		}
 
 		const position: XYPosition = currentNodePositionMap.get(dbNode.id) || { x: 0, y: 0 };
 		flowNodes.push({
@@ -131,14 +133,16 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData, currentF
 					type: dbNode.type,
 					sequence: dbNode.sequence,
 					metadata: dbNode.metadata,
-					generator: resolvedGenerator, // Use the resolved generator (can be null)
+					generator: resolvedGenerator,
+					// Ensure program_id and project_id are available if needed by SequenceNode component
+					program_id: dbNode.program_id,
+					project_id: dbNode.project_id,
 				},
 			},
 		});
 	});
 
-	// convert Edges
-	projectData.edges.forEach((dbEdge) => {
+	programGraphData.edges.forEach((dbEdge) => {
 		flowEdges.push({
 			id: dbEdge.id,
 			source: dbEdge.constraint_id,
@@ -148,6 +152,7 @@ export function convertProjectDataToFlow(projectData: ProjectGraphData, currentF
 			style: {
 				stroke: "oklch(70.4% 0.04 256.788)",
 			},
+			// data: { program_id: dbEdge.program_id } // If Edge component needs program_id
 		});
 	});
 

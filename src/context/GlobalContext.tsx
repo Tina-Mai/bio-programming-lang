@@ -62,7 +62,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		return data ? data.map(mapProjectJsonToProject) : [];
 	}, [supabase]);
 
-	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON; initialProgram: import("@/lib/utils").SupabaseProgram }> => {
+	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON; initialProgram: SupabaseProgram }> => {
 		const baseName = "New design";
 		let finalName = baseName;
 		let counter = 1;
@@ -95,20 +95,23 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		const now = new Date().toISOString();
 		const initialProgramPayload = {
 			project_id: projectJson.id,
-			name: "Main Program", // Or some default name
+			// Ensure all required fields for 'programs' table are present or have defaults
+			// For example, if 'description' or other fields are mandatory and don't have db defaults:
+			// description: "Initial program.",
 			created_at: now,
-			updated_at: now,
+			// updated_at: now, // REMOVED based on SupabaseProgram type lacking updated_at
+			// Add any other fields required by your 'programs' table schema here
 		};
 		const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
 		if (programError) {
-			console.error("Failed to create initial program for new project, attempting to roll back project creation...", programError);
+			console.error("Failed to create initial program for new project. Full error object:", JSON.stringify(programError, null, 2));
 			// Attempt to delete the just-created project if program creation fails
 			await supabase.from("projects").delete().eq("id", projectJson.id);
 			throw new Error(`Failed to create initial program: ${programError.message}`);
 		}
 		if (!newProgramData) throw new Error("Failed to create initial program, no data returned.");
 
-		return { project: projectJson, initialProgram: newProgramData as import("@/lib/utils").SupabaseProgram };
+		return { project: projectJson, initialProgram: newProgramData as SupabaseProgram };
 	}, [supabase]);
 
 	const _deleteProjectFromDB = useCallback(
@@ -182,7 +185,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	);
 
 	const _duplicateProjectInDB = useCallback(
-		async (originalProjectId: string): Promise<{ duplicatedProject: ProjectJSON }> => {
+		async (originalProjectId: string): Promise<{ duplicatedProject: ProjectJSON; newProgramId?: string }> => {
 			console.log(`Duplicating project in DB: ${originalProjectId}...`);
 
 			// 1. Fetch original project details
@@ -198,27 +201,37 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			const newProjectId = newProjectResult.id;
 			const duplicatedProjectJSON = newProjectResult as ProjectJSON;
 
-			// 3. Fetch all programs from the original project
+			// 3. Fetch the most recent program from the original project
 			const { data: originalProgramsData, error: fetchProgramsError } = await supabase
 				.from("programs")
 				.select<"*", SupabaseProgram>("*") // Use SupabaseProgram type
-				.eq("project_id", originalProjectId);
+				.eq("project_id", originalProjectId)
+				.order("updated_at", { ascending: false })
+				.limit(1); // Fetch only the most recent program
 
-			if (fetchProgramsError) throw new Error(`Failed to fetch original programs for duplication: ${fetchProgramsError.message}`);
-			const originalPrograms = originalProgramsData || [];
+			if (fetchProgramsError) {
+				// Rollback project creation if fetching programs fails
+				await supabase.from("projects").delete().eq("id", newProjectId);
+				throw new Error(`Failed to fetch original program for duplication: ${fetchProgramsError.message}`);
+			}
 
-			// 4. Duplicate generators associated with the original project (if they have project_id)
+			const mostRecentOriginalProgram = originalProgramsData && originalProgramsData.length > 0 ? (originalProgramsData[0] as SupabaseProgram) : null;
+
+			let newProgramIdForDuplication: string | undefined = undefined;
+
+			// 4. Duplicate generators (if any and if project-scoped)
+			// This logic remains largely the same but ensure it's correctly scoped.
+			// If generators are program-specific, this logic might need to move inside the program duplication block.
+			// For now, assuming project-specific generators as per original structure.
 			const generatorIdMap = new Map<string, string>();
-			// Assuming generators might have a 'project_id' field for project-specific ones
 			const { data: originalProjectGenerators, error: fetchGenError } = await supabase.from("generators").select<"*", SupabaseGeneratorNode>("*").eq("project_id", originalProjectId);
 
-			if (fetchGenError && fetchGenError.code !== "42P01") {
-				// 42P01: undefined_table (if project_id doesn't exist)
-				// Log error if it's not an undefined_table or project_id missing error, otherwise proceed
-				if (!fetchGenError.message.includes("column") || !fetchGenError.message.includes("project_id")) {
-					console.warn(`Error fetching original project-specific generators, potential schema mismatch or other issue: ${fetchGenError.message}`);
-				}
-				// Continue if it's just project_id missing, means generators are not project-scoped in this way
+			if (fetchGenError && fetchGenError.code !== "42P01" && !(fetchGenError.message.includes("column") && fetchGenError.message.includes("project_id"))) {
+				// Log error if it's not an undefined_table or project_id missing error
+				console.warn(`Error fetching original project-specific generators: ${fetchGenError.message}`);
+				// Potentially rollback project creation if this is critical
+				// await supabase.from("projects").delete().eq("id", newProjectId);
+				// throw new Error(`Failed to fetch original project-specific generators: ${fetchGenError.message}`);
 			}
 
 			if (originalProjectGenerators && originalProjectGenerators.length > 0) {
@@ -226,97 +239,152 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					const newId = uuidv4();
 					generatorIdMap.set(gn.id, newId);
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { id: _id, user_id, created_at: _created_at, project_id: _project_id_original, ...rest } = gn as SupabaseGeneratorNode;
-					return { ...rest, id: newId, project_id: newProjectId, user_id };
+					const { id: _id, user_id, created_at: _created_at, /* project_id: _project_id_original, */ ...rest } = gn; // Removed project_id from destructuring
+					// When re-inserting, project_id is NOT added back, assuming generators are no longer project-specific
+					return { ...rest, id: newId, user_id };
 				});
 				if (newGeneratorsToInsert.length > 0) {
 					const { error } = await supabase.from("generators").insert(newGeneratorsToInsert);
-					if (error) throw new Error(`Failed to duplicate project-specific generators: ${error.message}`);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+						throw new Error(`Failed to duplicate project-specific generators: ${error.message}`);
+					}
 				}
 			}
 
-			// 5. For each original program, duplicate it and its contents
-			for (const originalProgram of originalPrograms) {
+			// 5. If a most recent program exists, duplicate it and its contents
+			if (mostRecentOriginalProgram) {
+				const originalProgram = mostRecentOriginalProgram;
 				const idMap = new Map<string, string>(); // Local ID map for nodes within this program
 
 				// a. Create new program entry for the new project
 				const newProgramId = uuidv4();
+				newProgramIdForDuplication = newProgramId;
 				const now = new Date().toISOString();
 				const newProgramPayload = {
 					id: newProgramId,
 					project_id: newProjectId,
-					name: originalProgram.name ? `(Copy) ${originalProgram.name}` : "(Copy) Program",
-					created_at: originalProgram.created_at,
-					updated_at: now,
+					created_at: now, // Set to current time for the new program
+					// updated_at: now, // REMOVED based on SupabaseProgram type lacking updated_at
+					// Copy other relevant fields from originalProgram if necessary, e.g., description
+					// description: originalProgram.description,
 				};
 				const { error: createProgramError } = await supabase.from("programs").insert(newProgramPayload);
-				if (createProgramError) throw new Error(`Failed to create duplicated program entry: ${createProgramError.message}`);
+				if (createProgramError) {
+					await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+					console.error("Failed to create duplicated program entry. Full error object:", JSON.stringify(createProgramError, null, 2));
+					throw new Error(`Failed to create duplicated program entry: ${createProgramError.message}`);
+				}
 
 				// b. Fetch graph components from the original program
-				const [constraintsResult, sequencesResult] = await Promise.all([
+				const [constraintsResult, sequencesResult, edgesResult] = await Promise.all([
 					supabase.from("constraint_nodes").select<"*", SupabaseConstraintNode>("*").eq("program_id", originalProgram.id),
 					supabase.from("sequence_nodes").select<"*", SupabaseSequenceNode>("*").eq("program_id", originalProgram.id),
+					supabase.from("edges").select<"*", SupabaseDBEdge>("*").eq("program_id", originalProgram.id),
 				]);
-				if (constraintsResult.error) throw new Error(`Failed to fetch original constraint nodes for program ${originalProgram.id}: ${constraintsResult.error.message}`);
-				if (sequencesResult.error) throw new Error(`Failed to fetch original sequence nodes for program ${originalProgram.id}: ${sequencesResult.error.message}`);
+
+				if (constraintsResult.error) {
+					await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+					throw new Error(`Failed to fetch original constraint nodes for program ${originalProgram.id}: ${constraintsResult.error.message}`);
+				}
+				if (sequencesResult.error) {
+					await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+					throw new Error(`Failed to fetch original sequence nodes for program ${originalProgram.id}: ${sequencesResult.error.message}`);
+				}
+				if (edgesResult.error) {
+					await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+					throw new Error(`Failed to fetch original edges for program ${originalProgram.id}: ${edgesResult.error.message}`);
+				}
 
 				const originalConstraints = constraintsResult.data || [];
 				const originalSequences = sequencesResult.data || [];
+				const originalEdges = edgesResult.data || [];
 
 				// c. Duplicate Constraint Nodes
-				const newConstraintsToInsert = originalConstraints.map((cn) => {
-					const newId = uuidv4();
-					idMap.set(cn.id, newId);
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { id: _id, project_id: _project_id, program_id: _program_id, created_at: _created_at, ...rest } = cn;
-					return { ...rest, id: newId, project_id: newProjectId, program_id: newProgramId };
-				});
-				if (newConstraintsToInsert.length > 0) {
+				if (originalConstraints.length > 0) {
+					const newConstraintsToInsert = originalConstraints.map((cn) => {
+						const newId = uuidv4();
+						idMap.set(cn.id, newId);
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { id: _id, /* project_id: _project_id, */ program_id: _program_id, created_at: _created_at, ...rest } = cn; // Removed project_id
+						return { ...rest, id: newId, program_id: newProgramId }; // project_id is not re-added
+					});
 					const { error } = await supabase.from("constraint_nodes").insert(newConstraintsToInsert);
-					if (error) throw new Error(`Failed to duplicate constraint_nodes for program ${newProgramId}: ${error.message}`);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+						throw new Error(`Failed to duplicate constraint_nodes for program ${newProgramId}: ${error.message}`);
+					}
 				}
 
 				// d. Duplicate Sequence Nodes (handling generator_id mapping)
-				const newSequencesToInsert = originalSequences.map((sn) => {
-					const newId = uuidv4();
-					idMap.set(sn.id, newId);
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { id: _id, project_id: _project_id, program_id: _program_id, created_at: _created_at, generator_id: _generator_id_destructured, ...rest } = sn;
-					const newGeneratorId = sn.generator_id ? generatorIdMap.get(sn.generator_id) || sn.generator_id : null;
-					return { ...rest, id: newId, project_id: newProjectId, program_id: newProgramId, generator_id: newGeneratorId };
-				});
-				if (newSequencesToInsert.length > 0) {
+				if (originalSequences.length > 0) {
+					const newSequencesToInsert = originalSequences.map((sn) => {
+						const newId = uuidv4();
+						idMap.set(sn.id, newId);
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { id: _id, /* project_id: _project_id, */ program_id: _program_id, created_at: _created_at, generator_id: _generator_id_destructured, ...rest } = sn; // Removed project_id
+						const newGeneratorId = sn.generator_id ? generatorIdMap.get(sn.generator_id) || sn.generator_id : null;
+						return { ...rest, id: newId, program_id: newProgramId, generator_id: newGeneratorId }; // project_id is not re-added
+					});
 					const { error } = await supabase.from("sequence_nodes").insert(newSequencesToInsert);
-					if (error) throw new Error(`Failed to duplicate sequence_nodes for program ${newProgramId}: ${error.message}`);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+						throw new Error(`Failed to duplicate sequence_nodes for program ${newProgramId}: ${error.message}`);
+					}
 				}
 
-				// e. Fetch and Duplicate Edges for the current original program
-				const { data: originalEdgesData, error: fetchEdgesError } = await supabase.from("edges").select<"*", SupabaseDBEdge>("*").eq("program_id", originalProgram.id);
-				if (fetchEdgesError) throw new Error(`Failed to fetch original edges for program ${originalProgram.id}: ${fetchEdgesError.message}`);
-				const originalEdges = originalEdgesData || [];
+				// e. Duplicate Edges
+				if (originalEdges.length > 0) {
+					const newEdgesToInsert = originalEdges
+						.map((edge) => {
+							const newSourceId = idMap.get(edge.constraint_id); // Assuming edge.constraint_id is the source
+							const newTargetId = idMap.get(edge.sequence_id); // Assuming edge.sequence_id is the target
 
-				const newEdgesToInsert = originalEdges
-					.map((edge) => {
-						const newSourceId = idMap.get(edge.constraint_id);
-						const newTargetId = idMap.get(edge.sequence_id);
-						if (!newSourceId || !newTargetId) {
-							console.warn(`Skipping edge ${edge.id} during duplication due to missing new node ID mapping.`);
-							return null;
+							// Check if both source and target nodes were successfully mapped
+							if (!newSourceId && edge.constraint_id) {
+								console.warn(`Skipping edge during duplication: Source node ${edge.constraint_id} not found in idMap for new program ${newProgramId}. Original edge ID: ${edge.id}`);
+								return null;
+							}
+							if (!newTargetId && edge.sequence_id) {
+								console.warn(`Skipping edge during duplication: Target node ${edge.sequence_id} not found in idMap for new program ${newProgramId}. Original edge ID: ${edge.id}`);
+								return null;
+							}
+							// If an edge part is legitimately null (e.g. an edge that CAN have a null source or target),
+							// then newSourceId/newTargetId would be undefined if original idMap.get(null) if that's how it's stored.
+							// This current logic assumes constraint_id and sequence_id are always present on an edge.
+
+							// eslint-disable-next-line @typescript-eslint/no-unused-vars
+							const { id: _id, program_id: _program_id, created_at: _created_at, constraint_id: _orig_constraint_id, sequence_id: _orig_sequence_id, ...rest } = edge;
+							return {
+								...rest,
+								id: uuidv4(),
+								program_id: newProgramId,
+								constraint_id: newSourceId || null, // Ensure it's null if not found, though previous checks should catch this.
+								sequence_id: newTargetId || null, // Ensure it's null if not found
+							};
+						})
+						.filter((e) => e !== null) as Omit<SupabaseDBEdge, "created_at" | "project_id">[]; // Adjust type if project_id is not on your direct edge insert type
+
+					if (newEdgesToInsert.length > 0) {
+						const { error } = await supabase.from("edges").insert(newEdgesToInsert);
+						if (error) {
+							await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
+							throw new Error(`Failed to duplicate edges for program ${newProgramId}: ${error.message}`);
 						}
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { id: _id, program_id: _program_id, created_at: _created_at, ...rest } = edge;
-						return { ...rest, id: uuidv4(), program_id: newProgramId, constraint_id: newSourceId, sequence_id: newTargetId };
-					})
-					.filter((e) => e !== null) as Omit<SupabaseDBEdge, "created_at" | "project_id">[];
-
-				if (newEdgesToInsert.length > 0) {
-					const { error } = await supabase.from("edges").insert(newEdgesToInsert);
-					if (error) throw new Error(`Failed to duplicate edges for program ${newProgramId}: ${error.message}`);
+					}
 				}
 				console.log(`Successfully duplicated program ${originalProgram.id} to ${newProgramId} for project ${newProjectId}`);
+			} else {
+				console.log(`No programs found in original project ${originalProjectId}. Duplicated project ${newProjectId} will start with no programs.`);
+				// Optionally, create a default initial program here if that's the desired behavior
+				// const now = new Date().toISOString();
+				// const initialProgramPayload = { /* ... similar to _createProjectInDB ... */ project_id: newProjectId, name: "Main Program" /* ... */};
+				// const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
+				// if (programError) { /* handle error, rollback */ }
+				// newProgramIdForDuplication = newProgramData.id;
 			}
 
-			return { duplicatedProject: duplicatedProjectJSON };
+			return { duplicatedProject: duplicatedProjectJSON, newProgramId: newProgramIdForDuplication };
 		},
 		[supabase]
 	);
@@ -349,16 +417,17 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	const createNewProject = useCallback(async () => {
 		console.log("Creating new project and initial program...");
 		try {
-			// _createProjectInDB now returns both project and initialProgram
-			const { project: newProjectJson } = await _createProjectInDB();
+			const { project: newProjectJson, initialProgram } = await _createProjectInDB();
 			const newProject = mapProjectJsonToProject(newProjectJson);
 
-			// Update local state for projects
 			setProjects((prevProjects) => sortProjects([newProject, ...prevProjects]));
 			setCurrentProject(newProject);
-			// The ProjectContext will handle fetching this new project's initial program when currentProject changes.
 
-			console.log("New project and initial program created successfully:", newProject.id);
+			// After creating a new project and its initial program,
+			// ProjectContext will listen to currentProject change and fetch its programs,
+			// automatically setting the new initialProgram as the currentProgram.
+
+			console.log(`New project ${newProject.id} and initial program ${initialProgram.id} created successfully.`);
 		} catch (err: unknown) {
 			console.error("Error creating new project:", err);
 		}
@@ -399,11 +468,15 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		async (projectId: string) => {
 			console.log(`Attempting to duplicate project: ${projectId}...`);
 			try {
-				const { duplicatedProject: dupProjectJson } = await _duplicateProjectInDB(projectId);
+				// _duplicateProjectInDB now returns the newProgramId as well
+				const { duplicatedProject: dupProjectJson, newProgramId } = await _duplicateProjectInDB(projectId);
 				const duplicatedProject = mapProjectJsonToProject(dupProjectJson);
 				setProjects((prevProjects) => sortProjects([duplicatedProject, ...prevProjects]));
 				setCurrentProject(duplicatedProject);
-				console.log("Project duplicated successfully:", duplicatedProject.id);
+
+				// If a program was duplicated, ProjectContext will handle setting it
+				// when it fetches programs for the new duplicatedProject.
+				console.log(`Project ${duplicatedProject.id} duplicated successfully. ${newProgramId ? `New program ${newProgramId} created.` : "No program was duplicated."}`);
 			} catch (err: unknown) {
 				console.error("Error duplicating project:", err);
 				// TODO: add user-facing error message

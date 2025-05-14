@@ -2,57 +2,49 @@ import { Node as FlowNode, Edge as FlowEdge, XYPosition } from "@xyflow/react";
 import { Constraint, constraintOptions } from "@/types/Constraint";
 import { Generator, generatorOptions } from "@/types/Generator";
 
-// Minimal base interface for Supabase entities with ID and creation timestamp
+// base interface for Supabase entities
 export interface SupabaseBaseMinimal {
 	id: string;
 	created_at?: string;
+	updated_at?: string;
 }
 
-// Represents a Program in the Supabase 'programs' table
 export interface SupabaseProgram extends SupabaseBaseMinimal {
 	project_id: string;
-	name?: string;
-	updated_at: string; // Tracks the last modification time of the program itself
 }
 
 export interface SupabaseSequenceNode extends SupabaseBaseMinimal {
-	project_id: string; // Link to the parent project
-	program_id: string; // Link to the specific program this node belongs to
-	type: "dna" | "rna" | "protein";
-	sequence: string;
+	program_id: string;
+	type?: "dna" | "rna" | "protein";
+	sequence?: string;
 	metadata?: Record<string, unknown>;
 	generator_id?: string | null;
 }
 
 export interface SupabaseConstraintNode extends SupabaseBaseMinimal {
-	project_id: string; // Link to the parent project
-	program_id: string; // Link to the specific program this node belongs to
-	key: string;
+	program_id: string;
+	key?: string;
 }
 
-export interface SupabaseGeneratorNode {
-	id: string;
-	created_at?: string;
+export interface SupabaseGeneratorNode extends SupabaseBaseMinimal {
 	key: string;
 	name?: string;
 	hyperparameters?: Record<string, unknown>;
 	user_id?: string | null;
-	project_id?: string; // If generators can be project-specific, uncommented
 }
 
 export interface SupabaseDBEdge extends SupabaseBaseMinimal {
-	program_id: string; // Link to the specific program this edge belongs to
+	program_id: string;
 	constraint_id: string;
 	sequence_id: string;
-	// project_id?: string; // Implicitly through program_id -> program -> project_id
 }
 
-// Represents the raw graph data for a single Program, fetched from Supabase
+// represents the raw graph data for a single Program, fetched from Supabase
 export interface RawProgramGraphData {
-	program: SupabaseProgram; // The program these components belong to
+	program: SupabaseProgram;
 	sequenceNodes: SupabaseSequenceNode[];
 	constraintNodes: SupabaseConstraintNode[];
-	generatorNodes: SupabaseGeneratorNode[]; // Assuming generators are still project-wide or global
+	generatorNodes: SupabaseGeneratorNode[];
 	edges: SupabaseDBEdge[];
 }
 
@@ -134,9 +126,7 @@ export function convertProjectDataToFlow(programGraphData: RawProgramGraphData, 
 					sequence: dbNode.sequence,
 					metadata: dbNode.metadata,
 					generator: resolvedGenerator,
-					// Ensure program_id and project_id are available if needed by SequenceNode component
 					program_id: dbNode.program_id,
-					project_id: dbNode.project_id,
 				},
 			},
 		});
@@ -152,7 +142,6 @@ export function convertProjectDataToFlow(programGraphData: RawProgramGraphData, 
 			style: {
 				stroke: "oklch(70.4% 0.04 256.788)",
 			},
-			// data: { program_id: dbEdge.program_id } // If Edge component needs program_id
 		});
 	});
 

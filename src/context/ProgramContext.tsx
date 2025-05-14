@@ -12,7 +12,7 @@ interface ProgramProviderProps {
 	children: ReactNode;
 	currentProgram: SupabaseProgram | null;
 	currentProjectId: string | undefined;
-	onProgramModified: (programId: string, newTimestamp: Date) => void;
+	onProgramModified: () => void;
 }
 
 interface ProgramContextProps {
@@ -61,8 +61,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 	const _markProgramUpdated = useCallback(async () => {
 		if (!currentProgram?.id) return;
-		const newTimestamp = new Date();
-		onProgramModified(currentProgram.id, newTimestamp);
+		onProgramModified();
 	}, [currentProgram, onProgramModified]);
 
 	const _getOrCreateGenerator = useCallback(
@@ -475,17 +474,16 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				const positionOffset = { x: (nodeToDuplicate.position?.x ?? 0) + 20, y: (nodeToDuplicate.position?.y ?? 0) + 20 };
 
 				if (nodeToDuplicate.type === "constraint" && "key" in originalNodeData) {
-					const payload = { key: originalNodeData.key, project_id: currentProjectId, program_id: currentProgram.id };
+					const payload = { key: (originalNodeData as SupabaseConstraintNode).key, program_id: currentProgram.id };
 					const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
 					if (error) throw error;
 					newDbNode = data as SupabaseConstraintNode;
-					newFlowNode = { id: newDbNode.id, type: "constraint", position: positionOffset, data: { constraint: { key: newDbNode.key } } };
+					newFlowNode = { id: newDbNode.id, type: "constraint", position: positionOffset, data: { constraint: { key: (newDbNode as SupabaseConstraintNode).key } } };
 				} else if (nodeToDuplicate.type === "sequence" && "type" in originalNodeData) {
 					const typedOriginalNodeData = originalNodeData as SupabaseSequenceNode;
 					const payload = {
 						type: typedOriginalNodeData.type,
 						generator_id: typedOriginalNodeData.generator_id,
-						project_id: currentProjectId,
 						program_id: currentProgram.id,
 						sequence: typedOriginalNodeData.sequence,
 						metadata: typedOriginalNodeData.metadata,
@@ -501,12 +499,11 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						data: {
 							sequence: {
 								id: newDbNode.id,
-								type: newDbNode.type,
+								type: (newDbNode as SupabaseSequenceNode).type,
 								sequence: (newDbNode as SupabaseSequenceNode).sequence,
 								metadata: (newDbNode as SupabaseSequenceNode).metadata,
 								generator_id: (newDbNode as SupabaseSequenceNode).generator_id,
 								generator: generatorData ? { id: generatorData.id, key: generatorData.key, name: generatorData.name, hyperparameters: generatorData.hyperparameters } : undefined,
-								project_id: (newDbNode as SupabaseSequenceNode).project_id,
 								program_id: (newDbNode as SupabaseSequenceNode).program_id,
 							},
 						},
@@ -544,7 +541,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
-			const payload = { key: null, project_id: currentProjectId, program_id: currentProgram.id };
+			const payload = { key: null, program_id: currentProgram.id };
 			const { data, error } = await supabase.from("constraint_nodes").insert(payload).select().single();
 			if (error) throw error;
 			const newDbNode = data as SupabaseConstraintNode;
@@ -570,7 +567,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
-			const payload = { type: null, sequence: null, project_id: currentProjectId, program_id: currentProgram.id, generator_id: null };
+			const payload = { type: null, sequence: null, program_id: currentProgram.id, generator_id: null };
 			const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 			if (error) throw error;
 			const newDbNode = data as SupabaseSequenceNode;
@@ -578,7 +575,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				id: newDbNode.id,
 				type: "sequence",
 				position: { x: 150, y: 150 },
-				data: { sequence: { id: newDbNode.id, type: newDbNode.type, sequence: newDbNode.sequence, project_id: newDbNode.project_id, program_id: newDbNode.program_id } },
+				data: { sequence: { id: newDbNode.id, type: newDbNode.type, sequence: newDbNode.sequence, program_id: newDbNode.program_id } },
 			};
 			setNodes((nds) => [...nds, newFlowNode]);
 			setCurrentProgramGraphData((prevData) => {

@@ -658,10 +658,10 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						console.log("New output received (raw payload):", payload.new);
 						const newOutput = payload.new as SupabaseDBOutput;
 
-						if (sequenceNodeIds.includes(newOutput.sequence_node_id)) {
+						if (currentProgram && newOutput.program_id === currentProgram.id) {
 							setProgramOutputs((prevOutputs) => [...prevOutputs, newOutput]);
 						} else {
-							console.log(`Output for sequence_node_id ${newOutput.sequence_node_id} ignored (not in current program's sequences).`);
+							console.log(`Output for program_id ${newOutput.program_id} ignored (does not match current program_id ${currentProgram?.id}).`);
 						}
 					}
 				)

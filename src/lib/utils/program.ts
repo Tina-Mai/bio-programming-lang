@@ -41,7 +41,7 @@ export interface SupabaseDBEdge extends SupabaseBaseMinimal {
 
 // TODO: !!! handle output node (especially metadata parsing)
 export interface SupabaseDBOutput extends SupabaseBaseMinimal {
-	sequence_node_id: string;
+	program_id: string;
 	metadata: Record<string, unknown>;
 }
 

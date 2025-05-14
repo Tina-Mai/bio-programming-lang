@@ -57,9 +57,6 @@ const EnergyDialog = () => {
 							{programOutputs.length === 0 && programRunStatus === "running" && <p className="text-slate-500">Waiting for first output...</p>}
 							{programOutputs.map((output) => (
 								<div key={output.id} className="bg-slate-100 p-2 rounded text-xs font-mono">
-									<p>
-										<strong>Sequence Node ID:</strong> {output.sequence_node_id}
-									</p>
 									{output.created_at && (
 										<p>
 											<strong>Timestamp:</strong> {new Date(output.created_at).toLocaleString()}

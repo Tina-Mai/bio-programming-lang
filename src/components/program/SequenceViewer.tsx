@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Nucleotide, nucleotideColors } from "@/types";
-import { Copy, Checkmark, ChevronDown, ChevronUp } from "@carbon/icons-react";
+import { Nucleotide, nucleotideColors, OutputMetadata } from "@/types";
+import { Copy, Checkmark, ChevronDown, ChevronUp, Download } from "@carbon/icons-react";
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HelpTooltip from "@/components/global/HelpTooltip";
-import { cn } from "@/lib/utils";
+import { cn, downloadProgramOutputs } from "@/lib/utils";
+import { useProgram } from "@/context/ProgramContext";
 
 const SequenceKey = () => {
 	return (
@@ -56,8 +57,11 @@ const NucleotideTooltip = ({ tooltipPosition, hoveredNucleotide }: { tooltipPosi
 	);
 };
 
-const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: string | undefined; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
-	const sequenceString = sequence || "";
+const SequenceViewer = ({ output, showSequence, setShowSequence }: { output: OutputMetadata; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
+	const { currentProgramGraphData } = useProgram();
+	const programIdForCsv = currentProgramGraphData?.program?.id;
+
+	const sequenceString = output.sequence || "";
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number>(0);
@@ -452,7 +456,7 @@ const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence:
 				<div className="horizontal gap-1.5 items-center text-sm">
 					<div className="flex horizontal items-center gap-1.5 text-slate-400 ">
 						<Dna className="size-5" strokeWidth={1.3} />
-						<div className="font-medium text-slate-500">Sequence</div>
+						<div className="font-medium text-slate-500">Sequence Output</div>
 					</div>{" "}
 					<span className="font-mono text-slate-400">{!sequenceString || sequenceString.length === 0 ? "(No data)" : `(${sequenceString.length} bp)`}</span>
 					{/* copy button */}
@@ -483,6 +487,22 @@ const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence:
 						>
 							<Copy size={16} />
 						</motion.div>
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="text-xs h-6 !px-2 text-slate-500 group-hover:text-slate-700"
+						onClick={async () => {
+							if (programIdForCsv) {
+								await downloadProgramOutputs(programIdForCsv);
+							} else {
+								console.warn("Program ID is not available from context to download CSV.");
+							}
+						}}
+						disabled={!programIdForCsv}
+					>
+						<Download className="text-slate-400" />
+						Download full CSV
 					</Button>
 				</div>
 

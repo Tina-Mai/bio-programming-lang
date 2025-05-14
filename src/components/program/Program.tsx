@@ -19,7 +19,7 @@ const ProgramContents = () => {
 	const [showGraphEditor, setShowGraphEditor] = useState(mode === "graph");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
-	const [showSequence, setShowSequence] = useState(false);
+	const [showSequence, setShowSequence] = useState(true);
 	const editorRef = useRef<EditorView | null>(null);
 
 	let programForDisplay = programFromProject;
@@ -126,13 +126,13 @@ const ProgramContents = () => {
 								}}
 							>
 								{showSequence && hasSequence ? (
-									<SequenceViewer sequence={outputData.metadata.sequence} showSequence={showSequence} setShowSequence={setShowSequence} />
+									<SequenceViewer output={outputData.metadata} showSequence={showSequence} setShowSequence={setShowSequence} />
 								) : (
 									<div className="horizontal items-center justify-between text-slate-400 text-sm px-5">
 										<div className="flex horizontal items-center gap-1.5">
 											<Dna className="size-5" strokeWidth={1.3} />
-											<div className="text-slate-500 font-medium">Sequence</div>
-											{!showSequence && <span className="text-xs text-slate-400">{hasSequence ? "(Output available, click to expand)" : "(No sequence data in output)"}</span>}
+											<div className="text-slate-500 font-medium">Sequence Output</div>
+											{!showSequence && <span className="text-xs text-slate-400">{hasSequence ? "(Click to expand)" : "(No sequence data in output)"}</span>}
 										</div>
 										{hasSequence &&
 											(showSequence ? (

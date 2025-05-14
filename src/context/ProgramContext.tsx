@@ -8,6 +8,7 @@ import { Constraint } from "@/types/Constraint";
 import { SequenceType } from "@/types/Node";
 import { Generator } from "@/types/Generator";
 import { toast } from "sonner";
+import { ProgramValidationError, validateProgramGraph } from "@/lib/api/runProgram";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -36,11 +37,12 @@ interface ProgramContextProps {
 	duplicateNode: (nodeId: string) => Promise<void>;
 	addConstraintNode: () => Promise<void>;
 	addSequenceNode: () => Promise<void>;
-	programRunStatus: "idle" | "loading" | "running" | "completed" | "error";
+	programRunStatus: "idle" | "loading" | "running" | "completed" | "error" | "validation_error";
 	programRunError: string | null;
 	programOutputs: SupabaseDBOutput[];
 	startProgramRun: () => Promise<void>;
 	resetProgramRun: () => void;
+	validationErrors: ProgramValidationError[] | null;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -63,10 +65,11 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
-	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "completed" | "error">("idle");
+	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "completed" | "error" | "validation_error">("idle");
 	const [programRunError, setProgramRunError] = useState<string | null>(null);
 	const [programOutputs, setProgramOutputs] = useState<SupabaseDBOutput[]>([]);
 	const outputsSubscriptionRef = useRef<RealtimeChannel | null>(null);
+	const [validationErrors, setValidationErrors] = useState<ProgramValidationError[] | null>(null);
 
 	const _getOrCreateGenerator = useCallback(
 		async (
@@ -587,6 +590,32 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 			return;
 		}
 
+		// validate program before attempting to run
+		setValidationErrors(null);
+		const validationResults = validateProgramGraph(currentProgramGraphData);
+
+		if (validationResults.length > 0) {
+			setValidationErrors(validationResults);
+			setProgramRunStatus("validation_error");
+			setProgramRunError("Program validation failed. Please check your program configuration.");
+			toast.dismiss("program-run"); // Dismiss any existing loading toast
+
+			const globalErrors = validationResults.filter((err) => !err.nodeId);
+			const nodeSpecificErrorsExist = validationResults.some((err) => err.nodeId);
+
+			if (nodeSpecificErrorsExist) {
+				// If there are any node-specific errors, show only the general compilation failed message.
+				// Node-specific messages are available via tooltips on the nodes themselves.
+				toast.error("Compilation failed due to validation errors.", { id: "program-run-main-error", duration: 5000 });
+			} else if (globalErrors.length > 0) {
+				// If there are only global errors (no node-specific ones), toast each global error.
+				globalErrors.forEach((err) => {
+					toast.error(err.message, { duration: 5000 });
+				});
+			}
+			return;
+		}
+
 		setProgramRunStatus("loading");
 		setProgramRunError(null);
 		setProgramOutputs([]);
@@ -705,6 +734,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		programOutputs,
 		startProgramRun,
 		resetProgramRun,
+		validationErrors,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

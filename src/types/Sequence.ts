@@ -1,9 +1,3 @@
-export interface Sequence {
-	id: string;
-	name?: string;
-	sequence: string;
-}
-
 export const nucleotideColors = {
 	A: "#f0e89c", // yellow
 	C: "#b9e3fa", // blue

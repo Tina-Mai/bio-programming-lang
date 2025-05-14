@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Nucleotide, Sequence as SequenceType, nucleotideColors } from "@/types";
+import { Nucleotide, nucleotideColors } from "@/types";
 import { Copy, Checkmark, ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,8 +56,8 @@ const NucleotideTooltip = ({ tooltipPosition, hoveredNucleotide }: { tooltipPosi
 	);
 };
 
-const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: SequenceType; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
-	const sequenceString: string = sequence?.sequence || "";
+const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: string; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
+	const sequenceString = sequence;
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number>(0);

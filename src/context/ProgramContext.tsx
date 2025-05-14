@@ -510,6 +510,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		[supabase, nodes, currentProjectId, currentProgram, currentProgramGraphData, setNodes, onProgramModified, setCurrentProgramGraphData]
 	);
 
+	// create new constraint node
 	const addConstraintNode = useCallback(async () => {
 		if (!currentProjectId || !currentProgram?.id) {
 			setGraphError("Cannot add node: Missing project/program ID.");
@@ -536,6 +537,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		}
 	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, onProgramModified]);
 
+	// create new sequence node
 	const addSequenceNode = useCallback(async () => {
 		if (!currentProjectId || !currentProgram?.id) {
 			setGraphError("Cannot add node: Missing project/program ID.");
@@ -544,7 +546,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
-			const payload = { type: null, sequence: null, program_id: currentProgram.id, generator_id: null };
+			const payload = { type: null, output: null, program_id: currentProgram.id, generator_id: null };
 			const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 			if (error) throw error;
 			const newDbNode = data as SupabaseSequenceNode;

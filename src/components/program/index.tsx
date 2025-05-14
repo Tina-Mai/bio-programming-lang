@@ -52,7 +52,7 @@ const Program = () => {
 	if (!currentProject) {
 		return (
 			<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden flex items-center justify-center p-10 text-center">
-				<div className="vertical items-center gap-3 text-slate-500">
+				<div className="vertical items-center gap-3 text-slate-400">
 					<Information size={32} />
 					<p className="text-lg font-medium">No Project Selected</p>
 					<p>Please select a project from the sidebar to view its programs, or create a new one.</p>

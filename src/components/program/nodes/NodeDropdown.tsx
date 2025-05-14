@@ -1,11 +1,11 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { OverflowMenuHorizontal, Copy, TrashCan } from "@carbon/icons-react";
 import { useState } from "react";
-import { useProject } from "@/context/ProjectContext";
+import { useProgram } from "@/context/ProgramContext";
 
 const NodeDropdown = ({ nodeId }: { nodeId: string }) => {
 	const [open, setOpen] = useState(false);
-	const { deleteNode, duplicateNode } = useProject();
+	const { deleteNode, duplicateNode } = useProgram();
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.preventDefault();

@@ -12,7 +12,7 @@ interface ProgramProviderProps {
 	children: ReactNode;
 	currentProgram: SupabaseProgram | null;
 	currentProjectId: string | undefined;
-	onProgramModified: (programId: string, newTimestamp: Date) => void;
+	onProgramModified: () => Promise<void>;
 }
 
 interface ProgramContextProps {
@@ -58,12 +58,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
-
-	const _markProgramUpdated = useCallback(async () => {
-		if (!currentProgram?.id) return;
-		const newTimestamp = new Date();
-		onProgramModified(currentProgram.id, newTimestamp);
-	}, [currentProgram, onProgramModified]);
 
 	const _getOrCreateGenerator = useCallback(
 		async (
@@ -268,7 +262,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				if (!insertedEdge) throw new Error("No data returned from edge insertion.");
 				const reactFlowEdge: FlowEdge = { id: insertedEdge.id, source: insertedEdge.constraint_id, target: insertedEdge.sequence_id };
 				setEdges((eds) => addEdge(reactFlowEdge, eds));
-				await _markProgramUpdated();
+				await onProgramModified();
 				setCurrentProgramGraphData((prevData) => {
 					if (!prevData) return null;
 					return { ...prevData, edges: [...prevData.edges, insertedEdge as SupabaseDBEdge] };
@@ -279,7 +273,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				setIsGraphLoading(false);
 			}
 		},
-		[currentProjectId, currentProgram, supabase, _markProgramUpdated, setEdges, nodes, currentProgramGraphData, setCurrentProgramGraphData]
+		[currentProjectId, currentProgram, supabase, onProgramModified, setEdges, nodes, currentProgramGraphData, setCurrentProgramGraphData]
 	);
 
 	const updateConstraintNodeConstraint = useCallback(
@@ -298,14 +292,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 					return { ...prevData, constraintNodes: prevData.constraintNodes.map((cn) => (cn.id === nodeId ? { ...cn, key: constraint.key } : cn)) };
 				});
 				setNodes((prevNodes) => prevNodes.map((node) => (node.id === nodeId && node.type === "constraint" ? { ...node, data: { ...node.data, constraint } } : node)));
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update constraint: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData, currentProgram?.id]
+		[supabase, setNodes, onProgramModified, setCurrentProgramGraphData, currentProgram?.id]
 	);
 
 	const updateSequenceNodeType = useCallback(
@@ -332,14 +326,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						return node;
 					})
 				);
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update sequence type: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData, currentProgram?.id]
+		[supabase, setNodes, onProgramModified, setCurrentProgramGraphData, currentProgram?.id]
 	);
 
 	const updateSequenceNodeGenerator = useCallback(
@@ -376,14 +370,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						return node;
 					})
 				);
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to update generator: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setNodes, _markProgramUpdated, setCurrentProgramGraphData, _getOrCreateGenerator, currentProgram?.id]
+		[supabase, setNodes, onProgramModified, setCurrentProgramGraphData, _getOrCreateGenerator, currentProgram?.id]
 	);
 
 	const deleteEdge = useCallback(
@@ -402,14 +396,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 					if (!prevData) return null;
 					return { ...prevData, edges: prevData.edges.filter((e) => e.id !== edgeId) };
 				});
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to delete edge: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, setEdges, _markProgramUpdated, setCurrentProgramGraphData, currentProgram?.id]
+		[supabase, setEdges, onProgramModified, setCurrentProgramGraphData, currentProgram?.id]
 	);
 
 	const deleteNode = useCallback(
@@ -442,14 +436,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						edges: prevData.edges.filter((e) => e.constraint_id !== nodeId && e.sequence_id !== nodeId),
 					};
 				});
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to delete node: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, nodes, setNodes, setEdges, _markProgramUpdated, setCurrentProgramGraphData, currentProgram?.id]
+		[supabase, nodes, setNodes, setEdges, onProgramModified, setCurrentProgramGraphData, currentProgram?.id]
 	);
 
 	const duplicateNode = useCallback(
@@ -524,14 +518,14 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 					}
 					return { ...prevData, constraintNodes: updatedConstraintNodes, sequenceNodes: updatedSequenceNodes };
 				});
-				await _markProgramUpdated();
+				await onProgramModified();
 			} catch (error: unknown) {
 				setGraphError(`Failed to duplicate node: ${error instanceof Error ? error.message : String(error)}`);
 			} finally {
 				setIsGraphLoading(false);
 			}
 		},
-		[supabase, nodes, currentProjectId, currentProgram, currentProgramGraphData, setNodes, _markProgramUpdated, setCurrentProgramGraphData]
+		[supabase, nodes, currentProjectId, currentProgram, currentProgramGraphData, setNodes, onProgramModified, setCurrentProgramGraphData]
 	);
 
 	const addConstraintNode = useCallback(async () => {
@@ -552,13 +546,13 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				if (!prevData) return null;
 				return { ...prevData, constraintNodes: [...prevData.constraintNodes, newDbNode] };
 			});
-			await _markProgramUpdated();
+			await onProgramModified();
 		} catch (error: unknown) {
 			setGraphError(`Failed to add constraint node: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, _markProgramUpdated]);
+	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, onProgramModified]);
 
 	const addSequenceNode = useCallback(async () => {
 		if (!currentProjectId || !currentProgram?.id) {
@@ -583,13 +577,13 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				if (!prevData) return null;
 				return { ...prevData, sequenceNodes: [...prevData.sequenceNodes, newDbNode] };
 			});
-			await _markProgramUpdated();
+			await onProgramModified();
 		} catch (error: unknown) {
 			setGraphError(`Failed to add sequence node: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			setIsGraphLoading(false);
 		}
-	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, _markProgramUpdated]);
+	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, onProgramModified]);
 
 	const value: ProgramContextProps = {
 		nodes,

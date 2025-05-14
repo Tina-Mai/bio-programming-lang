@@ -17,31 +17,13 @@ interface ProjectContextProps {
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-	const { currentProject, updateProjectTimestamp } = useGlobal();
+	const { currentProject } = useGlobal();
 	const [currentProgram, setCurrentProgram] = useState<SupabaseProgram | null>(null);
 	const [isLoadingProjectPrograms, setIsLoadingProjectPrograms] = useState<boolean>(false);
 	const [projectProgramsError, setProjectProgramsError] = useState<string | null>(null);
 	const [projectPrograms, setProjectPrograms] = useState<SupabaseProgram[]>([]);
 
 	const supabase: SupabaseClient = createClient();
-
-	const handleProgramModified = useCallback(
-		async (programId: string, modificationTimestamp: Date) => {
-			const { error: programUpdateError } = await supabase.from("programs").update({ updated_at: modificationTimestamp.toISOString() }).eq("id", programId);
-
-			if (programUpdateError) {
-				console.warn(`Failed to update program updated_at timestamp: ${programUpdateError.message}`);
-			} else {
-				setCurrentProgram((prev) => (prev?.id === programId ? { ...prev, updated_at: modificationTimestamp.toISOString() } : prev));
-				setProjectPrograms((prevs) => prevs.map((p) => (p.id === programId ? { ...p, updated_at: modificationTimestamp.toISOString() } : p)));
-			}
-
-			if (currentProject?.id) {
-				updateProjectTimestamp(currentProject.id, modificationTimestamp);
-			}
-		},
-		[supabase, updateProjectTimestamp, currentProject?.id]
-	);
 
 	const fetchProjectPrograms = useCallback(async () => {
 		if (!currentProject?.id) {
@@ -97,7 +79,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		} finally {
 			setIsLoadingProjectPrograms(false);
 		}
-	}, [currentProject?.id, supabase, updateProjectTimestamp]);
+	}, [currentProject?.id, supabase]);
+
+	const handleProgramModified = useCallback(async () => {
+		await fetchProjectPrograms();
+	}, [fetchProjectPrograms]);
 
 	useEffect(() => {
 		fetchProjectPrograms();

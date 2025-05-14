@@ -39,7 +39,6 @@ interface GlobalContextType {
 	createNewProject: () => Promise<void>;
 	deleteProject: (projectId: string) => Promise<void>;
 	duplicateProject: (projectId: string) => Promise<void>;
-	updateProjectTimestamp: (projectId: string, newTimestamp: Date) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -96,7 +95,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		const initialProgramPayload = {
 			project_id: projectJson.id,
 			created_at: now,
-			updated_at: now,
 		};
 		const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
 		if (programError) {
@@ -213,7 +211,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					id: newProgramId,
 					project_id: newProjectId,
 					created_at: now,
-					updated_at: now,
 				};
 				const { error: createProgramError } = await supabase.from("programs").insert(newProgramPayload);
 				if (createProgramError) {
@@ -322,7 +319,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				const initialProgramPayload = {
 					project_id: newProjectId,
 					created_at: now,
-					updated_at: now,
 				};
 				const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
 				if (programError) {
@@ -364,7 +360,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			setProjects([]);
 			setCurrentProject(null);
 		}
-	}, [_fetchProjectsFromDB, currentProject]);
+	}, [_fetchProjectsFromDB, currentProject, setCurrentProject]);
 
 	const createNewProject = useCallback(async () => {
 		console.log("Creating new project and initial program...");
@@ -429,13 +425,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		[_duplicateProjectInDB, setProjects, setCurrentProject]
 	);
 
-	const updateProjectTimestamp = useCallback((projectId: string, newTimestamp: Date) => {
-		setProjects((prevProjects) => {
-			const updatedProjects = prevProjects.map((project) => (project.id === projectId ? { ...project, updatedAt: newTimestamp } : project));
-			return sortProjects(updatedProjects);
-		});
-	}, []);
-
 	// --- Effects ---
 
 	useEffect(() => {
@@ -454,7 +443,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				createNewProject,
 				deleteProject,
 				duplicateProject,
-				updateProjectTimestamp,
 			}}
 		>
 			{children}

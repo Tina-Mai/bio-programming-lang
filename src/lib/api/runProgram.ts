@@ -1,3 +1,9 @@
+// TODO: error checks
+// - no sequence nodes
+// - sequence nodes missing a generator or sequence type
+// - constraint nodes missing a constraint
+// - free-floating nodes (just ignore them? or throw an error? or popup that asks them if they want to compile anyway)
+
 export async function runProgram(programId: string) {
 	console.log("Frontend calling Next.js proxy for program:", programId);
 	const res = await fetch(`/api/run_program`, {

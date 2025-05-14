@@ -459,7 +459,8 @@ const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence:
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						onClick={() => {
+						onClick={(e) => {
+							e.stopPropagation();
 							navigator.clipboard.writeText(sequenceString);
 							setIsCopied(true);
 							setTimeout(() => setIsCopied(false), 2000);

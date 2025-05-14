@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { EdgeProps, BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
 import { CloseFilled } from "@carbon/icons-react";
-import { useProject } from "@/context/ProjectContext";
+import { useProgram } from "@/context/ProgramContext";
 
 const Edge = ({ id, sourceX, sourceY, targetX, targetY, selected }: EdgeProps) => {
 	const [hovered, setHovered] = useState(false);
-	const { deleteEdge } = useProject();
+	const { deleteEdge } = useProgram();
 
 	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX,

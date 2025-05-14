@@ -1,10 +1,10 @@
 import React from "react";
+import { useProgram } from "@/context/ProgramContext";
 import { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
-import ConstraintDropdown from "./ConstraintDropdown";
 import { Constraint } from "@/types";
+import ConstraintDropdown from "./ConstraintDropdown";
 import Node from "@/components/program/nodes/Node";
 // import StatusDot from "@/components/global/StatusDot";
-import { useProject } from "@/context/ProjectContext";
 
 export interface ConstraintNodeData {
 	constraint?: Constraint;
@@ -14,7 +14,7 @@ export interface ConstraintNodeData {
 export type ConstraintNodeType = ReactFlowNode<ConstraintNodeData, "constraint">;
 
 const ConstraintNodeComponent: React.FC<NodeProps<ConstraintNodeType>> = ({ data, id, selected }) => {
-	const { updateConstraintNodeConstraint } = useProject();
+	const { updateConstraintNodeConstraint } = useProgram();
 	const updateConstraint = (constraint: Constraint) => {
 		updateConstraintNodeConstraint(id, constraint);
 	};

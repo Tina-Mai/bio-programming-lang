@@ -5,7 +5,7 @@ import { Chip } from "@carbon/icons-react";
 import Node from "@/components/program/nodes/Node";
 import SequenceTypeDropdown from "./SequenceTypeDropdown";
 import GeneratorDropdown from "../generators/GeneratorDropdown";
-import { useProject } from "@/context/ProjectContext";
+import { useProgram } from "@/context/ProgramContext";
 // import StatusDot from "@/components/global/StatusDot";
 
 export interface SequenceNodeData {
@@ -16,7 +16,7 @@ export interface SequenceNodeData {
 export type SequenceNodeType = ReactFlowNode<SequenceNodeData, "sequence">;
 
 const SequenceNodeComponent: React.FC<NodeProps<SequenceNodeType>> = ({ data, id, selected }) => {
-	const { updateSequenceNodeType, updateSequenceNodeGenerator } = useProject();
+	const { updateSequenceNodeType, updateSequenceNodeGenerator } = useProgram();
 	const updateSequenceType = (sequenceType: SequenceType) => {
 		updateSequenceNodeType(id, sequenceType);
 	};

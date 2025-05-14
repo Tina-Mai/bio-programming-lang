@@ -39,6 +39,12 @@ export interface SupabaseDBEdge extends SupabaseBaseMinimal {
 	sequence_id: string;
 }
 
+// TODO: !!! handle output node (especially metadata parsing)
+export interface SupabaseDBOutput extends SupabaseBaseMinimal {
+	sequence_node_id: string;
+	metadata: Record<string, unknown>;
+}
+
 // represents the raw graph data for a single Program, fetched from Supabase
 export interface RawProgramGraphData {
 	program: SupabaseProgram;

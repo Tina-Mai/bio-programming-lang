@@ -183,19 +183,8 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 			}
 		};
 
-		if (currentProgram?.id) {
-			setNodes([]);
-			setEdges([]);
-			setCurrentProgramGraphData(null);
-			fetchProgramGraphDetail();
-		} else {
-			setNodes([]);
-			setEdges([]);
-			setCurrentProgramGraphData(null);
-			setIsGraphLoading(false);
-			setGraphError(null);
-		}
-	}, [currentProgram, supabase, setNodes, setEdges]);
+		fetchProgramGraphDetail();
+	}, [currentProgram, supabase]);
 
 	const applyLayout = useCallback(() => {
 		setNodes((currentNodes) => {
@@ -211,24 +200,19 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 	useEffect(() => {
 		let isMounted = true;
-		if (!currentProgramGraphData || isGraphLoading) {
-			if (!isGraphLoading && isMounted && !currentProgramGraphData) {
+		if (!isGraphLoading) {
+			if (currentProgramGraphData) {
+				const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProgramGraphData, nodesRef.current);
+				if (isMounted) {
+					setNodes(convertedNodes);
+					setEdges(convertedEdges);
+				}
+			} else {
 				if (isMounted) {
 					setNodes([]);
 					setEdges([]);
 				}
 			}
-			return () => {
-				isMounted = false;
-			};
-		}
-
-		const { nodes: convertedNodes, edges: convertedEdges } = convertProjectDataToFlow(currentProgramGraphData, nodesRef.current);
-		// console.log("ProgramProvider: Converted to flow using nodesRef: ", { convertedNodes, convertedEdges });
-
-		if (isMounted) {
-			setNodes(convertedNodes);
-			setEdges(convertedEdges);
 		}
 		return () => {
 			isMounted = false;

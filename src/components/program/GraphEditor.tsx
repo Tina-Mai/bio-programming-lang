@@ -28,20 +28,26 @@ const GraphEditor = () => {
 
 	useEffect(() => {
 		setIsInitialLayoutDone(false);
-		console.log(`Program or Project changed (Program: ${currentProgram?.id}, Project: ${currentProject?.id}), resetting initial layout flag.`);
+		// console.log(`Program or Project changed (Program: ${currentProgram?.id}, Project: ${currentProject?.id}), resetting initial layout flag.`);
 	}, [currentProgram?.id, currentProject?.id]);
 
 	useEffect(() => {
+		// This effect handles the initial layout for a newly loaded program.
+		// It should not run on every minor node/edge change if the program itself hasn't changed.
 		if (!isGraphLoading && nodes.length > 0 && !isInitialLayoutDone) {
 			const timer = setTimeout(() => {
 				applyLayout();
 				requestAnimationFrame(() => fitView({ padding: 0.2 }));
 				setIsInitialLayoutDone(true);
-				console.log(`Initial layout applied for program ${currentProgram?.id} in project ${currentProject?.id}`);
-			}, 100);
+				// console.log(`Initial layout applied for program ${currentProgram?.id} in project ${currentProject?.id}`);
+			}, 100); // A small delay helps ensure nodes are rendered and dimensions are available.
 			return () => clearTimeout(timer);
 		}
-	}, [isGraphLoading, nodes, applyLayout, fitView, isInitialLayoutDone, currentProgram?.id, currentProject?.id]);
+		// Key dependencies: isGraphLoading, nodes.length, and isInitialLayoutDone.
+		// applyLayout and fitView are stable callbacks.
+		// currentProgram?.id and currentProject?.id are intentionally not here, as their change
+		// is handled by the first useEffect which resets isInitialLayoutDone.
+	}, [isGraphLoading, nodes.length, applyLayout, fitView, isInitialLayoutDone]);
 
 	const handleAutoLayout = () => {
 		applyLayout();

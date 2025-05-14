@@ -26,20 +26,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	const supabase: SupabaseClient = createClient();
 
 	const fetchProjectPrograms = useCallback(async () => {
+		const programIdToTryAndPreserve = currentProgram?.id;
+
 		if (!currentProject?.id) {
 			setCurrentProgram(null);
 			setProjectPrograms([]);
 			setIsLoadingProjectPrograms(false);
 			setProjectProgramsError(null);
-			console.log("No current project ID, clearing program list and current program.");
 			return;
 		}
 
-		console.log(`Fetching programs for project ID: ${currentProject.id}`);
 		setIsLoadingProjectPrograms(true);
 		setProjectProgramsError(null);
-		setCurrentProgram(null);
-		setProjectPrograms([]);
 
 		try {
 			const projectId = currentProject.id;
@@ -52,26 +50,25 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 			if (programsError) throw new Error(`Supabase fetch error (programs): ${programsError.message}`);
 
-			if (!programsData || programsData.length === 0) {
-				console.log(`No programs found for project ${projectId}.`);
-				setCurrentProgram(null);
-				setProjectPrograms([]);
-				setIsLoadingProjectPrograms(false);
-				return;
-			}
-
-			const fetchedPrograms = programsData as SupabaseProgram[];
+			const fetchedPrograms = (programsData as SupabaseProgram[]) || [];
 			setProjectPrograms(fetchedPrograms);
 
-			if (fetchedPrograms.length > 0) {
-				const latestProgram = fetchedPrograms[0];
-				setCurrentProgram(latestProgram);
-				console.log(`Set current program to ID: ${latestProgram.id} (updated: ${latestProgram.updated_at})`);
-			} else {
+			if (fetchedPrograms.length === 0) {
 				setCurrentProgram(null);
+			} else {
+				let programToSet: SupabaseProgram | undefined = undefined;
+				if (programIdToTryAndPreserve) {
+					programToSet = fetchedPrograms.find((p) => p.id === programIdToTryAndPreserve);
+				}
+
+				if (programToSet) {
+					setCurrentProgram(programToSet);
+				} else {
+					const latestProgram = fetchedPrograms[0];
+					setCurrentProgram(latestProgram);
+				}
 			}
 		} catch (error: unknown) {
-			console.error("Error fetching project programs:", error);
 			const message = error instanceof Error ? error.message : "An unknown error occurred";
 			setProjectProgramsError(`Failed to load project programs: ${message}`);
 			setCurrentProgram(null);
@@ -86,7 +83,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	}, [fetchProjectPrograms]);
 
 	useEffect(() => {
-		fetchProjectPrograms();
+		if (currentProject?.id) {
+			fetchProjectPrograms();
+		} else {
+			setCurrentProgram(null);
+			setProjectPrograms([]);
+			setIsLoadingProjectPrograms(false);
+			setProjectProgramsError(null);
+		}
 	}, [currentProject?.id, fetchProjectPrograms]);
 
 	const setCurrentProgramById = useCallback(

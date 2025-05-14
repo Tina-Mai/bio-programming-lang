@@ -480,8 +480,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						type: typedOriginalNodeData.type,
 						generator_id: typedOriginalNodeData.generator_id,
 						program_id: currentProgram.id,
-						sequence: typedOriginalNodeData.sequence,
-						metadata: typedOriginalNodeData.metadata,
+						output: typedOriginalNodeData.output,
 					};
 					const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 					if (error) throw error;
@@ -495,8 +494,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 							sequence: {
 								id: newDbNode.id,
 								type: (newDbNode as SupabaseSequenceNode).type,
-								sequence: (newDbNode as SupabaseSequenceNode).sequence,
-								metadata: (newDbNode as SupabaseSequenceNode).metadata,
+								output: (newDbNode as SupabaseSequenceNode).output,
 								generator_id: (newDbNode as SupabaseSequenceNode).generator_id,
 								generator: generatorData ? { id: generatorData.id, key: generatorData.key, name: generatorData.name, hyperparameters: generatorData.hyperparameters } : undefined,
 								program_id: (newDbNode as SupabaseSequenceNode).program_id,
@@ -570,7 +568,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				id: newDbNode.id,
 				type: "sequence",
 				position: { x: 150, y: 150 },
-				data: { sequence: { id: newDbNode.id, type: newDbNode.type, sequence: newDbNode.sequence, program_id: newDbNode.program_id } },
+				data: { sequence: { id: newDbNode.id, type: newDbNode.type, output: newDbNode.output, program_id: newDbNode.program_id } },
 			};
 			setNodes((nds) => [...nds, newFlowNode]);
 			setCurrentProgramGraphData((prevData) => {

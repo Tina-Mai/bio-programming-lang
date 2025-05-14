@@ -5,9 +5,8 @@ export type SequenceType = "dna" | "rna" | "protein";
 export interface SequenceNode {
 	id: string;
 	type?: SequenceType;
-	sequence?: string;
-	metadata?: Record<string, unknown>;
 	generator?: Generator;
+	output?: Record<string, unknown>;
 }
 
 export interface ConstraintNode {

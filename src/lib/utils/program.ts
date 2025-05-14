@@ -17,8 +17,7 @@ export interface SupabaseProgram extends SupabaseBaseMinimal {
 export interface SupabaseSequenceNode extends SupabaseBaseMinimal {
 	program_id: string;
 	type?: "dna" | "rna" | "protein";
-	sequence?: string;
-	metadata?: Record<string, unknown>;
+	output?: Record<string, unknown>;
 	generator_id?: string | null;
 }
 
@@ -124,8 +123,7 @@ export function convertProjectDataToFlow(programGraphData: RawProgramGraphData, 
 				sequence: {
 					id: dbNode.id,
 					type: dbNode.type,
-					sequence: dbNode.sequence,
-					metadata: dbNode.metadata,
+					output: dbNode.output,
 					generator: resolvedGenerator,
 					program_id: dbNode.program_id,
 				},

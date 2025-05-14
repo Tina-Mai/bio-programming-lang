@@ -17,20 +17,20 @@ export async function POST(request: Request) {
 
 		console.log(`Proxying request for program_id: ${program_id} to FastAPI: ${fastApiBackendUrl}/run-program`);
 
-		const fastApiResponse = await fetch(`${fastApiBackendUrl}/run-program`, {
+		const fastApiResponse = await fetch(`${fastApiBackendUrl}/run-program?program_id=${program_id}`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				// TODO: add any other headers FastAPI backend might require, e.g. API keys
 				// "X-API-Key": process.env.FASTAPI_API_KEY // example
 			},
-			body: JSON.stringify({ program_id: program_id }),
+			body: JSON.stringify({}),
 		});
 
 		const responseData = await fastApiResponse.json();
 
 		if (!fastApiResponse.ok) {
-			console.error(`FastAPI backend error for program_id ${program_id}:`, fastApiResponse.status, responseData);
+			console.error(`FastAPI backend error for program_id ${program_id}: status=${fastApiResponse.status} body=${JSON.stringify(responseData, null, 2)}`);
 			return NextResponse.json(responseData, { status: fastApiResponse.status });
 		}
 

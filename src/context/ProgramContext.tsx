@@ -7,6 +7,7 @@ import { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 import { Constraint } from "@/types/Constraint";
 import { SequenceType } from "@/types/Node";
 import { Generator } from "@/types/Generator";
+import { toast } from "sonner";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -580,19 +581,22 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	// start program execution and listen for outputs
 	const startProgramRun = useCallback(async () => {
 		if (!currentProgram?.id) {
-			setProgramRunError("No current program selected.");
+			setProgramRunError("No current program selected");
 			setProgramRunStatus("error");
+			toast.error("No current program selected");
 			return;
 		}
 
 		setProgramRunStatus("loading");
 		setProgramRunError(null);
 		setProgramOutputs([]);
+		toast.loading("Compiling program...", { id: "program-run" });
 
 		try {
 			const runProgramApi = await import("@/lib/api/runProgram");
 			const result = await runProgramApi.runProgram(currentProgram.id);
 			console.log("Program run initiated:", result);
+			toast("Generation started", { id: "program-run" });
 
 			setProgramRunStatus("running");
 
@@ -649,6 +653,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 			console.error("Failed to start program run:", message);
 			setProgramRunError(message);
 			setProgramRunStatus("error");
+			toast.error(`Error: ${message}`, { id: "program-run" });
 		}
 	}, [currentProgram, supabase, currentProgramGraphData, _getOrCreateGenerator]);
 

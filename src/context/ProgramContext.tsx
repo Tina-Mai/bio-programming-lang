@@ -1,9 +1,9 @@
 import React, { createContext, useCallback, useContext, ReactNode, Dispatch, SetStateAction, useEffect, useState, useRef } from "react";
 import { Node as FlowNode, Edge as FlowEdge, Connection, addEdge, OnNodesChange, OnEdgesChange, useNodesState, useEdgesState } from "@xyflow/react";
-import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge, RawProgramGraphData, SupabaseProgram } from "@/lib/utils";
+import { convertProjectDataToFlow, SupabaseSequenceNode, SupabaseConstraintNode, SupabaseGeneratorNode, SupabaseDBEdge, RawProgramGraphData, SupabaseProgram, SupabaseDBOutput } from "@/lib/utils";
 import { getLayoutedElements } from "@/lib/utils/layout";
 import { createClient } from "@/lib/supabase/client";
-import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 import { Constraint } from "@/types/Constraint";
 import { SequenceType } from "@/types/Node";
 import { Generator } from "@/types/Generator";
@@ -35,6 +35,11 @@ interface ProgramContextProps {
 	duplicateNode: (nodeId: string) => Promise<void>;
 	addConstraintNode: () => Promise<void>;
 	addSequenceNode: () => Promise<void>;
+	programRunStatus: "idle" | "loading" | "running" | "completed" | "error";
+	programRunError: string | null;
+	programOutputs: SupabaseDBOutput[];
+	startProgramRun: () => Promise<void>;
+	resetProgramRun: () => void;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -43,7 +48,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
 
-	// Refs to hold the latest nodes and edges for use in effects without adding them as dependencies
 	const nodesRef = useRef(nodes);
 	useEffect(() => {
 		nodesRef.current = nodes;
@@ -58,6 +62,10 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
+	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "completed" | "error">("idle");
+	const [programRunError, setProgramRunError] = useState<string | null>(null);
+	const [programOutputs, setProgramOutputs] = useState<SupabaseDBOutput[]>([]);
+	const outputsSubscriptionRef = useRef<RealtimeChannel | null>(null);
 
 	const _getOrCreateGenerator = useCallback(
 		async (
@@ -569,6 +577,104 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		}
 	}, [currentProjectId, currentProgram?.id, supabase, setNodes, setCurrentProgramGraphData, onProgramModified]);
 
+	// start program execution and listen for outputs
+	const startProgramRun = useCallback(async () => {
+		if (!currentProgram?.id) {
+			setProgramRunError("No current program selected.");
+			setProgramRunStatus("error");
+			return;
+		}
+
+		setProgramRunStatus("loading");
+		setProgramRunError(null);
+		setProgramOutputs([]);
+
+		try {
+			const runProgramApi = await import("@/lib/api/runProgram");
+			const result = await runProgramApi.runProgram(currentProgram.id);
+			console.log("Program run initiated:", result);
+
+			setProgramRunStatus("running");
+
+			// TODO: set up Supabase real-time subscription here
+			// 1. get all sequence_node IDs for the current program
+			if (!currentProgramGraphData || !currentProgramGraphData.sequenceNodes || currentProgramGraphData.sequenceNodes.length === 0) {
+				console.warn("No sequence nodes found in the current program to listen for outputs.");
+				return;
+			}
+
+			const sequenceNodeIds = currentProgramGraphData.sequenceNodes.map((sn) => sn.id);
+
+			if (outputsSubscriptionRef.current) {
+				supabase.removeChannel(outputsSubscriptionRef.current);
+				outputsSubscriptionRef.current = null;
+			}
+
+			console.log(`Subscribing to outputs for sequence_ids: ${sequenceNodeIds.join(", ")} on program_id: ${currentProgram.id}`);
+
+			const channel = supabase
+				.channel(`program-outputs-${currentProgram.id}`)
+				.on(
+					"postgres_changes",
+					{
+						event: "INSERT",
+						schema: "public",
+						table: "outputs",
+					},
+					(payload) => {
+						console.log("New output received (raw payload):", payload.new);
+						const newOutput = payload.new as SupabaseDBOutput;
+
+						if (sequenceNodeIds.includes(newOutput.sequence_node_id)) {
+							setProgramOutputs((prevOutputs) => [...prevOutputs, newOutput]);
+						} else {
+							console.log(`Output for sequence_node_id ${newOutput.sequence_node_id} ignored (not in current program's sequences).`);
+						}
+					}
+				)
+				.subscribe((status, err) => {
+					if (status === "SUBSCRIBED") {
+						console.log(`Successfully subscribed to outputs for program ${currentProgram.id}`);
+					}
+					if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+						console.error(`Subscription error for program ${currentProgram.id}:`, status, err);
+						setProgramRunError(`Subscription failed: ${status} ${err?.message || ""}`);
+					}
+				});
+			outputsSubscriptionRef.current = channel;
+
+			// TODO: add logic to listen for a "completion" signal
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : "An unknown error occurred";
+			console.error("Failed to start program run:", message);
+			setProgramRunError(message);
+			setProgramRunStatus("error");
+		}
+	}, [currentProgram, supabase, currentProgramGraphData, _getOrCreateGenerator]);
+
+	// reset program run state (e.g., close dialog)
+	const resetProgramRun = useCallback(() => {
+		if (outputsSubscriptionRef.current) {
+			supabase.removeChannel(outputsSubscriptionRef.current);
+			outputsSubscriptionRef.current = null;
+			console.log("Unsubscribed from program outputs.");
+		}
+		setProgramRunStatus("idle");
+		setProgramOutputs([]);
+		setProgramRunError(null);
+	}, [supabase]);
+
+	// cleanup subscription on component unmount or when currentProgram changes
+	useEffect(() => {
+		return () => {
+			if (outputsSubscriptionRef.current) {
+				supabase.removeChannel(outputsSubscriptionRef.current);
+				outputsSubscriptionRef.current = null;
+				console.log("Cleaned up outputs subscription.");
+			}
+		};
+	}, [supabase]);
+
 	const value: ProgramContextProps = {
 		nodes,
 		edges,
@@ -589,6 +695,11 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		duplicateNode,
 		addConstraintNode,
 		addSequenceNode,
+		programRunStatus,
+		programRunError,
+		programOutputs,
+		startProgramRun,
+		resetProgramRun,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

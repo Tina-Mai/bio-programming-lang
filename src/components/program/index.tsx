@@ -5,7 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { Code, Folder, ParentChild, ChevronDown, ChevronUp, Information } from "@carbon/icons-react";
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import EnergyDialog from "@/components/energy/EnergyDialog";
+import CompileButton from "@/components/energy/CompileButton";
 import GraphEditor from "@/components/program/GraphEditor";
 import CodeEditor from "@/components/program/CodeEditor";
 import ProjectTabs from "@/components/program/ProjectTabs";
@@ -95,7 +95,7 @@ const Program = () => {
 							)}
 						</Button>
 						<div className="z-50 absolute mt-12 bottom-3 right-3 ">
-							<EnergyDialog />
+							<CompileButton />
 						</div>
 
 						<div className="relative h-full w-full">

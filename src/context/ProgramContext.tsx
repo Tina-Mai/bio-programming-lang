@@ -12,7 +12,7 @@ interface ProgramProviderProps {
 	children: ReactNode;
 	currentProgram: SupabaseProgram | null;
 	currentProjectId: string | undefined;
-	onProgramModified: () => void;
+	onProgramModified: (programId: string, newTimestamp: Date) => void;
 }
 
 interface ProgramContextProps {
@@ -61,7 +61,8 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 	const _markProgramUpdated = useCallback(async () => {
 		if (!currentProgram?.id) return;
-		onProgramModified();
+		const newTimestamp = new Date();
+		onProgramModified(currentProgram.id, newTimestamp);
 	}, [currentProgram, onProgramModified]);
 
 	const _getOrCreateGenerator = useCallback(

@@ -11,6 +11,7 @@ export interface SupabaseBaseMinimal {
 
 export interface SupabaseProgram extends SupabaseBaseMinimal {
 	project_id: string;
+	updated_at: string;
 }
 
 export interface SupabaseSequenceNode extends SupabaseBaseMinimal {

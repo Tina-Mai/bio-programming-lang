@@ -25,11 +25,23 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 	const supabase: SupabaseClient = createClient();
 
-	const handleProgramContentModified = useCallback(async () => {
-		if (currentProject?.id) {
-			updateProjectTimestamp(currentProject.id, new Date());
-		}
-	}, [updateProjectTimestamp, currentProject?.id]);
+	const handleProgramModified = useCallback(
+		async (programId: string, modificationTimestamp: Date) => {
+			const { error: programUpdateError } = await supabase.from("programs").update({ updated_at: modificationTimestamp.toISOString() }).eq("id", programId);
+
+			if (programUpdateError) {
+				console.warn(`Failed to update program updated_at timestamp: ${programUpdateError.message}`);
+			} else {
+				setCurrentProgram((prev) => (prev?.id === programId ? { ...prev, updated_at: modificationTimestamp.toISOString() } : prev));
+				setProjectPrograms((prevs) => prevs.map((p) => (p.id === programId ? { ...p, updated_at: modificationTimestamp.toISOString() } : p)));
+			}
+
+			if (currentProject?.id) {
+				updateProjectTimestamp(currentProject.id, modificationTimestamp);
+			}
+		},
+		[supabase, updateProjectTimestamp, currentProject?.id]
+	);
 
 	const fetchProjectPrograms = useCallback(async () => {
 		if (!currentProject?.id) {
@@ -49,7 +61,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 		try {
 			const projectId = currentProject.id;
-			const { data: programsData, error: programsError } = await supabase.from("programs").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+			const { data: programsData, error: programsError } = await supabase
+				.from("programs")
+				.select("*")
+				.eq("project_id", projectId)
+				.order("updated_at", { ascending: false })
+				.order("created_at", { ascending: false });
 
 			if (programsError) throw new Error(`Supabase fetch error (programs): ${programsError.message}`);
 
@@ -67,7 +84,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			if (fetchedPrograms.length > 0) {
 				const latestProgram = fetchedPrograms[0];
 				setCurrentProgram(latestProgram);
-				console.log(`Set current program to ID: ${latestProgram.id} (created: ${latestProgram.created_at})`);
+				console.log(`Set current program to ID: ${latestProgram.id} (updated: ${latestProgram.updated_at})`);
 			} else {
 				setCurrentProgram(null);
 			}
@@ -110,7 +127,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 	return (
 		<ProjectContext.Provider value={value}>
 			{currentProject && (
-				<ProgramProvider currentProgram={currentProgram} currentProjectId={currentProject.id} onProgramModified={handleProgramContentModified}>
+				<ProgramProvider currentProgram={currentProgram} currentProjectId={currentProject.id} onProgramModified={handleProgramModified}>
 					{children}
 				</ProgramProvider>
 			)}

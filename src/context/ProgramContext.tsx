@@ -682,7 +682,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 			console.error("Failed to start program run:", message);
 			setProgramRunError(message);
 			setProgramRunStatus("error");
-			toast.error(`Error: ${message}`, { id: "program-run" });
+			toast.error(`Error`, { description: message, id: "program-run" });
 		}
 	}, [currentProgram, supabase, currentProgramGraphData, _getOrCreateGenerator]);
 

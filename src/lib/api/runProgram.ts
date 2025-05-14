@@ -50,14 +50,12 @@ export function validateProgramGraph(programGraphData: RawProgramGraphData | nul
 		}
 	});
 
-	// Check 4: free-floating nodes
+	// Check 4: free-floating constraint nodes
 	const allNodeIdsInEdges = new Set<string>();
 	edges.forEach((edge: SupabaseDBEdge) => {
 		if (edge.constraint_id) allNodeIdsInEdges.add(edge.constraint_id);
 		if (edge.sequence_id) allNodeIdsInEdges.add(edge.sequence_id);
 	});
-
-	// Constraint nodes must be connected to at least one sequence node.
 	constraintNodes.forEach((node) => {
 		if (!edges.some((edge) => edge.constraint_id === node.id)) {
 			errors.push({
@@ -89,7 +87,6 @@ export async function runProgram(programId: string) {
 		}
 		console.error("Next.js API route error response:", errorPayload);
 		const errorMessage = errorPayload.message || errorPayload.detail || errorPayload.error || `API error: ${res.status}`;
-		// toast.error(errorMessage); // Removed to prevent double toasting, ProgramContext will handle it.
 		throw new Error(errorMessage);
 	}
 	return res.json();

@@ -48,7 +48,6 @@ const Program = () => {
 		}
 	}, [mode, showGraphEditor, showCodeEditor]);
 
-	// If no project is selected, display a message or a loading state.
 	if (!currentProject) {
 		return (
 			<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden flex items-center justify-center p-10 text-center">
@@ -56,13 +55,12 @@ const Program = () => {
 					<Information size={32} />
 					<p className="text-lg font-medium">No Project Selected</p>
 					<p>Please select a project from the sidebar to view its programs, or create a new one.</p>
-					{/* You could add a loading spinner here if projects are actively being fetched */}
+					{/* TODO: add a loading spinner or skeleton here if projects are actively being fetched */}
 				</div>
 			</div>
 		);
 	}
 
-	// If a project is selected, render the main UI.
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
 			<div className="z-50 absolute top-0 left-0 w-full bg-white/50 backdrop-blur">
@@ -77,8 +75,6 @@ const Program = () => {
 				</div>
 			</div>
 
-			{/* Wrap the part that needs ProjectContext (and thus ProgramContext) with ProjectProvider */}
-			{/* This entire block will only be rendered if currentProject exists, due to the check above */}
 			<ProjectProvider>
 				<div className="relative vertical h-full w-full">
 					<div className="relative h-full w-full overflow-hidden">
@@ -107,7 +103,6 @@ const Program = () => {
 										: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 								}`}
 							>
-								{/* GraphEditor will only be rendered if currentProject exists, so ProjectProvider will provide ProgramProvider */}
 								<GraphEditor />
 							</div>
 

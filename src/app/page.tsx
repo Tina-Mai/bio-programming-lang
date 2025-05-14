@@ -1,12 +1,13 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Folder, Settings, AddLarge, Information, Book } from "@carbon/icons-react";
-import Program from "@/components/program";
 import { useGlobal } from "@/context/GlobalContext";
-import ProjectDropdown from "@/components/projects/ProjectDropdown";
+import { ProjectProvider } from "@/context/ProjectContext";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
+import { Folder, Settings, AddLarge, Information, Book } from "@carbon/icons-react";
+import Program from "@/components/program/Program";
+import ProjectDropdown from "@/components/projects/ProjectDropdown";
 
 export default function Home() {
 	const { projects, currentProject, setCurrentProject, createNewProject } = useGlobal();
@@ -62,7 +63,9 @@ export default function Home() {
 					</div>
 				</div>
 			</div>
-			<Program />
+			<ProjectProvider>
+				<Program />
+			</ProjectProvider>
 		</div>
 	);
 }

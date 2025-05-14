@@ -1,11 +1,10 @@
-import { Constraint, Generator, Output } from "@/types";
+import { Constraint, Generator } from "@/types";
 export type SequenceType = "dna" | "rna" | "protein";
 
 export interface SequenceNode {
 	id: string;
 	type?: SequenceType;
 	generator?: Generator;
-	output?: Output;
 }
 
 export interface ConstraintNode {

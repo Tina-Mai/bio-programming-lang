@@ -37,7 +37,7 @@ interface ProgramContextProps {
 	duplicateNode: (nodeId: string) => Promise<void>;
 	addConstraintNode: () => Promise<void>;
 	addSequenceNode: () => Promise<void>;
-	programRunStatus: "idle" | "loading" | "running" | "completed" | "error" | "validation_error";
+	programRunStatus: "idle" | "loading" | "running" | "finalizing" | "completed" | "error" | "validation_error";
 	programRunError: string | null;
 	programOutputs: SupabaseDBOutput[];
 	startProgramRun: () => Promise<void>;
@@ -65,11 +65,68 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 	const [isGraphLoading, setIsGraphLoading] = useState<boolean>(false);
 	const [graphError, setGraphError] = useState<string | null>(null);
 	const supabase: SupabaseClient = createClient();
-	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "completed" | "error" | "validation_error">("idle");
+	const [programRunStatus, setProgramRunStatus] = useState<"idle" | "loading" | "running" | "finalizing" | "completed" | "error" | "validation_error">("idle");
 	const [programRunError, setProgramRunError] = useState<string | null>(null);
 	const [programOutputs, setProgramOutputs] = useState<SupabaseDBOutput[]>([]);
+	const [pendingFinalOutputData, setPendingFinalOutputData] = useState<{ _metadata: unknown } | null>(null);
 	const outputsSubscriptionRef = useRef<RealtimeChannel | null>(null);
 	const [validationErrors, setValidationErrors] = useState<ProgramValidationError[] | null>(null);
+
+	const currentProgramRef = useRef(currentProgram);
+	useEffect(() => {
+		currentProgramRef.current = currentProgram;
+	}, [currentProgram]);
+
+	const pendingFinalOutputDataRef = useRef(pendingFinalOutputData);
+	useEffect(() => {
+		pendingFinalOutputDataRef.current = pendingFinalOutputData;
+	}, [pendingFinalOutputData]);
+
+	const finalizeProgramRunWithOutput = useCallback(
+		async (finalOutputObject: SupabaseDBOutput) => {
+			const progToUpdate = currentProgramRef.current;
+			if (!progToUpdate?.id) {
+				console.error("Cannot finalize, currentProgram is null in finalizeProgramRunWithOutput");
+				setProgramRunStatus("error");
+				setProgramRunError("Internal error: Program context lost during finalization.");
+				toast.error("Internal error during finalization.", { id: "program-run" });
+				return;
+			}
+			try {
+				// Update the 'programs' table in DB with the ID of the output
+				const { error: updateError } = await supabase.from("programs").update({ output: finalOutputObject.id }).eq("id", progToUpdate.id);
+
+				if (updateError) throw updateError;
+
+				console.log(`Successfully updated program ${progToUpdate.id} in DB with final output ID ${finalOutputObject.id}`);
+
+				// Update local state of currentProgramGraphData.program.output with the full object
+				// This assumes SupabaseProgram.output type is compatible with SupabaseDBOutput
+				setCurrentProgramGraphData((prevData) => {
+					if (!prevData || !prevData.program || prevData.program.id !== progToUpdate.id) return prevData;
+					const updatedProgram: SupabaseProgram = {
+						...prevData.program,
+						output: finalOutputObject, // Assign the full object
+					};
+					return { ...prevData, program: updatedProgram };
+				});
+
+				await onProgramModified();
+
+				setProgramRunStatus("completed");
+				toast.success("Program completed and final output recorded!", { id: "program-run" });
+			} catch (error: unknown) {
+				console.error("Failed to finalize program run with output:", error);
+				const message = error instanceof Error ? error.message : "Failed to save final output link.";
+				setProgramRunError(message);
+				setProgramRunStatus("error");
+				toast.error(message, { id: "program-run" });
+			} finally {
+				setPendingFinalOutputData(null); // Clear pending data
+			}
+		},
+		[supabase, onProgramModified, setProgramRunStatus, setProgramRunError, setCurrentProgramGraphData]
+	);
 
 	const _getOrCreateGenerator = useCallback(
 		async (
@@ -476,7 +533,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 						type: typedOriginalNodeData.type,
 						generator_id: typedOriginalNodeData.generator_id,
 						program_id: currentProgram.id,
-						output: typedOriginalNodeData.output,
 					};
 					const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 					if (error) throw error;
@@ -490,7 +546,6 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 							sequence: {
 								id: newDbNode.id,
 								type: (newDbNode as SupabaseSequenceNode).type,
-								output: (newDbNode as SupabaseSequenceNode).output,
 								generator_id: (newDbNode as SupabaseSequenceNode).generator_id,
 								generator: generatorData ? { id: generatorData.id, key: generatorData.key, name: generatorData.name, hyperparameters: generatorData.hyperparameters } : undefined,
 								program_id: (newDbNode as SupabaseSequenceNode).program_id,
@@ -558,7 +613,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setIsGraphLoading(true);
 		setGraphError(null);
 		try {
-			const payload = { type: null, output: null, program_id: currentProgram.id, generator_id: null };
+			const payload = { type: null, program_id: currentProgram.id, generator_id: null };
 			const { data, error } = await supabase.from("sequence_nodes").insert(payload).select().single();
 			if (error) throw error;
 			const newDbNode = data as SupabaseSequenceNode;
@@ -566,7 +621,7 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 				id: newDbNode.id,
 				type: "sequence",
 				position: { x: 150, y: 150 },
-				data: { sequence: { id: newDbNode.id, type: newDbNode.type, output: newDbNode.output, program_id: newDbNode.program_id } },
+				data: { sequence: { id: newDbNode.id, type: newDbNode.type, program_id: newDbNode.program_id } },
 			};
 			setNodes((nds) => [...nds, newFlowNode]);
 			setCurrentProgramGraphData((prevData) => {
@@ -583,35 +638,26 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 	// start program execution and listen for outputs
 	const startProgramRun = useCallback(async () => {
-		if (!currentProgram?.id) {
+		if (!currentProgramRef.current?.id) {
 			setProgramRunError("No current program selected");
 			setProgramRunStatus("error");
 			toast.error("No current program selected");
 			return;
 		}
+		const progId = currentProgramRef.current.id;
 
-		// validate program before attempting to run
 		setValidationErrors(null);
 		const validationResults = validateProgramGraph(currentProgramGraphData);
 
 		if (validationResults.length > 0) {
 			setValidationErrors(validationResults);
 			setProgramRunStatus("validation_error");
-			setProgramRunError("Program validation failed. Please check your program configuration.");
-			toast.dismiss("program-run"); // Dismiss any existing loading toast
-
-			const globalErrors = validationResults.filter((err) => !err.nodeId);
-			const nodeSpecificErrorsExist = validationResults.some((err) => err.nodeId);
-
-			if (nodeSpecificErrorsExist) {
-				// If there are any node-specific errors, show only the general compilation failed message.
-				// Node-specific messages are available via tooltips on the nodes themselves.
-				toast.error("Compilation failed due to validation errors.", { id: "program-run-main-error", duration: 5000 });
-			} else if (globalErrors.length > 0) {
-				// If there are only global errors (no node-specific ones), toast each global error.
-				globalErrors.forEach((err) => {
-					toast.error(err.message, { duration: 5000 });
-				});
+			if (validationResults.some((err) => !err.nodeId)) {
+				// global errors
+				validationResults.filter((err) => !err.nodeId).forEach((err) => toast.error(err.message, { duration: 5000 }));
+			} else {
+				// node-specific errors
+				toast.error("Compilation failed due to validation errors. Check nodes for details.", { id: "program-run-main-error", duration: 5000 });
 			}
 			return;
 		}
@@ -619,72 +665,85 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 		setProgramRunStatus("loading");
 		setProgramRunError(null);
 		setProgramOutputs([]);
-		toast.loading("Compiling program...", { id: "program-run" });
+		setPendingFinalOutputData(null);
+		const toastId = "program-run";
+		toast.loading("Compiling program...", { id: toastId });
 
-		try {
-			const runProgramApi = await import("@/lib/api/runProgram");
-			const result = await runProgramApi.runProgram(currentProgram.id);
-			console.log("Program run initiated:", result);
-			toast("Generation started", { id: "program-run" });
+		// ensure subscription is active for the current program
+		const expectedChannelTopic = `program-outputs-${progId}`;
+		if (outputsSubscriptionRef.current && outputsSubscriptionRef.current.topic !== expectedChannelTopic) {
+			console.log(`Subscription topic changed. Removing old channel: ${outputsSubscriptionRef.current.topic}`);
+			await supabase.removeChannel(outputsSubscriptionRef.current);
+			outputsSubscriptionRef.current = null;
+		}
 
-			setProgramRunStatus("running");
-
-			// TODO: set up Supabase real-time subscription here
-			// 1. get all sequence_node IDs for the current program
-			if (!currentProgramGraphData || !currentProgramGraphData.sequenceNodes || currentProgramGraphData.sequenceNodes.length === 0) {
-				console.warn("No sequence nodes found in the current program to listen for outputs.");
-				return;
-			}
-
-			const sequenceNodeIds = currentProgramGraphData.sequenceNodes.map((sn) => sn.id);
-
-			if (outputsSubscriptionRef.current) {
-				supabase.removeChannel(outputsSubscriptionRef.current);
-				outputsSubscriptionRef.current = null;
-			}
-
-			console.log(`Subscribing to outputs for sequence_ids: ${sequenceNodeIds.join(", ")} on program_id: ${currentProgram.id}`);
-
+		if (!outputsSubscriptionRef.current) {
+			console.log(`Setting up new subscription for topic: ${expectedChannelTopic}`);
 			const channel = supabase
-				.channel(`program-outputs-${currentProgram.id}`)
-				.on(
-					"postgres_changes",
-					{
-						event: "INSERT",
-						schema: "public",
-						table: "outputs",
-					},
-					(payload) => {
-						console.log("New output received (raw payload):", payload.new);
-						const newOutput = payload.new as SupabaseDBOutput;
+				.channel(expectedChannelTopic)
+				.on("postgres_changes", { event: "INSERT", schema: "public", table: "outputs", filter: `program_id=eq.${progId}` }, async (payload) => {
+					console.log("New output received via subscription (raw payload):", payload.new);
+					const newOutput = payload.new as SupabaseDBOutput;
+					setProgramOutputs((prevOutputs) => [...prevOutputs, newOutput]);
 
-						if (currentProgram && newOutput.program_id === currentProgram.id) {
-							setProgramOutputs((prevOutputs) => [...prevOutputs, newOutput]);
-						} else {
-							console.log(`Output for program_id ${newOutput.program_id} ignored (does not match current program_id ${currentProgram?.id}).`);
+					// check if this is the pending final output
+					const currentPendingData = pendingFinalOutputDataRef.current;
+					const currentProg = currentProgramRef.current;
+
+					if (currentPendingData && newOutput.program_id === currentProg?.id) {
+						const pendingMetadata = currentPendingData._metadata;
+						if (pendingMetadata && newOutput.metadata) {
+							try {
+								const metadataMatch = JSON.stringify(newOutput.metadata) === JSON.stringify(pendingMetadata);
+								if (metadataMatch) {
+									console.log("Matched final output in DB via subscription:", newOutput);
+									await finalizeProgramRunWithOutput(newOutput);
+								} else {
+									console.warn("Metadata mismatch for final output. Pending metadata:", JSON.stringify(pendingMetadata), "Received metadata:", JSON.stringify(newOutput.metadata));
+								}
+							} catch (e) {
+								console.error("Error comparing metadata for final output:", e);
+							}
 						}
 					}
-				)
+				})
 				.subscribe((status, err) => {
 					if (status === "SUBSCRIBED") {
-						console.log(`Successfully subscribed to outputs for program ${currentProgram.id}`);
+						console.log(`Successfully subscribed to outputs for program ${progId}`);
 					}
 					if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-						console.error(`Subscription error for program ${currentProgram.id}:`, status, err);
-						setProgramRunError(`Subscription failed: ${status} ${err?.message || ""}`);
+						console.error(`Subscription error for program ${progId}:`, status, err);
 					}
 				});
 			outputsSubscriptionRef.current = channel;
+		}
 
-			// TODO: add logic to listen for a "completion" signal
+		setProgramRunStatus("running");
+		toast.loading("Compiling and generating program...", { id: toastId });
+
+		try {
+			const runProgramApi = await import("@/lib/api/runProgram");
+			const result = await runProgramApi.runProgram(progId);
+			console.log("Program run API call returned:", result);
+
+			if (result.status === "complete" && result.final_output) {
+				setPendingFinalOutputData(result.final_output);
+				setProgramRunStatus("finalizing");
+				toast.loading("Program generated, processing final output...", { id: toastId });
+				console.log("Backend processing complete. Waiting for final output (metadata below) to be saved to DB and identified via subscription.", result.final_output._metadata);
+			} else {
+				const errorMessage = result.message || "Backend processing failed or did not return final output.";
+				console.error("Program run issue:", errorMessage, "Full result:", result);
+				throw new Error(errorMessage);
+			}
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "An unknown error occurred";
-			console.error("Failed to start program run:", message);
+			const message = error instanceof Error ? error.message : "An unknown error occurred during program run.";
+			console.error("Failed to start or process program run:", message);
 			setProgramRunError(message);
 			setProgramRunStatus("error");
-			toast.error(`Error`, { description: message, id: "program-run" });
+			toast.error("Error", { description: message, id: toastId });
 		}
-	}, [currentProgram, supabase, currentProgramGraphData, _getOrCreateGenerator]);
+	}, [currentProgramGraphData, supabase, finalizeProgramRunWithOutput, onProgramModified]);
 
 	// reset program run state (e.g., close dialog)
 	const resetProgramRun = useCallback(() => {
@@ -700,11 +759,12 @@ export const ProgramProvider = ({ children, currentProgram, currentProjectId, on
 
 	// cleanup subscription on component unmount or when currentProgram changes
 	useEffect(() => {
+		const channelToRemove = outputsSubscriptionRef.current;
 		return () => {
-			if (outputsSubscriptionRef.current) {
-				supabase.removeChannel(outputsSubscriptionRef.current);
+			if (channelToRemove) {
+				console.log(`Cleaning up subscription ${channelToRemove.topic} on component unmount.`);
+				supabase.removeChannel(channelToRemove);
 				outputsSubscriptionRef.current = null;
-				console.log("Cleaned up outputs subscription.");
 			}
 		};
 	}, [supabase]);

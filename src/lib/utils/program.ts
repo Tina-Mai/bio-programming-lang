@@ -1,6 +1,5 @@
 import { Node as FlowNode, Edge as FlowEdge, XYPosition } from "@xyflow/react";
-import { Constraint, constraintOptions } from "@/types/Constraint";
-import { Generator, generatorOptions } from "@/types/Generator";
+import { Constraint, constraintOptions, Generator, generatorOptions, Output } from "@/types";
 
 // base interface for Supabase entities
 export interface SupabaseBaseMinimal {
@@ -12,12 +11,12 @@ export interface SupabaseBaseMinimal {
 export interface SupabaseProgram extends SupabaseBaseMinimal {
 	project_id: string;
 	updated_at: string;
+	output?: Output;
 }
 
 export interface SupabaseSequenceNode extends SupabaseBaseMinimal {
 	program_id: string;
 	type?: "dna" | "rna" | "protein";
-	output?: Record<string, unknown>;
 	generator_id?: string | null;
 }
 
@@ -129,7 +128,6 @@ export function convertProjectDataToFlow(programGraphData: RawProgramGraphData, 
 				sequence: {
 					id: dbNode.id,
 					type: dbNode.type,
-					output: dbNode.output,
 					generator: resolvedGenerator,
 					program_id: dbNode.program_id,
 				},

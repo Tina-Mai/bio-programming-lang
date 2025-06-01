@@ -6,7 +6,8 @@ import { Code, Folder, ParentChild, ChevronDown, ChevronUp, Information } from "
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CompileButton from "@/components/energy/CompileButton";
-import GraphEditor from "@/components/program/GraphEditor";
+// import GraphEditor from "@/components/program/GraphEditor";
+import VisualEditor from "@/components/program/VisualEditor";
 import CodeEditor from "@/components/program/CodeEditor";
 import ProjectTabs from "@/components/program/ProjectTabs";
 import SequenceViewer from "@/components/program/SequenceViewer";
@@ -15,13 +16,11 @@ const ProgramContents = () => {
 	const { mode, setMode, currentProject: globalCurrentProject } = useGlobal();
 	const { currentProgram: programFromProject } = useProject();
 	const { currentProgramGraphData } = useProgram();
-
 	const [showGraphEditor, setShowGraphEditor] = useState(mode === "graph");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
 	const [showSequence, setShowSequence] = useState(true);
 	const editorRef = useRef<EditorView | null>(null);
-
 	let programForDisplay = programFromProject;
 	const programFromGraphContext = currentProgramGraphData?.program;
 
@@ -94,7 +93,8 @@ const ProgramContents = () => {
 									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 							}`}
 						>
-							<GraphEditor />
+							{/* <GraphEditor /> */}
+							<VisualEditor />
 						</div>
 
 						<div

@@ -36,7 +36,6 @@ const LinearViewerDemo = () => {
 			direction: "forward" as const,
 			start: 30,
 			end: 60,
-			color: "bg-purple-500",
 		},
 	];
 
@@ -45,15 +44,6 @@ const LinearViewerDemo = () => {
 			<div>
 				<h2 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">Basic Example</h2>
 				<LinearViewer sequence={sequence} annotations={annotations} />
-			</div>
-		);
-	};
-
-	const CustomViewer = () => {
-		return (
-			<div>
-				<h2 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">Custom Height and Ruler Interval</h2>
-				<LinearViewer sequence={sequence} annotations={annotations} height={300} />
 			</div>
 		);
 	};
@@ -99,15 +89,11 @@ const LinearViewerDemo = () => {
 			<Tabs defaultValue="basic">
 				<TabsList className="mb-4">
 					<TabsTrigger value="basic">Basic Viewer</TabsTrigger>
-					<TabsTrigger value="custom">Custom Viewer</TabsTrigger>
 					<TabsTrigger value="long">Long Viewer</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="basic">
 					<BasicViewer />
-				</TabsContent>
-				<TabsContent value="custom">
-					<CustomViewer />
 				</TabsContent>
 				<TabsContent value="long">
 					<LongViewer />

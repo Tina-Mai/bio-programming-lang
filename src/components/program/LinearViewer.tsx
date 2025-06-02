@@ -19,15 +19,32 @@ interface LinearViewerProps {
 	sequence: string;
 	annotations?: Annotation[];
 	height?: number;
-	rulerInterval?: number;
+	// rulerInterval?: number; // Removed as it will be dynamic
 }
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [], height = 200, rulerInterval = 10 }) => {
+const LinearViewer: React.FC<LinearViewerProps> = ({
+	sequence,
+	annotations = [],
+	height = 200,
+	// rulerInterval = 10, // Removed
+}) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sequenceLength = sequence.length;
+
+	// Calculate dynamic ruler interval
+	const calculateRulerInterval = (length: number): number => {
+		if (length <= 100) return 10;
+		if (length <= 500) return 50;
+		if (length <= 1000) return 100;
+		if (length <= 5000) return 500;
+		if (length <= 10000) return 1000;
+		return Math.max(1, Math.pow(10, Math.floor(Math.log10(length / 10)))); // Fallback for very large sequences
+	};
+
+	const rulerInterval = calculateRulerInterval(sequenceLength);
 
 	// Calculate position from mouse event
 	const getPositionFromEvent = (e: React.MouseEvent | MouseEvent) => {
@@ -96,12 +113,21 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [],
 			document.removeEventListener("mousemove", handleGlobalMouseMove);
 			document.removeEventListener("mouseup", handleGlobalMouseUp);
 		};
-	}, [isDragging, selection]);
+	}, [isDragging, selection, getPositionFromEvent]);
 
 	// Generate ruler marks
 	const rulerMarks = [];
 	for (let i = 0; i <= sequenceLength; i += rulerInterval) {
 		rulerMarks.push(i);
+	}
+	// Ensure the last mark is always the sequence length if it's not already included and close to it
+	if (sequenceLength % rulerInterval !== 0 && sequenceLength > 0) {
+		if (rulerMarks.length === 0 || rulerMarks[rulerMarks.length - 1] < sequenceLength) {
+			// Add if the last mark is not too close to sequenceLength to avoid clutter
+			if (!rulerMarks.length || sequenceLength - rulerMarks[rulerMarks.length - 1] > rulerInterval / 2) {
+				rulerMarks.push(sequenceLength);
+			}
+		}
 	}
 
 	// Get color for annotation type

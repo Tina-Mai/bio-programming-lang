@@ -255,9 +255,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			{/* Sequence display when selection is made */}
 			{selection && (
 				<div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded">
-					<div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-						Selected: Position {selection.start} - {selection.end} ({selection.end - selection.start + 1} bp)
-					</div>
+					<div className="text-sm text-slate-600 dark:text-slate-400 mb-1">{`Selected: Position ${selection.start} ${selection.start === selection.end ? "" : `- ${selection.end}`} (${
+						selection.end - selection.start + 1
+					} bp)`}</div>
 					<div className="font-mono text-sm break-all">{sequence.substring(selection.start, selection.end + 1)}</div>
 				</div>
 			)}

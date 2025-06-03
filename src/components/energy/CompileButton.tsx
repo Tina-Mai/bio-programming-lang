@@ -20,11 +20,12 @@ const CompileButton = () => {
 	return (
 		<Button
 			onClick={handleClick}
+			size="sm"
 			/* variant="accent" */
 			className="w-min"
 			disabled={programRunStatus === "loading" || programRunStatus === "running"} // Disable if already running
 		>
-			<PlayFilledAlt size={20} />
+			<PlayFilledAlt />
 			{programRunStatus === "loading" || programRunStatus === "running" ? "Running..." : "Compile"}
 		</Button>
 	);

@@ -5,3 +5,4 @@ export * from "./Constraint";
 export * from "./Generator";
 export * from "./Program";
 export * from "./Output";
+export * from "./Annotation";

@@ -1,34 +1,21 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useGlobal } from "@/context/GlobalContext";
-import { useProject, useProgram } from "@/context/ProjectContext";
+// import { useProject, useProgram } from "@/context/ProjectContext";
 import { EditorView } from "@codemirror/view";
-import { Code, Folder, ParentChild, ChevronDown, ChevronUp, Information } from "@carbon/icons-react";
-import { Dna } from "lucide-react";
+import { Code, Folder, ParentChild, Information } from "@carbon/icons-react";
 import { Button } from "@/components/ui/button";
 import CompileButton from "@/components/energy/CompileButton";
-// import GraphEditor from "@/components/program/GraphEditor";
 import VisualEditor from "@/components/program/VisualEditor";
 import CodeEditor from "@/components/program/CodeEditor";
-import ProjectTabs from "@/components/program/ProjectTabs";
-import SequenceViewer from "@/components/program/SequenceViewer";
 
 const ProgramContents = () => {
 	const { mode, setMode, currentProject: globalCurrentProject } = useGlobal();
-	const { currentProgram: programFromProject } = useProject();
-	const { currentProgramGraphData } = useProgram();
+	// const { currentProgram: programFromProject } = useProject();
+	// const { currentProgramGraphData } = useProgram();
 	const [showGraphEditor, setShowGraphEditor] = useState(mode === "graph");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
-	const [showSequence, setShowSequence] = useState(true);
 	const editorRef = useRef<EditorView | null>(null);
-	let programForDisplay = programFromProject;
-	const programFromGraphContext = currentProgramGraphData?.program;
-
-	if (programFromGraphContext && programFromProject && programFromGraphContext.id === programFromProject.id) {
-		programForDisplay = programFromGraphContext;
-	} else if (programFromGraphContext && !programFromProject) {
-		programForDisplay = programFromGraphContext;
-	}
 
 	useEffect(() => {
 		if (mode === "graph" && !showGraphEditor) {
@@ -56,13 +43,13 @@ const ProgramContents = () => {
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
 			<div className="z-50 absolute top-0 left-0 w-full bg-white/50 backdrop-blur">
-				<div className="relative horizontal w-full gap-2 border-b border-slate-300 px-5 py-3 text-slate-400 text-sm justify-between">
+				<div className="relative horizontal w-full gap-2 border-b border-slate-300 pl-5 pr-2.5 py-2.5 text-slate-400 text-sm justify-between">
 					<div className="horizontal items-center gap-2">
 						<Folder size={20} />
 						<div>/</div>
 						<div className="text-slate-500 font-medium">{globalCurrentProject!.name}</div>
 					</div>
-					<ProjectTabs />
+					<CompileButton />
 				</div>
 			</div>
 
@@ -80,9 +67,6 @@ const ProgramContents = () => {
 							</div>
 						)}
 					</Button>
-					<div className="z-50 absolute mt-12 bottom-3 right-3 ">
-						<CompileButton />
-					</div>
 
 					<div className="relative h-full w-full">
 						<div
@@ -109,56 +93,6 @@ const ProgramContents = () => {
 						</div>
 					</div>
 				</div>
-
-				{programForDisplay?.output &&
-					typeof programForDisplay.output === "object" &&
-					(() => {
-						const outputData = programForDisplay.output;
-						const hasSequence = !!outputData.metadata?.sequence;
-
-						return (
-							<div
-								className={`relative vertical border-t border-slate-300 py-3 ${showSequence && hasSequence ? "h-36" : "h-min"} ${hasSequence ? "cursor-pointer" : "cursor-default"}`}
-								onClick={() => {
-									if (hasSequence) {
-										setShowSequence(!showSequence);
-									}
-								}}
-							>
-								{showSequence && hasSequence ? (
-									<SequenceViewer output={outputData.metadata} showSequence={showSequence} setShowSequence={setShowSequence} />
-								) : (
-									<div className="horizontal items-center justify-between text-slate-400 text-sm px-5">
-										<div className="flex horizontal items-center gap-1.5">
-											<Dna className="size-5" strokeWidth={1.3} />
-											<div className="text-slate-500 font-medium">Sequence Output</div>
-											{!showSequence && <span className="text-xs text-slate-400">{hasSequence ? "(Click to expand)" : "(No sequence data in output)"}</span>}
-										</div>
-										{hasSequence &&
-											(showSequence ? (
-												<ChevronDown
-													size={20}
-													className="hover:text-slate-700 cursor-pointer"
-													onClick={(e) => {
-														e.stopPropagation();
-														setShowSequence(!showSequence);
-													}}
-												/>
-											) : (
-												<ChevronUp
-													size={20}
-													className="hover:text-slate-700 cursor-pointer"
-													onClick={(e) => {
-														e.stopPropagation();
-														setShowSequence(!showSequence);
-													}}
-												/>
-											))}
-									</div>
-								)}
-							</div>
-						);
-					})()}
 			</div>
 		</div>
 	);

@@ -1,15 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-
-interface Annotation {
-	text: string;
-	type: string;
-	direction: "forward" | "reverse";
-	start: number;
-	end: number;
-	color?: string;
-}
+import { Annotation } from "@/types";
 
 interface Selection {
 	start: number;

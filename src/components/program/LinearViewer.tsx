@@ -21,6 +21,92 @@ interface LinearViewerProps {
 	annotations?: Annotation[];
 }
 
+// Reusable annotation component
+interface AnnotationComponentProps {
+	annotation: Annotation;
+	index: number;
+	sequenceLength: number;
+	hoveredAnnotation: Annotation | null;
+	setHoveredAnnotation: (annotation: Annotation | null) => void;
+	direction: "forward" | "reverse";
+}
+
+const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, index, sequenceLength, hoveredAnnotation, setHoveredAnnotation, direction }) => {
+	const annotationWidth = ((annotation.end - annotation.start + 1) / sequenceLength) * 100;
+	const estimatedPixelWidth = Math.max(40, (annotationWidth / 100) * 800);
+	const arrowWidth = 12;
+
+	// Get colors for the annotation
+	const getColors = () => {
+		if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
+		const colorMap = {
+			CDS: { fill: "rgb(190 242 100 / 0.45)", stroke: "rgb(163 230 53 / 0.8)" }, // lime
+			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
+			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
+			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
+		};
+		return colorMap[annotation.type as keyof typeof colorMap] || colorMap.default;
+	};
+
+	const colors = getColors();
+	const isHovered = hoveredAnnotation === annotation;
+	const shouldDim = hoveredAnnotation && !isHovered;
+
+	// Direction-specific configurations
+	const config = {
+		forward: {
+			polygonPoints: `0,2 ${estimatedPixelWidth - arrowWidth},2 ${estimatedPixelWidth},16 ${estimatedPixelWidth - arrowWidth},30 0,30`,
+			textAlign: "justify-start",
+			paddingLeft: "8px",
+			paddingRight: "16px",
+			top: "80px",
+		},
+		reverse: {
+			polygonPoints: `${arrowWidth},2 ${estimatedPixelWidth},2 ${estimatedPixelWidth},30 ${arrowWidth},30 0,16`,
+			textAlign: "justify-end",
+			paddingLeft: "16px",
+			paddingRight: "8px",
+			top: "120px",
+		},
+	};
+
+	const currentConfig = config[direction];
+
+	return (
+		<div
+			key={`${direction}-${index}`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"}`}
+			style={{
+				left: `${(annotation.start / sequenceLength) * 100}%`,
+				width: `${annotationWidth}%`,
+				top: currentConfig.top,
+				height: "32px",
+				zIndex: isHovered ? 20 : 10,
+			}}
+			onMouseEnter={() => setHoveredAnnotation(annotation)}
+			onMouseLeave={() => setHoveredAnnotation(null)}
+		>
+			<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
+				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
+			</svg>
+			<div
+				className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium ${currentConfig.textAlign}`}
+				style={{
+					paddingLeft: currentConfig.paddingLeft,
+					paddingRight: currentConfig.paddingRight,
+				}}
+			>
+				<span
+					className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+					style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
+				>
+					{annotation.text}
+				</span>
+			</div>
+		</div>
+	);
+};
+
 const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -184,142 +270,30 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				</div>
 
 				{/* Forward Annotations */}
-				{forwardAnnotations.map((annotation, index) => {
-					const annotationWidth = ((annotation.end - annotation.start + 1) / sequenceLength) * 100;
-					// Calculate approximate pixel width based on typical container width
-					const estimatedPixelWidth = Math.max(40, (annotationWidth / 100) * 800); // Assume ~800px container
-					const arrowWidth = 12;
-
-					// Get colors for the annotation
-					const getColors = () => {
-						if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
-						const colorMap = {
-							CDS: { fill: "rgb(190 242 100 / 0.45)", stroke: "rgb(163 230 53 / 0.8)" }, // lime
-							promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
-							terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
-							default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
-						};
-						return colorMap[annotation.type as keyof typeof colorMap] || colorMap.default;
-					};
-
-					const colors = getColors();
-
-					// Determine if this annotation should be dimmed
-					const isHovered = hoveredAnnotation === annotation;
-					const shouldDim = hoveredAnnotation && !isHovered;
-
-					return (
-						<div
-							key={`forward-${index}`}
-							className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"}`}
-							style={{
-								left: `${(annotation.start / sequenceLength) * 100}%`,
-								width: `${annotationWidth}%`,
-								top: "80px",
-								height: "32px",
-								zIndex: isHovered ? 20 : 10,
-							}}
-							onMouseEnter={() => {
-								setHoveredAnnotation(annotation);
-							}}
-							onMouseLeave={() => {
-								setHoveredAnnotation(null);
-							}}
-						>
-							<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
-								<polygon
-									points={`0,2 ${estimatedPixelWidth - arrowWidth},2 ${estimatedPixelWidth},16 ${estimatedPixelWidth - arrowWidth},30 0,30`}
-									fill={colors.fill}
-									stroke={colors.stroke}
-									strokeWidth="1"
-								/>
-							</svg>
-							<div
-								className="absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-start"
-								style={{
-									paddingLeft: "8px",
-									paddingRight: "16px",
-								}}
-							>
-								<span
-									className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
-									style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
-								>
-									{annotation.text}
-								</span>
-							</div>
-						</div>
-					);
-				})}
+				{forwardAnnotations.map((annotation, index) => (
+					<AnnotationComponent
+						key={`forward-${index}`}
+						annotation={annotation}
+						index={index}
+						sequenceLength={sequenceLength}
+						hoveredAnnotation={hoveredAnnotation}
+						setHoveredAnnotation={setHoveredAnnotation}
+						direction="forward"
+					/>
+				))}
 
 				{/* Backward Annotations */}
-				{backwardAnnotations.map((annotation, index) => {
-					const annotationWidth = ((annotation.end - annotation.start + 1) / sequenceLength) * 100;
-					// Calculate approximate pixel width based on typical container width
-					const estimatedPixelWidth = Math.max(40, (annotationWidth / 100) * 800); // Assume ~800px container
-					const arrowWidth = 12;
-
-					// Get colors for the annotation
-					const getColors = () => {
-						if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
-						const colorMap = {
-							CDS: { fill: "rgb(190 242 100 / 0.45)", stroke: "rgb(163 230 53 / 0.8)" }, // lime
-							promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
-							terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
-							default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
-						};
-						return colorMap[annotation.type as keyof typeof colorMap] || colorMap.default;
-					};
-
-					const colors = getColors();
-
-					// Determine if this annotation should be dimmed
-					const isHovered = hoveredAnnotation === annotation;
-					const shouldDim = hoveredAnnotation && !isHovered;
-
-					return (
-						<div
-							key={`backward-${index}`}
-							className={`group absolute transition-all duration-300 ${shouldDim ? "opacity-30" : "opacity-100"}`}
-							style={{
-								left: `${(annotation.start / sequenceLength) * 100}%`,
-								width: `${annotationWidth}%`,
-								top: "120px",
-								height: "32px",
-								zIndex: isHovered ? 20 : 10,
-							}}
-							onMouseEnter={() => {
-								setHoveredAnnotation(annotation);
-							}}
-							onMouseLeave={() => {
-								setHoveredAnnotation(null);
-							}}
-						>
-							<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
-								<polygon
-									points={`${arrowWidth},2 ${estimatedPixelWidth},2 ${estimatedPixelWidth},30 ${arrowWidth},30 0,16`}
-									fill={colors.fill}
-									stroke={colors.stroke}
-									strokeWidth="1"
-								/>
-							</svg>
-							<div
-								className="absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-end"
-								style={{
-									paddingLeft: "16px",
-									paddingRight: "8px",
-								}}
-							>
-								<span
-									className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
-									style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
-								>
-									{annotation.text}
-								</span>
-							</div>
-						</div>
-					);
-				})}
+				{backwardAnnotations.map((annotation, index) => (
+					<AnnotationComponent
+						key={`backward-${index}`}
+						annotation={annotation}
+						index={index}
+						sequenceLength={sequenceLength}
+						hoveredAnnotation={hoveredAnnotation}
+						setHoveredAnnotation={setHoveredAnnotation}
+						direction="reverse"
+					/>
+				))}
 
 				{/* Selection highlight */}
 				{selection && (

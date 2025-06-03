@@ -24,6 +24,7 @@ interface LinearViewerProps {
 const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
+	const [hoveredAnnotation, setHoveredAnnotation] = useState<Annotation | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sequenceLength = sequence.length;
@@ -145,14 +146,26 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				onMouseUp={handleMouseUp}
 				onMouseLeave={handleMouseLeave}
 			>
-				{/* Sequence line */}
+				{/* Single sequence line */}
 				<div className="absolute top-6 w-full h-3 bg-slate-300 dark:bg-slate-700" />
+
+				{/* Annotation hover highlight overlay */}
+				{hoveredAnnotation && (
+					<div
+						className="absolute h-3 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
+						style={{
+							left: `${(hoveredAnnotation.start / sequenceLength) * 100}%`,
+							width: `${((hoveredAnnotation.end - hoveredAnnotation.start + 1) / sequenceLength) * 100}%`,
+							top: "24px",
+						}}
+					/>
+				)}
 
 				{/* Sequence segmentation lines */}
 				{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1).map((position) => (
 					<div
 						key={position}
-						className="absolute w-px h-3 bg-white opacity-50"
+						className="absolute w-px h-3 bg-white opacity-30"
 						style={{
 							left: `${(position / sequenceLength) * 100}%`,
 							top: "24px",
@@ -191,15 +204,26 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 
 					const colors = getColors();
 
+					// Determine if this annotation should be dimmed
+					const isHovered = hoveredAnnotation === annotation;
+					const shouldDim = hoveredAnnotation && !isHovered;
+
 					return (
 						<div
 							key={`forward-${index}`}
-							className="group absolute"
+							className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"}`}
 							style={{
 								left: `${(annotation.start / sequenceLength) * 100}%`,
 								width: `${annotationWidth}%`,
 								top: "80px",
 								height: "32px",
+								zIndex: isHovered ? 20 : 10,
+							}}
+							onMouseEnter={() => {
+								setHoveredAnnotation(annotation);
+							}}
+							onMouseLeave={() => {
+								setHoveredAnnotation(null);
 							}}
 						>
 							<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
@@ -217,13 +241,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 									paddingRight: "16px",
 								}}
 							>
-								<span className="truncate">{annotation.text}</span>
-							</div>
-							<div
-								className="group-hover:visible invisible absolute -bottom-2 text-white text-xs font-medium backdrop-blur rounded-xs px-1 left-0"
-								style={{ backgroundColor: colors.stroke }}
-							>
-								{annotation.text}
+								<span
+									className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+									style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
+								>
+									{annotation.text}
+								</span>
 							</div>
 						</div>
 					);
@@ -250,15 +273,26 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 
 					const colors = getColors();
 
+					// Determine if this annotation should be dimmed
+					const isHovered = hoveredAnnotation === annotation;
+					const shouldDim = hoveredAnnotation && !isHovered;
+
 					return (
 						<div
 							key={`backward-${index}`}
-							className="group absolute"
+							className={`group absolute transition-all duration-300 ${shouldDim ? "opacity-30" : "opacity-100"}`}
 							style={{
 								left: `${(annotation.start / sequenceLength) * 100}%`,
 								width: `${annotationWidth}%`,
 								top: "120px",
 								height: "32px",
+								zIndex: isHovered ? 20 : 10,
+							}}
+							onMouseEnter={() => {
+								setHoveredAnnotation(annotation);
+							}}
+							onMouseLeave={() => {
+								setHoveredAnnotation(null);
 							}}
 						>
 							<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
@@ -276,13 +310,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 									paddingRight: "8px",
 								}}
 							>
-								<span className="truncate">{annotation.text}</span>
-							</div>
-							<div
-								className="group-hover:visible invisible absolute -bottom-2 text-white text-xs font-medium backdrop-blur rounded-xs px-1 right-0"
-								style={{ backgroundColor: colors.stroke }}
-							>
-								{annotation.text}
+								<span
+									className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+									style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
+								>
+									{annotation.text}
+								</span>
 							</div>
 						</div>
 					);

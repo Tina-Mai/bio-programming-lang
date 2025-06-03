@@ -41,18 +41,60 @@ const LinearViewerDemo = () => {
 		},
 	];
 
-	const BasicViewer = () => {
+	const annotations2 = [
+		{
+			text: "Promoter",
+			type: "promoter",
+			direction: "forward" as const,
+			start: 0,
+			end: 10,
+		},
+		{
+			text: "CDS",
+			type: "CDS",
+			direction: "forward" as const,
+			start: 11,
+			end: 40,
+		},
+		{
+			text: "Custom Gene",
+			type: "gene",
+			direction: "forward" as const,
+			start: 41,
+			end: 65,
+		},
+		{
+			text: "CDS",
+			type: "CDS",
+			direction: "forward" as const,
+			start: 66,
+			end: 80,
+		},
+	];
+
+	const Example1 = () => {
 		return (
 			<div>
 				<h2 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">
-					Basic Example <span className="text-slate-400 font-normal">{sequence.length} bp</span>
+					Example 1 <span className="text-slate-400 font-normal">{sequence.length} bp</span>
 				</h2>
 				<LinearViewer sequence={sequence} annotations={annotations} />
 			</div>
 		);
 	};
 
-	const LongViewer = () => {
+	const Example2 = () => {
+		return (
+			<div>
+				<h2 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">
+					Example 2 <span className="text-slate-400 font-normal">{sequence.length} bp</span>
+				</h2>
+				<LinearViewer sequence={sequence} annotations={annotations2} />
+			</div>
+		);
+	};
+
+	const LongExample = () => {
 		return (
 			<div>
 				<h2 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">
@@ -89,18 +131,22 @@ const LinearViewerDemo = () => {
 	};
 
 	return (
-		<div className="vertical w-full h-full px-5 pt-16 justify-start overflow-y-auto">
-			<Tabs defaultValue="basic">
+		<div className="vertical w-full h-full px-5 pt-16 justify-start">
+			<Tabs defaultValue="example1">
 				<TabsList className="mb-4">
-					<TabsTrigger value="basic">Basic Viewer</TabsTrigger>
-					<TabsTrigger value="long">Long Viewer</TabsTrigger>
+					<TabsTrigger value="example1">Example 1</TabsTrigger>
+					<TabsTrigger value="example2">Example 2</TabsTrigger>
+					<TabsTrigger value="long">Long Example</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="basic">
-					<BasicViewer />
+				<TabsContent value="example1">
+					<Example1 />
+				</TabsContent>
+				<TabsContent value="example2">
+					<Example2 />
 				</TabsContent>
 				<TabsContent value="long">
-					<LongViewer />
+					<LongExample />
 				</TabsContent>
 			</Tabs>
 

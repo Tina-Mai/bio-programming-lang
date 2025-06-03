@@ -40,7 +40,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	const getColors = () => {
 		if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
 		const colorMap = {
-			CDS: { fill: "rgb(251 191 36 / 0.45)", stroke: "rgb(245 158 11 / 0.8)" }, // amber
+			CDS: { fill: "rgb(253 224 71 / 0.45)", stroke: "rgb(234 179 8 / 0.8)" }, // yellow
 			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
 			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
 			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
@@ -86,7 +86,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 			onMouseEnter={() => setHoveredAnnotation(annotation)}
 			onMouseLeave={() => setHoveredAnnotation(null)}
 		>
-			<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
+			<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
 				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
 			</svg>
 			<div
@@ -202,6 +202,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		};
 	}, [isDragging, selection, getPositionFromEvent]);
 
+	// Handle clicks outside the component to clear selection
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+				setSelection(null);
+			}
+		};
+
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, []);
+
 	// generate ruler marks
 	const rulerMarks = [];
 	for (let i = 0; i <= sequenceLength; i += rulerInterval) {
@@ -233,12 +247,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				onMouseLeave={handleMouseLeave}
 			>
 				{/* Single sequence line */}
-				<div className="absolute top-6 w-full h-3 bg-slate-300 dark:bg-slate-700" />
+				<div className="absolute top-6 w-full h-5 border-x-4 rounded border-slate-400 bg-slate-300" />
 
 				{/* Annotation hover highlight overlay */}
 				{hoveredAnnotation && (
 					<div
-						className="absolute h-3 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
+						className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
 						style={{
 							left: `${(hoveredAnnotation.start / sequenceLength) * 100}%`,
 							width: `${((hoveredAnnotation.end - hoveredAnnotation.start + 1) / sequenceLength) * 100}%`,
@@ -251,7 +265,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1).map((position) => (
 					<div
 						key={position}
-						className="absolute w-px h-3 bg-white opacity-30"
+						className="absolute w-px h-5 bg-white opacity-30"
 						style={{
 							left: `${(position / sequenceLength) * 100}%`,
 							top: "24px",
@@ -260,7 +274,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				))}
 
 				{/* Ruler - positioned right below sequence line */}
-				<div className="absolute w-full" style={{ top: "36px" }}>
+				<div className="absolute w-full" style={{ top: "44px" }}>
 					{rulerMarks.map((mark) => (
 						<div key={mark} className="absolute flex flex-col items-center" style={{ left: `${(mark / sequenceLength) * 100}%` }}>
 							<div className="h-2 w-px bg-slate-400" />
@@ -298,7 +312,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				{/* Selection highlight */}
 				{selection && (
 					<div
-						className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30"
+						className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
 						style={{
 							left: `${(selection.start / sequenceLength) * 100}%`,
 							width: `${((selection.end - selection.start + 1) / sequenceLength) * 100}%`,
@@ -319,7 +333,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 								}}
 							/>
 						</TooltipTrigger>
-						<TooltipContent side="top">
+						<TooltipContent side="top" className="translate-y-5">
 							<div className="mb-1">
 								Position: <span className="font-mono text-black">{hoveredPosition}</span>
 							</div>

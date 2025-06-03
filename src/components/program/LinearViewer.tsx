@@ -157,9 +157,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				{/* Annotations */}
 				{annotations.map((annotation, index) => {
 					const annotationWidth = ((annotation.end - annotation.start + 1) / sequenceLength) * 100;
-					const containerWidth = containerRef.current?.getBoundingClientRect().width || 800;
-					const pixelWidth = Math.max(32, (annotationWidth / 100) * containerWidth);
-					const arrowWidth = 8;
+					// Calculate approximate pixel width based on typical container width
+					const estimatedPixelWidth = Math.max(40, (annotationWidth / 100) * 800); // Assume ~800px container
+					const arrowWidth = 12;
 
 					// Get colors for the annotation
 					const getColors = () => {
@@ -178,35 +178,42 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					return (
 						<div
 							key={index}
-							className={`absolute ${annotation.direction === "forward" ? "top-1/4" : "bottom-1/4"}`}
+							className={`group absolute ${annotation.direction === "forward" ? "top-1/4" : "bottom-1/4"}`}
 							style={{
 								left: `${(annotation.start / sequenceLength) * 100}%`,
 								width: `${annotationWidth}%`,
 								transform: annotation.direction === "forward" ? "translateY(-50%)" : "translateY(50%)",
-								height: "30px",
-								minWidth: "32px",
+								height: "32px",
 							}}
 						>
-							<svg width="100%" height="30" viewBox={`0 0 ${pixelWidth} 30`} className="overflow-visible">
+							<svg width="100%" height="32" viewBox={`0 0 ${estimatedPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
 								{annotation.direction === "forward" ? (
 									<polygon
-										points={`0,3 ${pixelWidth - arrowWidth},3 ${pixelWidth},15 ${pixelWidth - arrowWidth},27 0,27`}
+										points={`0,2 ${estimatedPixelWidth - arrowWidth},2 ${estimatedPixelWidth},16 ${estimatedPixelWidth - arrowWidth},30 0,30`}
 										fill={colors.fill}
 										stroke={colors.stroke}
 										strokeWidth="1"
 									/>
 								) : (
-									<polygon points={`${arrowWidth},3 ${pixelWidth},3 ${pixelWidth},27 ${arrowWidth},27 0,15`} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
+									<polygon
+										points={`${arrowWidth},2 ${estimatedPixelWidth},2 ${estimatedPixelWidth},30 ${arrowWidth},30 0,16`}
+										fill={colors.fill}
+										stroke={colors.stroke}
+										strokeWidth="1"
+									/>
 								)}
 							</svg>
 							<div
-								className={`absolute inset-0 flex items-center ${annotation.direction === "forward" ? "justify-start" : "justify-end"} text-slate-950/70 text-xs font-medium px-2`}
+								className="absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium"
 								style={{
-									paddingLeft: annotation.direction === "reverse" ? "12px" : "8px",
-									paddingRight: annotation.direction === "forward" ? "12px" : "8px",
+									paddingLeft: annotation.direction === "reverse" ? "16px" : "8px",
+									paddingRight: annotation.direction === "forward" ? "16px" : "8px",
 								}}
 							>
 								<span className="truncate">{annotation.text}</span>
+							</div>
+							<div className={`group-hover:visible hidden absolute -bottom-10 left-0 text-white text-xs font-medium`} style={{ backgroundColor: colors.stroke }}>
+								{annotation.text}
 							</div>
 						</div>
 					);

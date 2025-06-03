@@ -40,7 +40,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	const getColors = () => {
 		if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
 		const colorMap = {
-			CDS: { fill: "rgb(190 242 100 / 0.45)", stroke: "rgb(163 230 53 / 0.8)" }, // lime
+			CDS: { fill: "rgb(251 191 36 / 0.45)", stroke: "rgb(245 158 11 / 0.8)" }, // amber
 			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
 			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
 			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
@@ -75,7 +75,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	return (
 		<div
 			key={`${direction}-${index}`}
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"}`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${(annotation.start / sequenceLength) * 100}%`,
 				width: `${annotationWidth}%`,

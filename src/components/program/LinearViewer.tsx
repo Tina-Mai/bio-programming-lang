@@ -204,7 +204,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 								)}
 							</svg>
 							<div
-								className="absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium"
+								className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium ${annotation.direction === "forward" ? "justify-start" : "justify-end"}`}
 								style={{
 									paddingLeft: annotation.direction === "reverse" ? "16px" : "8px",
 									paddingRight: annotation.direction === "forward" ? "16px" : "8px",
@@ -212,7 +212,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 							>
 								<span className="truncate">{annotation.text}</span>
 							</div>
-							<div className={`group-hover:visible hidden absolute -bottom-10 left-0 text-white text-xs font-medium`} style={{ backgroundColor: colors.stroke }}>
+							<div
+								className={`group-hover:visible invisible absolute -bottom-2 text-white text-xs font-medium backdrop-blur rounded-xs px-1 ${
+									annotation.direction === "forward" ? "left-0" : "right-0"
+								}`}
+								style={{ backgroundColor: colors.stroke }}
+							>
 								{annotation.text}
 							</div>
 						</div>

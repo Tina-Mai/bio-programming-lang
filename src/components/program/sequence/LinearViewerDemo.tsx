@@ -2,8 +2,8 @@
 import React from "react";
 import LinearViewer from "./LinearViewer";
 import { Annotation } from "@/types";
-import { Button } from "@/components/ui/button";
-import { SettingsAdjust, Draggable } from "@carbon/icons-react";
+import { Draggable } from "@carbon/icons-react";
+import SequencePopover from "./SequencePopover";
 
 const LinearViewerDemo = () => {
 	// Sample DNA sequence
@@ -107,9 +107,7 @@ const LinearViewerDemo = () => {
 						<div className="font-mono text-sm text-slate-500/60">{sequence.length} bp</div>
 					</div>
 					<div className="horizontal gap-1 items-center">
-						<Button variant="ghost" size="icon-sm" className="text-slate-400 hover:!text-slate-700">
-							<SettingsAdjust size={18} />
-						</Button>
+						<SequencePopover />
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>

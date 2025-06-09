@@ -1,4 +1,4 @@
-import LinearViewerDemo from "@/components/program/LinearViewerDemo";
+import LinearViewerDemo from "@/components/program/sequence/LinearViewerDemo";
 
 const VisualEditor = () => {
 	return (

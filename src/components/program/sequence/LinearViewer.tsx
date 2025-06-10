@@ -67,7 +67,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	return (
 		<div
 			key={`${direction}-${index}`}
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
+			className={`debug group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${(annotation.start / sequenceLength) * 100}%`,
 				width: `${annotationWidth}%`,

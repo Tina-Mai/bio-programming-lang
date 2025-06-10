@@ -13,7 +13,6 @@ interface LinearViewerProps {
 	annotations?: Annotation[];
 }
 
-// Reusable annotation component
 interface AnnotationComponentProps {
 	annotation: Annotation;
 	index: number;
@@ -28,7 +27,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	const estimatedPixelWidth = Math.max(40, (annotationWidth / 100) * 800);
 	const arrowWidth = 12;
 
-	// Get colors for the annotation
+	// get colors for the annotation
 	const getColors = () => {
 		if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
 		const colorMap = {
@@ -44,21 +43,19 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	const isHovered = hoveredAnnotation === annotation;
 	const shouldDim = hoveredAnnotation && !isHovered;
 
-	// Direction-specific configurations
+	// direction-specific configurations
 	const config = {
 		forward: {
 			polygonPoints: `0,2 ${estimatedPixelWidth - arrowWidth},2 ${estimatedPixelWidth},16 ${estimatedPixelWidth - arrowWidth},30 0,30`,
 			textAlign: "justify-start",
 			paddingLeft: "8px",
 			paddingRight: "16px",
-			top: "80px",
 		},
 		reverse: {
 			polygonPoints: `${arrowWidth},2 ${estimatedPixelWidth},2 ${estimatedPixelWidth},30 ${arrowWidth},30 0,16`,
 			textAlign: "justify-end",
 			paddingLeft: "16px",
 			paddingRight: "8px",
-			top: "120px",
 		},
 	};
 
@@ -67,11 +64,10 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	return (
 		<div
 			key={`${direction}-${index}`}
-			className={`debug group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${(annotation.start / sequenceLength) * 100}%`,
 				width: `${annotationWidth}%`,
-				top: currentConfig.top,
 				height: "32px",
 				zIndex: isHovered ? 20 : 10,
 			}}
@@ -165,7 +161,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		setIsDragging(false);
 	};
 
-	// Global mouse events for dragging outside container
+	// global mouse events for dragging outside container
 	useEffect(() => {
 		const handleGlobalMouseMove = (e: MouseEvent) => {
 			if (isDragging && selection) {
@@ -194,7 +190,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		};
 	}, [isDragging, selection, getPositionFromEvent]);
 
-	// Handle clicks outside the component to clear selection
+	// click outside the component to clear selection
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -222,7 +218,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		}
 	}
 
-	// Separate forward and backward annotations
 	const forwardAnnotations = annotations.filter((annotation) => annotation.direction === "forward");
 	const backwardAnnotations = annotations.filter((annotation) => annotation.direction === "reverse");
 
@@ -231,127 +226,137 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			{/* Main viewer container */}
 			<div
 				ref={containerRef}
-				className="relative cursor-crosshair select-none"
-				style={{ height: "175px" }}
+				className="cursor-crosshair select-none flex flex-col"
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
 				onMouseLeave={handleMouseLeave}
 			>
-				{/* Single sequence line */}
-				<div className="absolute top-6 w-full h-5 border-x-4 rounded border-slate-400 bg-slate-300" />
+				{/* Sequence + Ruler Section */}
+				<div className="relative h-16 w-full">
+					{/* Single sequence line */}
+					<div className="absolute top-2 w-full h-5 border-x-4 rounded-xs border-slate-400 bg-slate-300" />
 
-				{/* Annotation hover highlight overlay */}
-				{hoveredAnnotation && (
-					<div
-						className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
-						style={{
-							left: `${(hoveredAnnotation.start / sequenceLength) * 100}%`,
-							width: `${((hoveredAnnotation.end - hoveredAnnotation.start + 1) / sequenceLength) * 100}%`,
-							top: "24px",
-						}}
-					/>
-				)}
+					{/* Annotation hover highlight overlay */}
+					{hoveredAnnotation && (
+						<div
+							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
+							style={{
+								left: `${(hoveredAnnotation.start / sequenceLength) * 100}%`,
+								width: `${((hoveredAnnotation.end - hoveredAnnotation.start + 1) / sequenceLength) * 100}%`,
+								top: "8px",
+							}}
+						/>
+					)}
 
-				{/* Sequence segmentation lines */}
-				{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1).map((position) => (
-					<div
-						key={position}
-						className="absolute w-px h-5 bg-white opacity-30"
-						style={{
-							left: `${(position / sequenceLength) * 100}%`,
-							top: "24px",
-						}}
-					/>
-				))}
-
-				{/* Ruler - positioned right below sequence line */}
-				<div className="absolute w-full" style={{ top: "44px" }}>
-					{rulerMarks.map((mark) => (
-						<div key={mark} className="absolute flex flex-col items-center" style={{ left: `${(mark / sequenceLength) * 100}%` }}>
-							<div className="h-2 w-px bg-slate-400" />
-							<span className="font-mono text-[10px] text-slate-500 mt-0.5">{mark}</span>
-						</div>
+					{/* Sequence segmentation lines */}
+					{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1).map((position) => (
+						<div
+							key={position}
+							className="absolute w-px h-5 bg-white opacity-30"
+							style={{
+								left: `${(position / sequenceLength) * 100}%`,
+								top: "8px",
+							}}
+						/>
 					))}
+
+					{/* Ruler - positioned right below sequence line */}
+					<div className="absolute w-full top-7">
+						{rulerMarks.map((mark) => (
+							<div key={mark} className="absolute flex flex-col items-center" style={{ left: `${(mark / sequenceLength) * 100}%` }}>
+								<div className="h-2 w-px bg-slate-400" />
+								<span className="font-mono text-[10px] text-slate-500 mt-0.5">{mark}</span>
+							</div>
+						))}
+					</div>
+
+					{/* Selection highlight */}
+					{selection && (
+						<div
+							className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
+							style={{
+								left: `${(selection.start / sequenceLength) * 100}%`,
+								width: `${((selection.end - selection.start + 1) / sequenceLength) * 100}%`,
+								top: "0",
+							}}
+						/>
+					)}
+
+					{/* Hover tooltip showing sequence */}
+					{hoveredPosition !== null && (
+						<Tooltip open={true}>
+							<TooltipTrigger asChild>
+								<div
+									className="absolute w-1 h-full pointer-events-none"
+									style={{
+										left: `${(hoveredPosition / sequenceLength) * 100}%`,
+										transform: "translateX(-50%)",
+									}}
+								/>
+							</TooltipTrigger>
+							<TooltipContent side="top" className="translate-y-5">
+								<div className="mb-1">
+									Position: <span className="font-mono text-black">{hoveredPosition}</span>
+								</div>
+								<div className="flex">
+									{sequence
+										.substring(Math.max(0, hoveredPosition - 5), Math.min(sequenceLength, hoveredPosition + 6))
+										.split("")
+										.map((letter, index) => {
+											const substringStart = Math.max(0, hoveredPosition - 5);
+											const isCenter = substringStart + index === hoveredPosition;
+											return (
+												<span key={index} className={isCenter ? "text-black" : "text-slate-400"}>
+													{letter}
+												</span>
+											);
+										})}
+								</div>
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</div>
 
-				{/* Forward Annotations */}
-				{forwardAnnotations.map((annotation, index) => (
-					<AnnotationComponent
-						key={`forward-${index}`}
-						annotation={annotation}
-						index={index}
-						sequenceLength={sequenceLength}
-						hoveredAnnotation={hoveredAnnotation}
-						setHoveredAnnotation={setHoveredAnnotation}
-						direction="forward"
-					/>
-				))}
-
-				{/* Backward Annotations */}
-				{backwardAnnotations.map((annotation, index) => (
-					<AnnotationComponent
-						key={`backward-${index}`}
-						annotation={annotation}
-						index={index}
-						sequenceLength={sequenceLength}
-						hoveredAnnotation={hoveredAnnotation}
-						setHoveredAnnotation={setHoveredAnnotation}
-						direction="reverse"
-					/>
-				))}
-
-				{/* Selection highlight */}
-				{selection && (
-					<div
-						className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
-						style={{
-							left: `${(selection.start / sequenceLength) * 100}%`,
-							width: `${((selection.end - selection.start + 1) / sequenceLength) * 100}%`,
-							top: "0",
-						}}
-					/>
+				{/* Forward Annotations Section */}
+				{forwardAnnotations.length > 0 && (
+					<div className="relative h-10 w-full">
+						{forwardAnnotations.map((annotation, index) => (
+							<AnnotationComponent
+								key={`forward-${index}`}
+								annotation={annotation}
+								index={index}
+								sequenceLength={sequenceLength}
+								hoveredAnnotation={hoveredAnnotation}
+								setHoveredAnnotation={setHoveredAnnotation}
+								direction="forward"
+							/>
+						))}
+					</div>
 				)}
 
-				{/* Hover tooltip showing sequence */}
-				{hoveredPosition !== null && (
-					<Tooltip open={true}>
-						<TooltipTrigger asChild>
-							<div
-								className="absolute w-1 h-full pointer-events-none"
-								style={{
-									left: `${(hoveredPosition / sequenceLength) * 100}%`,
-									transform: "translateX(-50%)",
-								}}
+				{/* Backward Annotations Section */}
+				{backwardAnnotations.length > 0 && (
+					<div className="relative h-10 w-full">
+						{backwardAnnotations.map((annotation, index) => (
+							<AnnotationComponent
+								key={`backward-${index}`}
+								annotation={annotation}
+								index={index}
+								sequenceLength={sequenceLength}
+								hoveredAnnotation={hoveredAnnotation}
+								setHoveredAnnotation={setHoveredAnnotation}
+								direction="reverse"
 							/>
-						</TooltipTrigger>
-						<TooltipContent side="top" className="translate-y-5">
-							<div className="mb-1">
-								Position: <span className="font-mono text-black">{hoveredPosition}</span>
-							</div>
-							<div className="flex">
-								{sequence
-									.substring(Math.max(0, hoveredPosition - 5), Math.min(sequenceLength, hoveredPosition + 6))
-									.split("")
-									.map((letter, index) => {
-										const substringStart = Math.max(0, hoveredPosition - 5);
-										const isCenter = substringStart + index === hoveredPosition;
-										return (
-											<span key={index} className={isCenter ? "text-black" : "text-slate-400"}>
-												{letter}
-											</span>
-										);
-									})}
-							</div>
-						</TooltipContent>
-					</Tooltip>
+						))}
+					</div>
 				)}
 			</div>
 
 			{/* Sequence display when selection is made */}
 			{selection && (
-				<div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded">
-					<div className="text-sm text-slate-600 dark:text-slate-400 mb-1">{`Selected: Position ${selection.start} ${selection.start === selection.end ? "" : `- ${selection.end}`} (${
+				<div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-xs">
+					<div className="text-sm text-slate-600 dark:text-slate-400 mb-1">{`Position ${selection.start} ${selection.start === selection.end ? "" : `- ${selection.end}`} (${
 						selection.end - selection.start + 1
 					} bp)`}</div>
 					<div className="font-mono text-sm break-all">{sequence.substring(selection.start, selection.end + 1)}</div>

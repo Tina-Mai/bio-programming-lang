@@ -27,7 +27,7 @@ interface AnnotationComponentProps {
 const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, index, hoveredAnnotation, setHoveredAnnotation, direction, baseWidth, zoomLevel, offset }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const annotationPixelWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
-	const annotationLeft = 20 + annotation.start * nucleotideWidth - offset; // Add 20px left padding
+	const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
 	const arrowWidth = 12;
 
 	// get colors for the annotation
@@ -129,7 +129,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const calculateMinZoomLevel = useCallback(() => {
 		const container = containerRef.current;
 		if (!container || !sequence) return 0.1;
-		// Account for 20px padding on both sides (40px total)
 		const availableWidth = container.clientWidth - 40;
 		return Math.max(0.1, availableWidth / (sequence.length * baseWidth));
 	}, [sequence, baseWidth]);
@@ -145,9 +144,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		if (!containerRef.current) return null;
 		const rect = containerRef.current.getBoundingClientRect();
 		const x = e.clientX - rect.left;
-		// Account for the 20px left padding added to all elements
 		const adjustedX = x - 20;
-		// Round to nearest nucleotide center instead of flooring to left edge
 		const position = Math.round((adjustedX + offset) / nucleotideWidth);
 		return Math.max(0, Math.min(sequenceLength - 1, position));
 	};
@@ -161,7 +158,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 
 			if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
 				const scrollAmount = e.deltaX || e.deltaY;
-				// Total content width includes sequence + 40px padding (20px on each side)
 				const totalContentWidth = sequenceLength * nucleotideWidth + 40;
 				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset + scrollAmount));
 				setOffset(newOffset);
@@ -181,7 +177,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 
 			const cursorXRelativeToViewport = e.clientX - rect.left;
 			const cursorXRelativeToContent = cursorXRelativeToViewport + offset;
-			// Total content width includes sequence + 40px padding (20px on each side)
 			const totalCurrentContentWidth = sequenceLength * nucleotideWidth + 40;
 			const cursorRatio = cursorXRelativeToContent / totalCurrentContentWidth;
 			const newContentWidth = sequenceLength * baseWidth * newZoomLevel + 40;
@@ -209,7 +204,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const handleMouseMove = (e: React.MouseEvent) => {
 		if (isPanning) {
 			const deltaX = e.clientX - lastMouseX;
-			// Total content width includes sequence + 40px padding (20px on each side)
 			const totalContentWidth = sequenceLength * nucleotideWidth + 40;
 			const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset - deltaX));
 			setOffset(newOffset);
@@ -251,7 +245,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		const handleGlobalMouseMove = (e: MouseEvent) => {
 			if (isPanning) {
 				const deltaX = e.clientX - lastMouseX;
-				// Total content width includes sequence + 40px padding (20px on each side)
 				const totalContentWidth = sequenceLength * nucleotideWidth + 40;
 				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset - deltaX));
 				setOffset(newOffset);
@@ -306,7 +299,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		const container = containerRef.current;
 		if (!container) return;
 
-		// Measure container width on mount
 		updateVisibleWidth();
 
 		const initialZoomLevel = calculateMinZoomLevel();
@@ -357,21 +349,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const rulerMarks = [];
 	const startIndex = Math.floor(offset / nucleotideWidth);
 	const endIndex = Math.ceil((offset + visibleWidth) / nucleotideWidth);
-
-	// Generate 1-indexed biological positions (bp 1, 10, 20, 30, etc.)
 	const firstBpInView = Math.max(1, startIndex + 1);
 	const lastBpInView = Math.min(sequenceLength, endIndex + 1);
-
-	// Add bp 1 if it's in view
 	if (firstBpInView <= 1) {
 		rulerMarks.push(1);
 	}
-
-	// Add multiples of rulerInterval that are in view
 	const firstMultiple = Math.ceil(firstBpInView / rulerInterval) * rulerInterval;
 	for (let bp = firstMultiple; bp <= lastBpInView; bp += rulerInterval) {
 		if (bp !== 1) {
-			// Don't duplicate bp 1
 			rulerMarks.push(bp);
 		}
 	}
@@ -384,7 +369,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			{/* Main viewer container */}
 			<div
 				ref={containerRef}
-				className="flex flex-col select-none py-7 overflow-hidden"
+				className="flex flex-col select-none py-7 overflow-hidden relative"
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
@@ -395,13 +380,42 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					touchAction: "none",
 				}}
 			>
+				{/* Vertical grid lines at ruler positions */}
+				{rulerMarks.map((mark) => {
+					const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
+					const center = leftEdge + nucleotideWidth / 2;
+
+					if (center < -50 || center > visibleWidth + 50) return null;
+					return (
+						<div
+							key={`grid-${mark}`}
+							className="absolute top-0 bottom-0 w-px border-l border-dotted border-slate-200 pointer-events-none"
+							style={{
+								left: `${center}px`,
+								transform: "translateX(-50%)",
+							}}
+						/>
+					);
+				})}
+
+				{/* Hover tracking line */}
+				{hoveredPosition !== null && (
+					<div
+						className="absolute top-0 bottom-0 w-px bg-slate-400 pointer-events-none z-40"
+						style={{
+							left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
+							transform: "translateX(-50%)",
+						}}
+					/>
+				)}
+
 				{/* Sequence + Ruler Section */}
 				<div className="relative h-16 w-full">
 					{/* Single sequence line */}
 					<div
 						className="absolute top-2 h-5 border-x-4 rounded-xs border-slate-400 bg-slate-300"
 						style={{
-							left: `${20 - offset}px`, // Add 20px left padding
+							left: `${20 - offset}px`,
 							width: `${sequenceLength * nucleotideWidth}px`,
 						}}
 					/>
@@ -411,7 +425,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 						<div
 							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
 							style={{
-								left: `${20 + hoveredAnnotation.start * nucleotideWidth - offset}px`, // Add 20px left padding
+								left: `${20 + hoveredAnnotation.start * nucleotideWidth - offset}px`,
 								width: `${(hoveredAnnotation.end - hoveredAnnotation.start + 1) * nucleotideWidth}px`,
 								top: "8px",
 							}}
@@ -421,15 +435,15 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					{/* Sequence segmentation lines */}
 					{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1)
 						.filter((position) => {
-							const x = 20 + position * nucleotideWidth - offset; // Add 20px left padding
+							const x = 20 + position * nucleotideWidth - offset;
 							return x >= -nucleotideWidth && x <= visibleWidth + nucleotideWidth;
 						})
 						.map((position) => (
 							<div
 								key={position}
-								className="absolute w-px h-5 bg-white opacity-30"
+								className="absolute w-px h-5 bg-white opacity-50"
 								style={{
-									left: `${20 + position * nucleotideWidth - offset}px`, // Add 20px left padding
+									left: `${20 + position * nucleotideWidth - offset}px`,
 									top: "8px",
 								}}
 							/>
@@ -438,8 +452,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					{/* Ruler */}
 					<div className="absolute w-full top-7">
 						{rulerMarks.map((mark) => {
-							// Convert 1-indexed mark back to 0-indexed for positioning calculation
-							const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset; // Add 20px left padding
+							const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
 							const center = leftEdge + nucleotideWidth / 2;
 
 							if (center < -50 || center > visibleWidth + 50) return null;
@@ -459,7 +472,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 						<div
 							className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
 							style={{
-								left: `${20 + selection.start * nucleotideWidth - offset}px`, // Add 20px left padding
+								left: `${20 + selection.start * nucleotideWidth - offset}px`,
 								width: `${(selection.end - selection.start + 1) * nucleotideWidth}px`,
 								top: "0",
 							}}
@@ -473,12 +486,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 								<div
 									className="absolute w-1 h-full pointer-events-none"
 									style={{
-										left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`, // Add 20px left padding
+										left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
 										transform: "translateX(-50%)",
 									}}
 								/>
 							</TooltipTrigger>
-							<TooltipContent side="top" className="translate-y-5">
+							<TooltipContent side="top" className="translate-y-5 !bg-white/50">
 								<div className="mb-1">
 									Position: <span className="font-mono text-black">{hoveredPosition + 1}</span>
 								</div>
@@ -506,7 +519,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					<div className="relative h-10 w-full overflow-hidden">
 						{forwardAnnotations
 							.filter((annotation) => {
-								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset; // Add 20px left padding
+								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
 								const annotationWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
 								return annotationLeft + annotationWidth >= 0 && annotationLeft <= visibleWidth;
 							})
@@ -531,7 +544,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					<div className="relative h-10 w-full overflow-hidden">
 						{backwardAnnotations
 							.filter((annotation) => {
-								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset; // Add 20px left padding
+								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
 								const annotationWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
 								return annotationLeft + annotationWidth >= 0 && annotationLeft <= visibleWidth;
 							})

@@ -91,7 +91,8 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 					className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
 					style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
 				>
-					{annotation.text}
+					{annotation.text}{" "}
+					<span className={`ml-1 font-mono font-normal ${hoveredAnnotation === annotation ? "text-slate-100" : "text-slate-400"}`}>{annotation.end - annotation.start + 1}</span>
 				</span>
 			</div>
 		</div>
@@ -389,7 +390,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 					return (
 						<div
 							key={`grid-${mark}`}
-							className="absolute top-0 bottom-0 w-px border-l border-dotted border-slate-200 pointer-events-none"
+							className="absolute top-0 bottom-0 w-px border-l border-dotted border-slate-300/70 pointer-events-none"
 							style={{
 								left: `${center}px`,
 								transform: "translateX(-50%)",

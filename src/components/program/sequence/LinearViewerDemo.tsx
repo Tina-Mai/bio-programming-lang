@@ -104,7 +104,7 @@ const LinearViewerDemo = () => {
 				<div className="horizontal px-5 items-center justify-between border-y border-slate-300 bg-slate-100 py-2 gap-2">
 					<div className="horizontal items-center gap-2">
 						<div className="text-sm font-semibold text-slate-700">{name}</div>
-						<div className="font-mono text-sm text-slate-500/60">{sequence.length} bp</div>
+						<div className="font-mono text-sm text-slate-500/60">{sequence.length}</div>
 					</div>
 					<div className="horizontal gap-1 items-center">
 						<SequencePopover />

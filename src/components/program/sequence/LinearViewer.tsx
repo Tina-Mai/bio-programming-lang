@@ -110,13 +110,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const [isHovering, setIsHovering] = useState<boolean>(false);
 	const [isPanning, setIsPanning] = useState<boolean>(false);
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
+	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const sequenceLength = sequence.length;
 
 	const baseWidth = 10.1; // base nucleotide width at zoom level 1
 	const nucleotideWidth = baseWidth * zoomLevel;
-	const visibleWidth = containerRef.current?.clientWidth || 0;
+
+	// update visible width from container
+	const updateVisibleWidth = useCallback(() => {
+		if (containerRef.current) {
+			setVisibleWidth(containerRef.current.clientWidth);
+		}
+	}, []);
 
 	// calculate minimum zoom level to fit entire sequence in container
 	const calculateMinZoomLevel = useCallback(() => {
@@ -294,10 +301,13 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		};
 	}, []);
 
-	// set up event listeners
+	// set up event listeners and initial measurements
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
+
+		// Measure container width on mount
+		updateVisibleWidth();
 
 		const initialZoomLevel = calculateMinZoomLevel();
 		if (zoomLevel < initialZoomLevel) {
@@ -310,11 +320,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 		return () => {
 			container.removeEventListener("wheel", handleWheel);
 		};
-	}, [handleWheel, calculateMinZoomLevel, zoomLevel]);
+	}, [handleWheel, calculateMinZoomLevel, zoomLevel, updateVisibleWidth]);
 
 	// handle window resize
 	useEffect(() => {
 		const handleResize = () => {
+			updateVisibleWidth();
 			const minZoomLevel = calculateMinZoomLevel();
 			if (zoomLevel < minZoomLevel) {
 				setZoomLevel(minZoomLevel);
@@ -324,7 +335,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
-	}, [calculateMinZoomLevel, zoomLevel]);
+	}, [calculateMinZoomLevel, zoomLevel, updateVisibleWidth]);
 
 	// calculate dynamic ruler interval based on zoom level
 	const calculateRulerInterval = (zoom: number): number => {

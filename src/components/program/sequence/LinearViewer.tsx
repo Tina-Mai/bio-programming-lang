@@ -365,11 +365,11 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const backwardAnnotations = annotations.filter((annotation) => annotation.direction === "reverse");
 
 	return (
-		<div className="w-full">
+		<div className="w-full h-full">
 			{/* Main viewer container */}
 			<div
 				ref={containerRef}
-				className="flex flex-col select-none py-7 overflow-hidden relative"
+				className="flex flex-col h-full select-none justify-center overflow-hidden relative"
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
@@ -413,7 +413,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 				<div className="relative h-16 w-full">
 					{/* Single sequence line */}
 					<div
-						className="absolute top-2 h-5 border-x-4 rounded-xs border-slate-400 bg-slate-300"
+						className="absolute top-2 h-5 border-x-4 border-slate-400 bg-slate-300"
 						style={{
 							left: `${20 - offset}px`,
 							width: `${sequenceLength * nucleotideWidth}px`,
@@ -474,7 +474,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 							style={{
 								left: `${20 + selection.start * nucleotideWidth - offset}px`,
 								width: `${(selection.end - selection.start + 1) * nucleotideWidth}px`,
-								top: "0",
+								top: "-8px",
 							}}
 						/>
 					)}
@@ -491,7 +491,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 									}}
 								/>
 							</TooltipTrigger>
-							<TooltipContent side="top" className="translate-y-5 !bg-white/50">
+							<TooltipContent side="top" className="translate-y-5 !bg-white/40 !backdrop-blur-xs">
 								<div className="mb-1">
 									Position: <span className="font-mono text-black">{hoveredPosition + 1}</span>
 								</div>
@@ -566,14 +566,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			</div>
 
 			{/* Sequence display when selection is made */}
-			{selection && (
-				<div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-xs">
-					<div className="text-sm text-slate-600 dark:text-slate-400 mb-1">{`Position ${selection.start + 1} ${selection.start === selection.end ? "" : `- ${selection.end + 1}`} (${
+			{/* {selection && (
+				<div className="absolute bottom-0 left-0 right-0 p-3 bg-slate-200 border-t border-slate-300">
+					<div className="text-sm text-slate-500 mb-1">{`Position ${selection.start + 1} ${selection.start === selection.end ? "" : `- ${selection.end + 1}`} (${
 						selection.end - selection.start + 1
 					} bp)`}</div>
 					<div className="font-mono text-sm break-all">{sequence.substring(selection.start, selection.end + 1)}</div>
 				</div>
-			)}
+			)} */}
 		</div>
 	);
 };

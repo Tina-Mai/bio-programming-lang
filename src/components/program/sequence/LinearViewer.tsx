@@ -226,11 +226,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			{/* Main viewer container */}
 			<div
 				ref={containerRef}
-				className="cursor-crosshair select-none flex flex-col"
+				className="flex flex-col cursor-crosshair select-none px-5 py-7"
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
 				onMouseLeave={handleMouseLeave}
+				style={{ border: "1px solid red" }}
 			>
 				{/* Sequence + Ruler Section */}
 				<div className="relative h-16 w-full">

@@ -100,7 +100,7 @@ const LinearViewerDemo = () => {
 
 	const SequenceInstance = ({ name, sequence, annotations }: { name: string; sequence: string; annotations: Annotation[] }) => {
 		return (
-			<div className="vertical gap-3">
+			<div className="vertical">
 				<div className="horizontal px-5 items-center justify-between border-y border-slate-300 bg-slate-100 py-2 gap-2">
 					<div className="horizontal items-center gap-2">
 						<div className="text-sm font-semibold text-slate-700">{name}</div>
@@ -111,16 +111,14 @@ const LinearViewerDemo = () => {
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>
-				<div className="px-5">
-					<LinearViewer sequence={sequence} annotations={annotations} />
-				</div>
+				<LinearViewer sequence={sequence} annotations={annotations} />
 			</div>
 		);
 	};
 
 	return (
 		// mt-[52px] is to offset the header at the top of Program.tsx
-		<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] gap-8">
+		<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px]">
 			<SequenceInstance name="Example 1" sequence={sequence} annotations={annotations} />
 			<SequenceInstance name="Example 2" sequence={sequence} annotations={annotations2} />
 			<SequenceInstance name="Longer Sequence" sequence={longSequence} annotations={longAnnotations} />

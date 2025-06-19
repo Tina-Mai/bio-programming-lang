@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Annotation } from "@/types";
+import { Section } from "@/types";
 
 interface Selection {
 	start: number;
@@ -12,52 +12,52 @@ interface Selection {
 interface LinearViewerProps {
 	length: number;
 	sequence?: string;
-	annotations?: Annotation[];
+	sections?: Section[];
 }
 
-interface AnnotationComponentProps {
-	annotation: Annotation;
+interface SectionComponentProps {
+	section: Section;
 	index: number;
-	hoveredAnnotation: Annotation | null;
-	setHoveredAnnotation: (annotation: Annotation | null) => void;
+	hoveredSection: Section | null;
+	setHoveredSection: (section: Section | null) => void;
 	direction: "forward" | "reverse";
 	baseWidth: number;
 	zoomLevel: number;
 	offset: number;
 }
 
-const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, index, hoveredAnnotation, setHoveredAnnotation, direction, baseWidth, zoomLevel, offset }) => {
+const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hoveredSection, setHoveredSection, direction, baseWidth, zoomLevel, offset }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
-	const annotationPixelWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
-	const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
+	const sectionPixelWidth = (section.end - section.start + 1) * nucleotideWidth;
+	const sectionLeft = 20 + section.start * nucleotideWidth - offset;
 	const arrowWidth = 12;
 
 	// get colors for the annotation
 	const getColors = () => {
-		if (annotation.color) return { fill: annotation.color, stroke: annotation.color };
+		if (section.color) return { fill: section.color, stroke: section.color };
 		const colorMap = {
 			CDS: { fill: "rgb(253 224 71 / 0.45)", stroke: "rgb(234 179 8 / 0.8)" }, // yellow
 			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
 			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
 			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
 		};
-		return colorMap[annotation.type as keyof typeof colorMap] || colorMap.default;
+		return colorMap[section.type as keyof typeof colorMap] || colorMap.default;
 	};
 
 	const colors = getColors();
-	const isHovered = hoveredAnnotation === annotation;
-	const shouldDim = hoveredAnnotation && !isHovered;
+	const isHovered = hoveredSection === section;
+	const shouldDim = hoveredSection && !isHovered;
 
 	// direction-specific configurations
 	const config = {
 		forward: {
-			polygonPoints: `0,2 ${annotationPixelWidth - arrowWidth},2 ${annotationPixelWidth},16 ${annotationPixelWidth - arrowWidth},30 0,30`,
+			polygonPoints: `0,2 ${sectionPixelWidth - arrowWidth},2 ${sectionPixelWidth},16 ${sectionPixelWidth - arrowWidth},30 0,30`,
 			textAlign: "justify-start",
 			paddingLeft: "8px",
 			paddingRight: "16px",
 		},
 		reverse: {
-			polygonPoints: `${arrowWidth},2 ${annotationPixelWidth},2 ${annotationPixelWidth},30 ${arrowWidth},30 0,16`,
+			polygonPoints: `${arrowWidth},2 ${sectionPixelWidth},2 ${sectionPixelWidth},30 ${arrowWidth},30 0,16`,
 			textAlign: "justify-end",
 			paddingLeft: "16px",
 			paddingRight: "8px",
@@ -71,15 +71,15 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 			key={`${direction}-${index}`}
 			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
-				left: `${annotationLeft}px`,
-				width: `${annotationPixelWidth}px`,
+				left: `${sectionLeft}px`,
+				width: `${sectionPixelWidth}px`,
 				height: "32px",
 				zIndex: isHovered ? 20 : 10,
 			}}
-			onMouseEnter={() => setHoveredAnnotation(annotation)}
-			onMouseLeave={() => setHoveredAnnotation(null)}
+			onMouseEnter={() => setHoveredSection(section)}
+			onMouseLeave={() => setHoveredSection(null)}
 		>
-			<svg width="100%" height="32" viewBox={`0 0 ${annotationPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
+			<svg width="100%" height="32" viewBox={`0 0 ${sectionPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
 				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
 			</svg>
 			<div
@@ -90,21 +90,20 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 				}}
 			>
 				<span
-					className={`${hoveredAnnotation === annotation ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
-					style={{ backgroundColor: hoveredAnnotation === annotation ? colors.stroke : "transparent" }}
+					className={`${hoveredSection === section ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+					style={{ backgroundColor: hoveredSection === section ? colors.stroke : "transparent" }}
 				>
-					{annotation.text}{" "}
-					<span className={`ml-1 font-mono font-normal ${hoveredAnnotation === annotation ? "text-slate-100" : "text-slate-400"}`}>{annotation.end - annotation.start + 1}</span>
+					{section.text} <span className={`ml-1 font-mono font-normal ${hoveredSection === section ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
 				</span>
 			</div>
 		</div>
 	);
 };
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotations = [] }) => {
+const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, sections = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
-	const [hoveredAnnotation, setHoveredAnnotation] = useState<Annotation | null>(null);
+	const [hoveredSection, setHoveredSection] = useState<Section | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
 	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
@@ -364,8 +363,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotatio
 		}
 	}
 
-	const forwardAnnotations = annotations.filter((annotation) => annotation.direction === "forward");
-	const backwardAnnotations = annotations.filter((annotation) => annotation.direction === "reverse");
+	const forwardSections = sections.filter((section) => section.direction === "forward");
+	const backwardSections = sections.filter((section) => section.direction === "reverse");
 
 	return (
 		<div className="w-full h-full">
@@ -424,12 +423,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotatio
 					/>
 
 					{/* Annotation hover highlight overlay */}
-					{hoveredAnnotation && (
+					{hoveredSection && (
 						<div
 							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
 							style={{
-								left: `${20 + hoveredAnnotation.start * nucleotideWidth - offset}px`,
-								width: `${(hoveredAnnotation.end - hoveredAnnotation.start + 1) * nucleotideWidth}px`,
+								left: `${20 + hoveredSection.start * nucleotideWidth - offset}px`,
+								width: `${(hoveredSection.end - hoveredSection.start + 1) * nucleotideWidth}px`,
 								top: "8px",
 							}}
 						/>
@@ -533,21 +532,21 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotatio
 				</div>
 
 				{/* Forward Annotations Section */}
-				{forwardAnnotations.length > 0 && (
+				{forwardSections.length > 0 && (
 					<div className="relative h-10 w-full overflow-hidden">
-						{forwardAnnotations
-							.filter((annotation) => {
-								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
-								const annotationWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
-								return annotationLeft + annotationWidth >= 0 && annotationLeft <= visibleWidth;
+						{forwardSections
+							.filter((section) => {
+								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
+								const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
+								return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
 							})
-							.map((annotation, index) => (
-								<AnnotationComponent
+							.map((section, index) => (
+								<SectionComponent
 									key={`forward-${index}`}
-									annotation={annotation}
+									section={section}
 									index={index}
-									hoveredAnnotation={hoveredAnnotation}
-									setHoveredAnnotation={setHoveredAnnotation}
+									hoveredSection={hoveredSection}
+									setHoveredSection={setHoveredSection}
 									direction="forward"
 									baseWidth={baseWidth}
 									zoomLevel={zoomLevel}
@@ -558,21 +557,21 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotatio
 				)}
 
 				{/* Backward Annotations Section */}
-				{backwardAnnotations.length > 0 && (
+				{backwardSections.length > 0 && (
 					<div className="relative h-10 w-full overflow-hidden">
-						{backwardAnnotations
-							.filter((annotation) => {
-								const annotationLeft = 20 + annotation.start * nucleotideWidth - offset;
-								const annotationWidth = (annotation.end - annotation.start + 1) * nucleotideWidth;
-								return annotationLeft + annotationWidth >= 0 && annotationLeft <= visibleWidth;
+						{backwardSections
+							.filter((section) => {
+								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
+								const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
+								return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
 							})
-							.map((annotation, index) => (
-								<AnnotationComponent
+							.map((section, index) => (
+								<SectionComponent
 									key={`backward-${index}`}
-									annotation={annotation}
+									section={section}
 									index={index}
-									hoveredAnnotation={hoveredAnnotation}
-									setHoveredAnnotation={setHoveredAnnotation}
+									hoveredSection={hoveredSection}
+									setHoveredSection={setHoveredSection}
 									direction="reverse"
 									baseWidth={baseWidth}
 									zoomLevel={zoomLevel}

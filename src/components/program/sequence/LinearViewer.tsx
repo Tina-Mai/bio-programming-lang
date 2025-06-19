@@ -363,7 +363,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, sections 
 		}
 	}
 
-	const forwardSections = sections.filter((section) => section.direction === "forward");
+	const forwardSections = sections.filter((section) => section.direction === "forward" || !section.direction);
 	const backwardSections = sections.filter((section) => section.direction === "reverse");
 
 	return (

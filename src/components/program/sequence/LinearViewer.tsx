@@ -493,32 +493,34 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, sections 
 									}}
 								/>
 							</TooltipTrigger>
-							<TooltipContent side="top" className="translate-y-5 !bg-white/40 !backdrop-blur-xs">
-								<div className={sequence ? "mb-1" : ""}>
-									Position: <span className="font-mono text-black">{hoveredPosition + 1}</span>
-								</div>
+							<TooltipContent side="top" className="vertical gap-1 justify-center items-center translate-y-0 !bg-white/40 !backdrop-blur-xs p-1">
+								<div className="font-mono text-center text-slate-400">{hoveredPosition + 1}</div>
 								{sequence && (
 									<div className="flex">
 										{(() => {
-											// Handle sequence length mismatches
+											// handle sequence length mismatches
 											const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
-											const windowStart = Math.max(0, hoveredPosition - 5);
-											const windowEnd = Math.min(sequenceLength, hoveredPosition + 6);
-
-											// Create array for the window
+											const windowStart = Math.max(0, hoveredPosition - 4);
+											const windowEnd = Math.min(sequenceLength, hoveredPosition + 5);
 											const windowArray = [];
 											for (let i = windowStart; i < windowEnd; i++) {
 												if (i < safeSequence.length) {
 													windowArray.push(safeSequence[i]);
 												} else {
-													windowArray.push("·"); // placeholder for missing positions
+													windowArray.push("·");
 												}
 											}
 
 											return windowArray.map((letter, index) => {
 												const isCenter = windowStart + index === hoveredPosition;
 												return (
-													<span key={index} className={isCenter ? "text-black" : "text-slate-400"}>
+													<span
+														key={index}
+														className={`text-slate-500`}
+														style={{
+															opacity: isCenter ? 1 : Math.max(0.1, 1 - Math.abs(index - (windowArray.length - 1) / 2) / ((windowArray.length - 1) / 2)),
+														}}
+													>
 														{letter}
 													</span>
 												);

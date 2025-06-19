@@ -8,8 +8,10 @@ interface Selection {
 	end: number;
 }
 
+// TODO: sequences can have optional positions (?) in case some parts are not generated or are generated separately?
 interface LinearViewerProps {
-	sequence: string;
+	length: number;
+	sequence?: string;
 	annotations?: Annotation[];
 }
 
@@ -99,7 +101,7 @@ const AnnotationComponent: React.FC<AnnotationComponentProps> = ({ annotation, i
 	);
 };
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] }) => {
+const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, annotations = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [hoveredAnnotation, setHoveredAnnotation] = useState<Annotation | null>(null);
@@ -114,7 +116,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 
 	const containerRef = useRef<HTMLDivElement>(null);
-	const sequenceLength = sequence.length;
+	const sequenceLength = length;
 
 	const baseWidth = 10.1; // base nucleotide width at zoom level 1
 	const nucleotideWidth = baseWidth * zoomLevel;
@@ -129,10 +131,10 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 	// calculate minimum zoom level to fit entire sequence in container
 	const calculateMinZoomLevel = useCallback(() => {
 		const container = containerRef.current;
-		if (!container || !sequence) return 0.1;
+		if (!container || !length) return 0.1;
 		const availableWidth = container.clientWidth - 40;
-		return Math.max(0.1, availableWidth / (sequence.length * baseWidth));
-	}, [sequence, baseWidth]);
+		return Math.max(0.1, availableWidth / (length * baseWidth));
+	}, [length, baseWidth]);
 
 	// animate zoom level and offset
 	useEffect(() => {
@@ -493,23 +495,38 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 								/>
 							</TooltipTrigger>
 							<TooltipContent side="top" className="translate-y-5 !bg-white/40 !backdrop-blur-xs">
-								<div className="mb-1">
+								<div className={sequence ? "mb-1" : ""}>
 									Position: <span className="font-mono text-black">{hoveredPosition + 1}</span>
 								</div>
-								<div className="flex">
-									{sequence
-										.substring(Math.max(0, hoveredPosition - 5), Math.min(sequenceLength, hoveredPosition + 6))
-										.split("")
-										.map((letter, index) => {
-											const substringStart = Math.max(0, hoveredPosition - 5);
-											const isCenter = substringStart + index === hoveredPosition;
-											return (
-												<span key={index} className={isCenter ? "text-black" : "text-slate-400"}>
-													{letter}
-												</span>
-											);
-										})}
-								</div>
+								{sequence && (
+									<div className="flex">
+										{(() => {
+											// Handle sequence length mismatches
+											const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
+											const windowStart = Math.max(0, hoveredPosition - 5);
+											const windowEnd = Math.min(sequenceLength, hoveredPosition + 6);
+
+											// Create array for the window
+											const windowArray = [];
+											for (let i = windowStart; i < windowEnd; i++) {
+												if (i < safeSequence.length) {
+													windowArray.push(safeSequence[i]);
+												} else {
+													windowArray.push("·"); // placeholder for missing positions
+												}
+											}
+
+											return windowArray.map((letter, index) => {
+												const isCenter = windowStart + index === hoveredPosition;
+												return (
+													<span key={index} className={isCenter ? "text-black" : "text-slate-400"}>
+														{letter}
+													</span>
+												);
+											});
+										})()}
+									</div>
+								)}
 							</TooltipContent>
 						</Tooltip>
 					)}
@@ -567,12 +584,21 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ sequence, annotations = [] 
 			</div>
 
 			{/* Sequence display when selection is made */}
-			{/* {selection && (
+			{/* {selection && sequence && (
 				<div className="absolute bottom-0 left-0 right-0 p-3 bg-slate-200 border-t border-slate-300">
 					<div className="text-sm text-slate-500 mb-1">{`Position ${selection.start + 1} ${selection.start === selection.end ? "" : `- ${selection.end + 1}`} (${
 						selection.end - selection.start + 1
 					} bp)`}</div>
-					<div className="font-mono text-sm break-all">{sequence.substring(selection.start, selection.end + 1)}</div>
+					<div className="font-mono text-sm break-all">
+						{(() => {
+							const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
+							if (selection.start >= safeSequence.length) {
+								return <span className="text-slate-400">No sequence data available for this region</span>;
+							}
+							const endPos = Math.min(selection.end + 1, safeSequence.length);
+							return safeSequence.substring(selection.start, endPos);
+						})()}
+					</div>
 				</div>
 			)} */}
 		</div>

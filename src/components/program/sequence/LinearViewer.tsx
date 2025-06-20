@@ -493,8 +493,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, sections 
 									}}
 								/>
 							</TooltipTrigger>
-							<TooltipContent side="top" className="vertical gap-1 justify-center items-center translate-y-0 !bg-white/40 !backdrop-blur-xs p-1">
-								<div className="font-mono text-center text-slate-400">{hoveredPosition + 1}</div>
+							<TooltipContent side="top" className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-0 !bg-white/40 !backdrop-blur-xs p-1">
+								<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
 								{sequence && (
 									<div className="flex">
 										{(() => {

@@ -7,6 +7,10 @@ export interface Generator {
 	hyperparameters?: Record<string, unknown>;
 }
 
+export interface GeneratorInstance extends Generator {
+	sections: string[]; // list of section ids that the generator is applied to
+}
+
 export const generatorOptions: Generator[] = [
 	{
 		key: "uniform-mutation",

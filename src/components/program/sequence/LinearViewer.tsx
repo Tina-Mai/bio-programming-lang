@@ -1,18 +1,11 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Section } from "@/types";
+import { Sequence, Section } from "@/types";
 
 interface Selection {
 	start: number;
 	end: number;
-}
-
-// TODO: sequences can have optional positions (?) in case some parts are not generated or are generated separately?
-interface LinearViewerProps {
-	length: number;
-	sequence?: string;
-	sections?: Section[];
 }
 
 interface SectionComponentProps {
@@ -93,14 +86,15 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 					className={`${hoveredSection === section ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
 					style={{ backgroundColor: hoveredSection === section ? colors.stroke : "transparent" }}
 				>
-					{section.text} <span className={`ml-1 font-mono font-normal ${hoveredSection === section ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
+					{section.label || "Section"}{" "}
+					<span className={`ml-1 font-mono font-normal ${hoveredSection === section ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
 				</span>
 			</div>
 		</div>
 	);
 };
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ length, sequence, sections = [] }) => {
+const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [hoveredSection, setHoveredSection] = useState<Section | null>(null);

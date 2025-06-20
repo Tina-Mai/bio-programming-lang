@@ -10,24 +10,28 @@ const LinearViewerDemo = () => {
 
 	const sections = [
 		{
-			text: "Promoter",
+			id: "1",
+			label: "Promoter",
 			type: "promoter",
 			start: 0,
 			end: 10,
 		},
 		{
-			text: "CDS",
+			id: "2",
+			label: "CDS",
 			type: "CDS",
 			start: 11,
 			end: 40,
 		},
 		{
-			text: "Custom Section",
+			id: "3",
+			label: "Custom Section",
 			start: 41,
 			end: 65,
 		},
 		{
-			text: "CDS",
+			id: "4",
+			label: "CDS",
 			type: "CDS",
 			start: 66,
 			end: 80,
@@ -36,18 +40,21 @@ const LinearViewerDemo = () => {
 
 	const longSections = [
 		{
-			text: "Long Promoter Region",
+			id: "5",
+			label: "Long Promoter Region",
 			type: "promoter",
 			start: 10,
 			end: 50,
 		},
 		{
-			text: "Section A",
+			id: "6",
+			label: "Section A",
 			start: 60,
 			end: 120,
 		},
 		{
-			text: "Section B",
+			id: "7",
+			label: "Section B",
 			direction: "reverse" as const,
 			start: 130,
 			end: 180,

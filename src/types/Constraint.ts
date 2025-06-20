@@ -3,6 +3,10 @@ export interface Constraint {
 	name: string;
 }
 
+export interface ConstraintInstance extends Constraint {
+	sections: string[]; // list of section ids that the constraint is applied to
+}
+
 export const constraintOptions: Constraint[] = [
 	{
 		key: "sequence-length",

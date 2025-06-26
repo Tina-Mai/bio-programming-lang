@@ -13,13 +13,15 @@ interface SectionComponentProps {
 	index: number;
 	hoveredSection: Section | null;
 	setHoveredSection: (section: Section | null) => void;
+	clickedSection: Section | null;
+	setClickedSection: (section: Section | null) => void;
 	direction: "forward" | "reverse";
 	baseWidth: number;
 	zoomLevel: number;
 	offset: number;
 }
 
-const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hoveredSection, setHoveredSection, direction, baseWidth, zoomLevel, offset }) => {
+const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hoveredSection, setHoveredSection, clickedSection, setClickedSection, direction, baseWidth, zoomLevel, offset }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const sectionPixelWidth = (section.end - section.start + 1) * nucleotideWidth;
 	const sectionLeft = 20 + section.start * nucleotideWidth - offset;
@@ -39,7 +41,9 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 
 	const colors = getColors();
 	const isHovered = hoveredSection === section;
-	const shouldDim = hoveredSection && !isHovered;
+	const isClicked = clickedSection === section;
+	const isHighlighted = isHovered || isClicked;
+	const shouldDim = (hoveredSection || clickedSection) && !isHighlighted;
 
 	// direction-specific configurations
 	const config = {
@@ -62,15 +66,20 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 	return (
 		<div
 			key={`${direction}-${index}`}
+			data-section-component
 			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${sectionLeft}px`,
 				width: `${sectionPixelWidth}px`,
 				height: "32px",
-				zIndex: isHovered ? 20 : 10,
+				zIndex: isHighlighted ? 20 : 10,
 			}}
 			onMouseEnter={() => setHoveredSection(section)}
 			onMouseLeave={() => setHoveredSection(null)}
+			onClick={(e) => {
+				e.stopPropagation();
+				setClickedSection(section);
+			}}
 		>
 			<svg width="100%" height="32" viewBox={`0 0 ${sectionPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
 				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
@@ -83,11 +92,10 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 				}}
 			>
 				<span
-					className={`${hoveredSection === section ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
-					style={{ backgroundColor: hoveredSection === section ? colors.stroke : "transparent" }}
+					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+					style={{ backgroundColor: isHighlighted ? colors.stroke : "transparent" }}
 				>
-					{section.label || "Section"}{" "}
-					<span className={`ml-1 font-mono font-normal ${hoveredSection === section ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
+					{section.label || "Section"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
 				</span>
 			</div>
 		</div>
@@ -98,6 +106,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [hoveredSection, setHoveredSection] = useState<Section | null>(null);
+	const [clickedSection, setClickedSection] = useState<Section | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
 	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
@@ -187,6 +196,20 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 
 	// handle mouse events for selection and panning
 	const handleMouseDown = (e: React.MouseEvent) => {
+		// Check if clicking on a section component
+		const isClickingSection = (e.target as HTMLElement).closest("[data-section-component]") !== null;
+
+		// Clear clicked section if clicking on empty space (not propagated from section)
+		if (!isClickingSection) {
+			setClickedSection(null);
+		}
+
+		// If clicking on a section, clear any blue selection and don't start a new one
+		if (isClickingSection) {
+			setSelection(null);
+			return;
+		}
+
 		const position = getPositionFromEvent(e);
 		if (position !== null && !isPanning) {
 			setIsDragging(true);
@@ -276,11 +299,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 		};
 	}, [isDragging, isPanning, selection, lastMouseX, offset, sequenceLength, nucleotideWidth, visibleWidth, getPositionFromEvent]);
 
-	// click outside the component to clear selection
+	// click outside the component to clear selection and clicked section
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
 				setSelection(null);
+				setClickedSection(null);
 			}
 		};
 
@@ -417,12 +441,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 					/>
 
 					{/* Annotation hover highlight overlay */}
-					{hoveredSection && (
+					{(hoveredSection || clickedSection) && (
 						<div
 							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
 							style={{
-								left: `${20 + hoveredSection.start * nucleotideWidth - offset}px`,
-								width: `${(hoveredSection.end - hoveredSection.start + 1) * nucleotideWidth}px`,
+								left: `${20 + (hoveredSection || clickedSection)!.start * nucleotideWidth - offset}px`,
+								width: `${((hoveredSection || clickedSection)!.end - (hoveredSection || clickedSection)!.start + 1) * nucleotideWidth}px`,
 								top: "8px",
 							}}
 						/>
@@ -543,6 +567,8 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 									index={index}
 									hoveredSection={hoveredSection}
 									setHoveredSection={setHoveredSection}
+									clickedSection={clickedSection}
+									setClickedSection={setClickedSection}
 									direction="forward"
 									baseWidth={baseWidth}
 									zoomLevel={zoomLevel}
@@ -568,6 +594,8 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 									index={index}
 									hoveredSection={hoveredSection}
 									setHoveredSection={setHoveredSection}
+									clickedSection={clickedSection}
+									setClickedSection={setClickedSection}
 									direction="reverse"
 									baseWidth={baseWidth}
 									zoomLevel={zoomLevel}

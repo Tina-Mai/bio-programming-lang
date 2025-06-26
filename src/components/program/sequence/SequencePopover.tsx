@@ -20,12 +20,12 @@ const SequencePopover = () => {
 			<PopoverContent className="w-80">
 				<div className="grid gap-4">
 					<div className="vertical gap-1">
-						<h4 className="leading-none text-sm font-medium">Sequence configuration</h4>
+						<h4 className="leading-none text-sm font-medium">Sequence Configuration</h4>
 						<p className="text-muted-foreground text-xs">Edit the settings for this sequence</p>
 					</div>
 					<div className="grid gap-2">
 						<div className="grid grid-cols-3 items-center gap-4">
-							<Label htmlFor="variable-length">Variable length</Label>
+							<Label htmlFor="variable-length">Variable Length</Label>
 							<Switch id="variable-length" checked={variableLength} onCheckedChange={setVariableLength} />
 						</div>
 						<div className="grid grid-cols-3 items-center gap-4">
@@ -33,7 +33,7 @@ const SequencePopover = () => {
 							<Input id="length" defaultValue="100" className="col-span-2 h-8" disabled={variableLength} />
 						</div>
 						<div className="grid grid-cols-3 items-center gap-4">
-							<Label htmlFor="maxWidth">Global generator</Label>
+							<Label htmlFor="maxWidth">Global Generator</Label>
 							<Select>
 								<SelectTrigger className="flex w-full col-span-2 h-8">
 									<SelectValue placeholder="Select a generator" />
@@ -41,8 +41,24 @@ const SequencePopover = () => {
 								<SelectContent>
 									<SelectGroup>
 										<SelectLabel>Generators</SelectLabel>
+										<SelectItem value="beam">Sequential</SelectItem>
 										<SelectItem value="mcmc">MCMC</SelectItem>
-										<SelectItem value="beam">Beam search</SelectItem>
+									</SelectGroup>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="grid grid-cols-3 items-center gap-4">
+							<Label htmlFor="maxWidth">Sequence Type</Label>
+							<Select>
+								<SelectTrigger className="flex w-full col-span-2 h-8">
+									<SelectValue placeholder="Select a type" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectGroup>
+										<SelectLabel>Sequence types</SelectLabel>
+										<SelectItem value="dna">DNA</SelectItem>
+										<SelectItem value="rna">RNA</SelectItem>
+										<SelectItem value="protein">Protein</SelectItem>
 									</SelectGroup>
 								</SelectContent>
 							</Select>

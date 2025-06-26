@@ -38,28 +38,28 @@ const LinearViewerDemo = () => {
 		},
 	];
 
-	const longSections = [
-		{
-			id: "5",
-			label: "Long Promoter Region",
-			type: "promoter",
-			start: 10,
-			end: 50,
-		},
-		{
-			id: "6",
-			label: "Section A",
-			start: 60,
-			end: 120,
-		},
-		{
-			id: "7",
-			label: "Section B",
-			direction: "reverse" as const,
-			start: 130,
-			end: 180,
-		},
-	];
+	// const longSections = [
+	// 	{
+	// 		id: "5",
+	// 		label: "Long Promoter Region",
+	// 		type: "promoter",
+	// 		start: 10,
+	// 		end: 50,
+	// 	},
+	// 	{
+	// 		id: "6",
+	// 		label: "Section A",
+	// 		start: 60,
+	// 		end: 120,
+	// 	},
+	// 	{
+	// 		id: "7",
+	// 		label: "Section B",
+	// 		direction: "reverse" as const,
+	// 		start: 130,
+	// 		end: 180,
+	// 	},
+	// ];
 
 	const SequenceInstance = ({ name, length, sequence, sections }: { name: string; length: number; sequence?: string; sections: Section[] }) => {
 		return (
@@ -83,7 +83,7 @@ const LinearViewerDemo = () => {
 		// mt-[52px] is to offset the header at the top of Program.tsx
 		<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] flex-1">
 			<SequenceInstance name="Example" length={sequence.length} sequence={sequence} sections={sections} />
-			<SequenceInstance name="Longer Sequence" length={819} sections={longSections} />
+			{/* <SequenceInstance name="Longer Sequence" length={819} sections={longSections} /> */}
 		</div>
 	);
 };

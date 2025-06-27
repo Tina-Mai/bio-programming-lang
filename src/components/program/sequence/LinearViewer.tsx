@@ -2,6 +2,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Sequence, Section } from "@/types";
+import ConstraintBox from "./Constraint";
+import GeneratorBox from "./Generator";
 
 interface Selection {
 	start: number;
@@ -437,10 +439,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						{sectionConstraints.map((constraint, index) => (
 							<div key={index} className="relative">
 								{/* Individual constraint box */}
-								<div className="bg-white/95 backdrop-blur-sm border border-slate-300 rounded-lg shadow-md px-3 py-2">
-									<div className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Constraint</div>
-									<div className="text-xs text-slate-700">{constraint.name}</div>
-								</div>
+								<ConstraintBox constraint={constraint} />
 
 								{/* Dotted line from box to section */}
 								<svg
@@ -487,10 +486,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 								</svg>
 
 								{/* Individual generator box */}
-								<div className="bg-white/95 backdrop-blur-sm border border-slate-300 rounded-lg shadow-md px-3 py-2">
-									<div className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Generator</div>
-									<div className="text-xs text-slate-700">{generator.name}</div>
-								</div>
+								<GeneratorBox generator={generator} />
 							</div>
 						))}
 					</div>

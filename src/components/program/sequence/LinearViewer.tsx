@@ -42,8 +42,8 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 	const colors = getColors();
 	const isHovered = hoveredSection === section;
 	const isClicked = clickedSection === section;
-	const isHighlighted = isHovered || isClicked;
-	const shouldDim = (hoveredSection || clickedSection) && !isHighlighted;
+	const isHighlighted = isClicked || (isHovered && !clickedSection);
+	const shouldDim = (clickedSection || hoveredSection) && !isHighlighted;
 
 	// direction-specific configurations
 	const config = {
@@ -74,11 +74,20 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 				height: "32px",
 				zIndex: isHighlighted ? 20 : 10,
 			}}
-			onMouseEnter={() => setHoveredSection(section)}
-			onMouseLeave={() => setHoveredSection(null)}
+			onMouseEnter={() => {
+				if (!clickedSection) {
+					setHoveredSection(section);
+				}
+			}}
+			onMouseLeave={() => {
+				if (!clickedSection) {
+					setHoveredSection(null);
+				}
+			}}
 			onClick={(e) => {
 				e.stopPropagation();
 				setClickedSection(section);
+				setHoveredSection(null);
 			}}
 		>
 			<svg width="100%" height="32" viewBox={`0 0 ${sectionPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
@@ -102,7 +111,7 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 	);
 };
 
-const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) => {
+const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], constraints = [], generators = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [hoveredSection, setHoveredSection] = useState<Section | null>(null);
@@ -196,15 +205,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 
 	// handle mouse events for selection and panning
 	const handleMouseDown = (e: React.MouseEvent) => {
-		// Check if clicking on a section component
 		const isClickingSection = (e.target as HTMLElement).closest("[data-section-component]") !== null;
 
-		// Clear clicked section if clicking on empty space (not propagated from section)
 		if (!isClickingSection) {
 			setClickedSection(null);
+			setHoveredSection(null);
 		}
-
-		// If clicking on a section, clear any blue selection and don't start a new one
 		if (isClickingSection) {
 			setSelection(null);
 			return;
@@ -253,6 +259,10 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 		setIsDragging(false);
 		setIsPanning(false);
 		setIsHovering(false);
+		// Only clear hover if no section is clicked
+		if (!clickedSection) {
+			setHoveredSection(null);
+		}
 	};
 
 	const handleMouseEnter = () => {
@@ -305,6 +315,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
 				setSelection(null);
 				setClickedSection(null);
+				setHoveredSection(null);
 			}
 		};
 
@@ -384,6 +395,19 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 	const forwardSections = sections.filter((section) => section.direction === "forward" || !section.direction);
 	const backwardSections = sections.filter((section) => section.direction === "reverse");
 
+	// Get constraints and generators for highlighted section
+	// Prioritize clicked section over hovered section
+	const highlightedSection = clickedSection || hoveredSection;
+	const sectionConstraints = constraints.filter((constraint) => highlightedSection && constraint.sections.includes(highlightedSection.id));
+	const sectionGenerators = generators.filter((generator) => highlightedSection && generator.sections.includes(highlightedSection.id));
+
+	// Calculate position for constraint/generator boxes
+	const getSectionCenter = (section: Section) => {
+		const sectionStart = 20 + section.start * nucleotideWidth - offset;
+		const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
+		return sectionStart + sectionWidth / 2;
+	};
+
 	return (
 		<div className="w-full h-full">
 			{/* Main viewer container */}
@@ -400,6 +424,78 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 					touchAction: "none",
 				}}
 			>
+				{/* Constraint Boxes for highlighted section */}
+				{highlightedSection && sectionConstraints.length > 0 && (
+					<div
+						className="absolute pointer-events-none z-50 flex gap-2"
+						style={{
+							left: `${getSectionCenter(highlightedSection)}px`,
+							top: "20px",
+							transform: "translateX(-50%)",
+						}}
+					>
+						{sectionConstraints.map((constraint, index) => (
+							<div key={index} className="relative">
+								{/* Individual constraint box */}
+								<div className="bg-white/95 backdrop-blur-sm border border-slate-300 rounded-lg shadow-md px-3 py-2">
+									<div className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Constraint</div>
+									<div className="text-xs text-slate-700">{constraint.name}</div>
+								</div>
+
+								{/* Dotted line from box to section */}
+								<svg
+									className="absolute overflow-visible"
+									style={{
+										width: "2px",
+										height: "40px",
+										left: "50%",
+										top: "100%",
+										transform: "translateX(-50%)",
+									}}
+								>
+									<line x1="1" y1="0" x2="1" y2="40" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+								</svg>
+							</div>
+						))}
+					</div>
+				)}
+
+				{/* Generator Boxes for highlighted section */}
+				{highlightedSection && sectionGenerators.length > 0 && (
+					<div
+						className="absolute pointer-events-none z-50 flex gap-2"
+						style={{
+							left: `${getSectionCenter(highlightedSection)}px`,
+							bottom: backwardSections.length > 0 ? "20px" : "60px",
+							transform: "translateX(-50%)",
+						}}
+					>
+						{sectionGenerators.map((generator, index) => (
+							<div key={index} className="relative">
+								{/* Dotted line from section to box */}
+								<svg
+									className="absolute overflow-visible"
+									style={{
+										width: "2px",
+										height: backwardSections.length > 0 ? "40px" : "40px",
+										left: "50%",
+										bottom: "100%",
+										transform: "translateX(-50%)",
+									}}
+								>
+									<line x1="1" y1="0" x2="1" y2={backwardSections.length > 0 ? "40" : "40"} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+								</svg>
+
+								{/* Individual generator box */}
+								<div className="bg-white/95 backdrop-blur-sm border border-slate-300 rounded-lg shadow-md px-3 py-2">
+									<div className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Generator</div>
+									<div className="text-xs text-slate-700">{generator.name}</div>
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+
 				{/* Vertical grid lines at ruler positions */}
 				{rulerMarks.map((mark) => {
 					const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
@@ -441,12 +537,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 					/>
 
 					{/* Annotation hover highlight overlay */}
-					{(hoveredSection || clickedSection) && (
+					{highlightedSection && (
 						<div
 							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
 							style={{
-								left: `${20 + (hoveredSection || clickedSection)!.start * nucleotideWidth - offset}px`,
-								width: `${((hoveredSection || clickedSection)!.end - (hoveredSection || clickedSection)!.start + 1) * nucleotideWidth}px`,
+								left: `${20 + highlightedSection.start * nucleotideWidth - offset}px`,
+								width: `${(highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth}px`,
 								top: "8px",
 							}}
 						/>
@@ -529,6 +625,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [] }) =
 												}
 											}
 
+											// TODO: for the very start and end of a sequence the gradient shouldn't be focused in the middle since the focused nucleotide is not in the middle!
 											return windowArray.map((letter, index) => {
 												const isCenter = windowStart + index === hoveredPosition;
 												return (

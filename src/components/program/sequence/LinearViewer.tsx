@@ -439,7 +439,11 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 								}}
 							/>
 						</TooltipTrigger>
-						<TooltipContent side="top" sideOffset={8} className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-15 !bg-white/40 !backdrop-blur-xs p-1">
+						<TooltipContent
+							side="top"
+							sideOffset={8}
+							className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-12 !bg-white/40 !backdrop-blur-xs py-0.5 px-1 !shadow-none"
+						>
 							<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
 							{sequence && (
 								<div className="flex">
@@ -499,7 +503,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				{/* Hover tracking line */}
 				{hoveredPosition !== null && (
 					<div
-						className="absolute top-0 bottom-0 w-px bg-slate-400/70 pointer-events-none z-40"
+						className="absolute top-0 bottom-0 w-px bg-slate-400/60 pointer-events-none z-40"
 						style={{
 							left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
 							transform: "translateX(-50%)",

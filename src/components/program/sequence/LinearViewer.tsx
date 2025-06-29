@@ -262,7 +262,6 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 		setIsDragging(false);
 		setIsPanning(false);
 		setIsHovering(false);
-		// Only clear hover if no section is clicked
 		if (!clickedSection) {
 			setHoveredSection(null);
 		}
@@ -315,18 +314,15 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	// click outside the component to clear selection and clicked section
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			// Check if the click is within the container
 			if (containerRef.current) {
 				const target = event.target as HTMLElement;
 				const isInContainer = containerRef.current.contains(target);
 
 				if (!isInContainer) {
-					// Click is completely outside the viewer
 					setSelection(null);
 					setClickedSection(null);
 					setHoveredSection(null);
 				} else if (isInContainer && !target.closest("[data-section-component]")) {
-					// Click is inside viewer but not on a section
 					setSelection(null);
 					setClickedSection(null);
 					setHoveredSection(null);
@@ -430,6 +426,58 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 					touchAction: "none",
 				}}
 			>
+				{/* Hover tooltip showing sequence */}
+				{hoveredPosition !== null && (
+					<Tooltip open={true}>
+						<TooltipTrigger asChild>
+							<div
+								className="absolute w-1 h-full pointer-events-none"
+								style={{
+									top: 0,
+									left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
+									transform: "translateX(-50%)",
+								}}
+							/>
+						</TooltipTrigger>
+						<TooltipContent side="top" sideOffset={8} className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-15 !bg-white/40 !backdrop-blur-xs p-1">
+							<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
+							{sequence && (
+								<div className="flex">
+									{(() => {
+										// handle sequence length mismatches
+										const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
+										const windowStart = Math.max(0, hoveredPosition - 4);
+										const windowEnd = Math.min(sequenceLength, hoveredPosition + 5);
+										const windowArray = [];
+										for (let i = windowStart; i < windowEnd; i++) {
+											if (i < safeSequence.length) {
+												windowArray.push(safeSequence[i]);
+											} else {
+												windowArray.push("·");
+											}
+										}
+
+										// TODO: for the very start and end of a sequence the gradient shouldn't be focused in the middle since the focused nucleotide is not in the middle!
+										return windowArray.map((letter, index) => {
+											const isCenter = windowStart + index === hoveredPosition;
+											return (
+												<span
+													key={index}
+													className={`text-slate-500`}
+													style={{
+														opacity: isCenter ? 1 : Math.max(0.1, 1 - Math.abs(index - (windowArray.length - 1) / 2) / ((windowArray.length - 1) / 2)),
+													}}
+												>
+													{letter}
+												</span>
+											);
+										});
+									})()}
+								</div>
+							)}
+						</TooltipContent>
+					</Tooltip>
+				)}
 				{/* Vertical grid lines at ruler positions */}
 				{rulerMarks.map((mark) => {
 					const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
@@ -451,7 +499,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				{/* Hover tracking line */}
 				{hoveredPosition !== null && (
 					<div
-						className="absolute top-0 bottom-0 w-px bg-slate-400 pointer-events-none z-40"
+						className="absolute top-0 bottom-0 w-px bg-slate-400/70 pointer-events-none z-40"
 						style={{
 							left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
 							transform: "translateX(-50%)",
@@ -580,58 +628,6 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 							}}
 						/>
 					)}
-
-					{/* Hover tooltip showing sequence */}
-					{hoveredPosition !== null && (
-						<Tooltip open={true}>
-							<TooltipTrigger asChild>
-								<div
-									className="absolute w-1 h-full pointer-events-none"
-									style={{
-										left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
-										transform: "translateX(-50%)",
-									}}
-								/>
-							</TooltipTrigger>
-							<TooltipContent side="top" className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-0 !bg-white/40 !backdrop-blur-xs p-1">
-								<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
-								{sequence && (
-									<div className="flex">
-										{(() => {
-											// handle sequence length mismatches
-											const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
-											const windowStart = Math.max(0, hoveredPosition - 4);
-											const windowEnd = Math.min(sequenceLength, hoveredPosition + 5);
-											const windowArray = [];
-											for (let i = windowStart; i < windowEnd; i++) {
-												if (i < safeSequence.length) {
-													windowArray.push(safeSequence[i]);
-												} else {
-													windowArray.push("·");
-												}
-											}
-
-											// TODO: for the very start and end of a sequence the gradient shouldn't be focused in the middle since the focused nucleotide is not in the middle!
-											return windowArray.map((letter, index) => {
-												const isCenter = windowStart + index === hoveredPosition;
-												return (
-													<span
-														key={index}
-														className={`text-slate-500`}
-														style={{
-															opacity: isCenter ? 1 : Math.max(0.1, 1 - Math.abs(index - (windowArray.length - 1) / 2) / ((windowArray.length - 1) / 2)),
-														}}
-													>
-														{letter}
-													</span>
-												);
-											});
-										})()}
-									</div>
-								)}
-							</TooltipContent>
-						</Tooltip>
-					)}
 				</div>
 
 				{/* Forward Annotations Section */}
@@ -686,7 +682,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 										className="absolute pointer-events-none z-20"
 										style={{
 											left: 0,
-											top: "-140px", // Position in the gap between constraints and section
+											top: "-140px",
 											width: "100%",
 											height: "140px",
 											overflow: "visible",
@@ -764,11 +760,9 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											const boxCenterX = adjustedLeft + boxOffset;
 
 											const startX = sectionCenter;
-											const startY = 0; // Just below section
+											const startY = 0;
 											const endX = boxCenterX;
-											const endY = 28;
-
-											// Use straight line if close to center, curve if offset
+											const endY = 28; // config: bottom space to generator box
 											const isOffset = Math.abs(startX - endX) > 10;
 
 											if (isOffset) {

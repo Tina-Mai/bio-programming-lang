@@ -496,10 +496,10 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 												top: "100%",
 												transform: "translateX(-50%)",
 												width: "2px",
-												height: "88px",
+												height: "84px",
 											}}
 										>
-											<line x1="1" y1="0" x2="1" y2="88" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+											<line x1="1" y1="0" x2="1" y2="84" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
 										</svg>
 									</div>
 								))}
@@ -721,10 +721,10 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 												bottom: "100%",
 												transform: "translateX(-50%)",
 												width: "2px",
-												height: "40px",
+												height: "28px",
 											}}
 										>
-											<line x1="1" y1="0" x2="1" y2="40" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+											<line x1="1" y1="0" x2="1" y2="28" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
 										</svg>
 										<GeneratorBox generator={generator} />
 									</div>

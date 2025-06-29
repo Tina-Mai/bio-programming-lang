@@ -14,7 +14,7 @@ const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
 	const filteredConstraints = constraintOptions.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (
-		<div className="bg-system-yellow/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">
+		<div className="w-[180px] bg-system-yellow/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">
 			<div className="horizontal justify-between bg-system-yellow/70 text-slate-500 px-3 py-2 items-center border-b border-slate-300 rounded-t-md">
 				<div className="horizontal items-center gap-2 font-mono capitalize">
 					<SettingsAdjust className="text-zinc-500/75" size={16} />

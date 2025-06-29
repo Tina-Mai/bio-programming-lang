@@ -14,7 +14,7 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
 	const filteredGenerators = generatorOptions.filter((g) => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (
-		<div className="bg-system-blue/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">
+		<div className="w-[180px] bg-system-blue/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">
 			<div className="horizontal bg-system-slate/65 text-slate-500 px-3 py-2 items-center font-mono border-b border-slate-300 gap-2 capitalize rounded-t-md">
 				<Chip className="text-zinc-500/70" size={16} />
 				Generator

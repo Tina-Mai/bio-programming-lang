@@ -475,34 +475,37 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						// Skip if outside visible area
 						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
 
+						// Calculate total width of constraint boxes (approximate)
+						const constraintBoxWidth = 180; // Approximate width of each constraint box
+						const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8; // 8px gap
+						const halfWidth = totalWidth / 2;
+
+						// Calculate adjusted position to keep boxes within container
+						let adjustedLeft = sectionCenter;
+						const padding = 16;
+						if (sectionCenter - halfWidth < padding) {
+							adjustedLeft = halfWidth + padding;
+						} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+							adjustedLeft = visibleWidth - halfWidth - padding;
+						}
+
 						return (
-							<div
-								key={`section-${section.id}-constraints`}
-								className="absolute flex flex-row gap-2 items-end justify-center"
-								style={{
-									left: `${sectionCenter}px`,
-									bottom: "16px",
-									transform: "translateX(-50%)",
-								}}
-							>
-								{sectionConstraints.map((constraint, idx) => (
-									<div key={`constraint-${idx}`} className="relative">
-										<ConstraintBox constraint={constraint} />
-										{/* Dotted line connecting to section */}
-										<svg
-											className="absolute pointer-events-none"
-											style={{
-												left: "50%",
-												top: "100%",
-												transform: "translateX(-50%)",
-												width: "2px",
-												height: "84px",
-											}}
-										>
-											<line x1="1" y1="0" x2="1" y2="84" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
-										</svg>
-									</div>
-								))}
+							<div key={`section-${section.id}-constraints`}>
+								{/* Constraint boxes */}
+								<div
+									className="absolute flex flex-row gap-2 items-end justify-center"
+									style={{
+										left: `${adjustedLeft}px`,
+										bottom: "16px",
+										transform: "translateX(-50%)",
+									}}
+								>
+									{sectionConstraints.map((constraint, idx) => (
+										<div key={`constraint-${idx}`} className="relative">
+											<ConstraintBox constraint={constraint} />
+										</div>
+									))}
+								</div>
 							</div>
 						);
 					})}
@@ -633,7 +636,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 
 				{/* Forward Annotations Section */}
 				{forwardSections.length > 0 && (
-					<div className="relative h-10 w-full overflow-hidden">
+					<div className="relative h-10 w-full overflow-visible">
 						{forwardSections
 							.filter((section) => {
 								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
@@ -655,12 +658,149 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									offset={offset}
 								/>
 							))}
+
+						{/* Constraint curves for this section if it's highlighted */}
+						{highlightedSection &&
+							forwardSections.includes(highlightedSection) &&
+							(() => {
+								const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(highlightedSection.id));
+								if (sectionConstraints.length === 0) return null;
+
+								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+								// Calculate constraint box positions
+								const constraintBoxWidth = 200;
+								const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8;
+								const halfWidth = totalWidth / 2;
+
+								let adjustedLeft = sectionCenter;
+								const padding = 16;
+								if (sectionCenter - halfWidth < padding) {
+									adjustedLeft = halfWidth + padding;
+								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									adjustedLeft = visibleWidth - halfWidth - padding;
+								}
+
+								return (
+									<svg
+										className="absolute pointer-events-none z-20"
+										style={{
+											left: 0,
+											top: "-140px", // Position in the gap between constraints and section
+											width: "100%",
+											height: "140px",
+											overflow: "visible",
+										}}
+									>
+										{sectionConstraints.map((constraint, idx, arr) => {
+											const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
+											const boxCenterX = adjustedLeft + boxOffset;
+											const startX = boxCenterX;
+											const startY = 60; // config: top space to constraint box
+											const endX = sectionCenter;
+											const endY = 142; // config: bottom space to section
+											const isOffset = Math.abs(startX - endX) > 10;
+
+											if (isOffset) {
+												const controlY = (startY + endY) / 2;
+												return (
+													<path
+														key={`constraint-curve-${idx}`}
+														d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+														fill="none"
+														stroke="rgb(148 163 184)"
+														strokeWidth="1"
+														strokeDasharray="2,2"
+													/>
+												);
+											} else {
+												return (
+													<line key={`constraint-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+												);
+											}
+										})}
+									</svg>
+								);
+							})()}
+
+						{/* Generator curves for forward sections if highlighted */}
+						{highlightedSection &&
+							forwardSections.includes(highlightedSection) &&
+							(() => {
+								const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
+								if (sectionGenerators.length === 0) return null;
+
+								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+								// Calculate generator box positions
+								const generatorBoxWidth = 180;
+								const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+								const halfWidth = totalWidth / 2;
+
+								let adjustedLeft = sectionCenter;
+								const padding = 16;
+								if (sectionCenter - halfWidth < padding) {
+									adjustedLeft = halfWidth + padding;
+								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									adjustedLeft = visibleWidth - halfWidth - padding;
+								}
+
+								return (
+									<svg
+										className="absolute pointer-events-none z-20"
+										style={{
+											left: 0,
+											top: "30px", // config: top space to section
+											width: "100%",
+											height: "120px",
+											overflow: "visible",
+										}}
+									>
+										{sectionGenerators.map((generator, idx, arr) => {
+											const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
+											const boxCenterX = adjustedLeft + boxOffset;
+
+											const startX = sectionCenter;
+											const startY = 0; // Just below section
+											const endX = boxCenterX;
+											const endY = 28;
+
+											// Use straight line if close to center, curve if offset
+											const isOffset = Math.abs(startX - endX) > 10;
+
+											if (isOffset) {
+												const controlY = (startY + endY) / 2;
+												return (
+													<path
+														key={`generator-curve-${idx}`}
+														d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+														fill="none"
+														stroke="rgb(148 163 184)"
+														strokeWidth="1"
+														strokeDasharray="2,2"
+													/>
+												);
+											} else {
+												return (
+													<line key={`generator-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+												);
+											}
+										})}
+									</svg>
+								);
+							})()}
 					</div>
 				)}
 
 				{/* Backward Annotations Section */}
 				{backwardSections.length > 0 && (
-					<div className="relative h-10 w-full overflow-hidden">
+					<div className="relative h-10 w-full overflow-visible">
 						{backwardSections
 							.filter((section) => {
 								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
@@ -682,6 +822,76 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									offset={offset}
 								/>
 							))}
+
+						{/* Generator curves for this section if it's highlighted */}
+						{highlightedSection &&
+							backwardSections.includes(highlightedSection) &&
+							(() => {
+								const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
+								if (sectionGenerators.length === 0) return null;
+
+								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+								// Calculate generator box positions
+								const generatorBoxWidth = 200;
+								const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+								const halfWidth = totalWidth / 2;
+
+								let adjustedLeft = sectionCenter;
+								const padding = 16;
+								if (sectionCenter - halfWidth < padding) {
+									adjustedLeft = halfWidth + padding;
+								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									adjustedLeft = visibleWidth - halfWidth - padding;
+								}
+
+								return (
+									<svg
+										className="absolute pointer-events-none z-20"
+										style={{
+											left: 0,
+											top: "40px", // Below section
+											width: "100%",
+											height: "120px",
+											overflow: "visible",
+										}}
+									>
+										{sectionGenerators.map((generator, idx, arr) => {
+											const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
+											const boxCenterX = adjustedLeft + boxOffset;
+
+											const startX = sectionCenter;
+											const startY = 0; // Just below section
+											const endX = boxCenterX;
+											const endY = 20; // Very short line
+
+											// Use straight line if close to center, curve if offset
+											const isOffset = Math.abs(startX - endX) > 10;
+
+											if (isOffset) {
+												const controlY = (startY + endY) / 2;
+												return (
+													<path
+														key={`generator-curve-${idx}`}
+														d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+														fill="none"
+														stroke="rgb(148 163 184)"
+														strokeWidth="1"
+														strokeDasharray="2,2"
+													/>
+												);
+											} else {
+												return (
+													<line key={`generator-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+												);
+											}
+										})}
+									</svg>
+								);
+							})()}
 					</div>
 				)}
 
@@ -701,34 +911,37 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						// Skip if outside visible area
 						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
 
+						// Calculate total width of generator boxes (approximate)
+						const generatorBoxWidth = 200; // Approximate width of each generator box
+						const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8; // 8px gap
+						const halfWidth = totalWidth / 2;
+
+						// Calculate adjusted position to keep boxes within container
+						let adjustedLeft = sectionCenter;
+						const padding = 16;
+						if (sectionCenter - halfWidth < padding) {
+							adjustedLeft = halfWidth + padding;
+						} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+							adjustedLeft = visibleWidth - halfWidth - padding;
+						}
+
 						return (
-							<div
-								key={`section-${section.id}-generators`}
-								className="absolute flex flex-row gap-2 items-start justify-center"
-								style={{
-									left: `${sectionCenter}px`,
-									top: "16px",
-									transform: "translateX(-50%)",
-								}}
-							>
-								{sectionGenerators.map((generator, idx) => (
-									<div key={`generator-${idx}`} className="relative">
-										{/* Dotted line connecting to section */}
-										<svg
-											className="absolute pointer-events-none"
-											style={{
-												left: "50%",
-												bottom: "100%",
-												transform: "translateX(-50%)",
-												width: "2px",
-												height: "28px",
-											}}
-										>
-											<line x1="1" y1="0" x2="1" y2="28" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
-										</svg>
-										<GeneratorBox generator={generator} />
-									</div>
-								))}
+							<div key={`section-${section.id}-generators`}>
+								{/* Generator boxes */}
+								<div
+									className="absolute flex flex-row gap-2 items-start justify-center"
+									style={{
+										left: `${adjustedLeft}px`,
+										top: "16px",
+										transform: "translateX(-50%)",
+									}}
+								>
+									{sectionGenerators.map((generator, idx) => (
+										<div key={`generator-${idx}`} className="relative">
+											<GeneratorBox generator={generator} />
+										</div>
+									))}
+								</div>
 							</div>
 						);
 					})}

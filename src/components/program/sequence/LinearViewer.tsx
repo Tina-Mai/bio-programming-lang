@@ -548,7 +548,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									className="absolute flex flex-row gap-2 items-end justify-center"
 									style={{
 										left: `${adjustedLeft}px`,
-										bottom: "16px",
+										bottom: "24px",
 										transform: "translateX(-50%)",
 									}}
 								>
@@ -567,7 +567,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				<div className="relative h-16 w-full">
 					{/* Single sequence line */}
 					<div
-						className="absolute top-2 h-5 border-x-4 border-slate-400 bg-slate-300"
+						className={`absolute top-2 h-5 border-x-4 border-slate-400  ${highlightedSection ? "bg-slate-300/70" : "bg-slate-300"}`}
 						style={{
 							left: `${20 - offset}px`,
 							width: `${sequenceLength * nucleotideWidth}px`,
@@ -577,7 +577,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 					{/* Annotation hover highlight overlay */}
 					{highlightedSection && (
 						<div
-							className="absolute h-5 bg-slate-500 opacity-70 pointer-events-none transition-all duration-300"
+							className="absolute h-5 bg-slate-400/60 pointer-events-none transition-all duration-300"
 							style={{
 								left: `${20 + highlightedSection.start * nucleotideWidth - offset}px`,
 								width: `${(highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth}px`,
@@ -668,7 +668,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 
 								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
 
-								// Calculate constraint box positions
+								// config: constraint box positions
 								const constraintBoxWidth = 200;
 								const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8;
 								const halfWidth = totalWidth / 2;
@@ -696,7 +696,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
 											const boxCenterX = adjustedLeft + boxOffset;
 											const startX = boxCenterX;
-											const startY = 60; // config: top space to constraint box
+											const startY = 52; // config: top space to constraint box
 											const endX = sectionCenter;
 											const endY = 142; // config: bottom space to section
 											const isOffset = Math.abs(startX - endX) > 10;
@@ -711,14 +711,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 															${endX} ${controlY}, 
 															${endX} ${endY}`}
 														fill="none"
-														stroke="rgb(148 163 184)"
-														strokeWidth="1"
-														strokeDasharray="2,2"
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
 													/>
 												);
 											} else {
 												return (
-													<line key={`constraint-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+													<line
+														key={`constraint-line-${idx}`}
+														x1={startX}
+														y1={startY}
+														x2={endX}
+														y2={endY}
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
+													/>
 												);
 											}
 										})}
@@ -735,7 +746,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 
 								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
 
-								// Calculate generator box positions
+								// config: generator box positions
 								const generatorBoxWidth = 180;
 								const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
 								const halfWidth = totalWidth / 2;
@@ -766,7 +777,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											const startX = sectionCenter;
 											const startY = 0;
 											const endX = boxCenterX;
-											const endY = 28; // config: bottom space to generator box
+											const endY = 27; // config: bottom space to generator box
 											const isOffset = Math.abs(startX - endX) > 10;
 
 											if (isOffset) {
@@ -779,14 +790,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 															${endX} ${controlY}, 
 															${endX} ${endY}`}
 														fill="none"
-														stroke="rgb(148 163 184)"
-														strokeWidth="1"
-														strokeDasharray="2,2"
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
 													/>
 												);
 											} else {
 												return (
-													<line key={`generator-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+													<line
+														key={`generator-line-${idx}`}
+														x1={startX}
+														y1={startY}
+														x2={endX}
+														y2={endY}
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
+													/>
 												);
 											}
 										})}
@@ -876,14 +898,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 															${endX} ${controlY}, 
 															${endX} ${endY}`}
 														fill="none"
-														stroke="rgb(148 163 184)"
-														strokeWidth="1"
-														strokeDasharray="2,2"
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
 													/>
 												);
 											} else {
 												return (
-													<line key={`generator-line-${idx}`} x1={startX} y1={startY} x2={endX} y2={endY} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+													<line
+														key={`generator-line-${idx}`}
+														x1={startX}
+														y1={startY}
+														x2={endX}
+														y2={endY}
+														stroke="oklch(55.4% 0.046 257.417)"
+														strokeWidth="1.5"
+														strokeDasharray="3, 3"
+														className="stroke-dash-anim"
+													/>
 												);
 											}
 										})}

@@ -5,7 +5,7 @@ const ProjectTabs = () => {
 		<Tabs defaultValue="program" className="-m-[5px] -mr-2">
 			<TabsList>
 				<TabsTrigger value="program">Program</TabsTrigger>
-				<TabsTrigger value="designs">Designs</TabsTrigger>
+				<TabsTrigger value="structure">Structure</TabsTrigger>
 			</TabsList>
 		</Tabs>
 	);

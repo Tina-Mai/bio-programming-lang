@@ -207,7 +207,8 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 
 	// handle mouse events for selection and panning
 	const handleMouseDown = (e: React.MouseEvent) => {
-		const isClickingSection = (e.target as HTMLElement).closest("[data-section-component]") !== null;
+		const target = e.target as HTMLElement;
+		const isClickingSection = target.closest("[data-section-component]") !== null;
 
 		if (!isClickingSection) {
 			setClickedSection(null);
@@ -314,10 +315,22 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	// click outside the component to clear selection and clicked section
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-				setSelection(null);
-				setClickedSection(null);
-				setHoveredSection(null);
+			// Check if the click is within the container
+			if (containerRef.current) {
+				const target = event.target as HTMLElement;
+				const isInContainer = containerRef.current.contains(target);
+
+				if (!isInContainer) {
+					// Click is completely outside the viewer
+					setSelection(null);
+					setClickedSection(null);
+					setHoveredSection(null);
+				} else if (isInContainer && !target.closest("[data-section-component]")) {
+					// Click is inside viewer but not on a section
+					setSelection(null);
+					setClickedSection(null);
+					setHoveredSection(null);
+				}
 			}
 		};
 
@@ -400,15 +413,6 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	// Get constraints and generators for highlighted section
 	// Prioritize clicked section over hovered section
 	const highlightedSection = clickedSection || hoveredSection;
-	const sectionConstraints = constraints.filter((constraint) => highlightedSection && constraint.sections.includes(highlightedSection.id));
-	const sectionGenerators = generators.filter((generator) => highlightedSection && generator.sections.includes(highlightedSection.id));
-
-	// Calculate position for constraint/generator boxes
-	const getSectionCenter = (section: Section) => {
-		const sectionStart = 20 + section.start * nucleotideWidth - offset;
-		const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
-		return sectionStart + sectionWidth / 2;
-	};
 
 	return (
 		<div className="w-full h-full">
@@ -426,72 +430,6 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 					touchAction: "none",
 				}}
 			>
-				{/* Constraint Boxes for highlighted section */}
-				{highlightedSection && sectionConstraints.length > 0 && (
-					<div
-						className="absolute pointer-events-none z-50 flex gap-2"
-						style={{
-							left: `${getSectionCenter(highlightedSection)}px`,
-							top: "20px",
-							transform: "translateX(-50%)",
-						}}
-					>
-						{sectionConstraints.map((constraint, index) => (
-							<div key={index} className="relative">
-								{/* Individual constraint box */}
-								<ConstraintBox constraint={constraint} />
-
-								{/* Dotted line from box to section */}
-								<svg
-									className="absolute overflow-visible"
-									style={{
-										width: "2px",
-										height: "40px",
-										left: "50%",
-										top: "100%",
-										transform: "translateX(-50%)",
-									}}
-								>
-									<line x1="1" y1="0" x2="1" y2="40" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
-								</svg>
-							</div>
-						))}
-					</div>
-				)}
-
-				{/* Generator Boxes for highlighted section */}
-				{highlightedSection && sectionGenerators.length > 0 && (
-					<div
-						className="absolute pointer-events-none z-50 flex gap-2"
-						style={{
-							left: `${getSectionCenter(highlightedSection)}px`,
-							bottom: backwardSections.length > 0 ? "20px" : "60px",
-							transform: "translateX(-50%)",
-						}}
-					>
-						{sectionGenerators.map((generator, index) => (
-							<div key={index} className="relative">
-								{/* Dotted line from section to box */}
-								<svg
-									className="absolute overflow-visible"
-									style={{
-										width: "2px",
-										height: backwardSections.length > 0 ? "40px" : "40px",
-										left: "50%",
-										bottom: "100%",
-										transform: "translateX(-50%)",
-									}}
-								>
-									<line x1="1" y1="0" x2="1" y2={backwardSections.length > 0 ? "40" : "40"} stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
-								</svg>
-
-								{/* Individual generator box */}
-								<GeneratorBox generator={generator} />
-							</div>
-						))}
-					</div>
-				)}
-
 				{/* Vertical grid lines at ruler positions */}
 				{rulerMarks.map((mark) => {
 					const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
@@ -520,6 +458,55 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						}}
 					/>
 				)}
+
+				{/* Constraints Section - Above sequence */}
+				<div className="relative h-40 w-full">
+					{sections.map((section) => {
+						// Only show if this section is hovered or clicked
+						if (highlightedSection?.id !== section.id) return null;
+
+						// Find all constraints that apply to this section
+						const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(section.id));
+
+						if (sectionConstraints.length === 0) return null;
+
+						const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+
+						// Skip if outside visible area
+						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+
+						return (
+							<div
+								key={`section-${section.id}-constraints`}
+								className="absolute flex flex-row gap-2 items-end justify-center"
+								style={{
+									left: `${sectionCenter}px`,
+									bottom: "16px",
+									transform: "translateX(-50%)",
+								}}
+							>
+								{sectionConstraints.map((constraint, idx) => (
+									<div key={`constraint-${idx}`} className="relative">
+										<ConstraintBox constraint={constraint} />
+										{/* Dotted line connecting to section */}
+										<svg
+											className="absolute pointer-events-none"
+											style={{
+												left: "50%",
+												top: "100%",
+												transform: "translateX(-50%)",
+												width: "2px",
+												height: "88px",
+											}}
+										>
+											<line x1="1" y1="0" x2="1" y2="88" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+										</svg>
+									</div>
+								))}
+							</div>
+						);
+					})}
+				</div>
 
 				{/* Sequence + Ruler Section */}
 				<div className="relative h-16 w-full">
@@ -697,6 +684,55 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 							))}
 					</div>
 				)}
+
+				{/* Generators Section - Below annotations */}
+				<div className="relative h-40 w-full">
+					{sections.map((section) => {
+						// Only show if this section is hovered or clicked
+						if (highlightedSection?.id !== section.id) return null;
+
+						// Find all generators that apply to this section
+						const sectionGenerators = generators.filter((generator) => generator.sections.includes(section.id));
+
+						if (sectionGenerators.length === 0) return null;
+
+						const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+
+						// Skip if outside visible area
+						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+
+						return (
+							<div
+								key={`section-${section.id}-generators`}
+								className="absolute flex flex-row gap-2 items-start justify-center"
+								style={{
+									left: `${sectionCenter}px`,
+									top: "16px",
+									transform: "translateX(-50%)",
+								}}
+							>
+								{sectionGenerators.map((generator, idx) => (
+									<div key={`generator-${idx}`} className="relative">
+										{/* Dotted line connecting to section */}
+										<svg
+											className="absolute pointer-events-none"
+											style={{
+												left: "50%",
+												bottom: "100%",
+												transform: "translateX(-50%)",
+												width: "2px",
+												height: "40px",
+											}}
+										>
+											<line x1="1" y1="0" x2="1" y2="40" stroke="rgb(148 163 184)" strokeWidth="1" strokeDasharray="2,2" />
+										</svg>
+										<GeneratorBox generator={generator} />
+									</div>
+								))}
+							</div>
+						);
+					})}
+				</div>
 			</div>
 
 			{/* Sequence display when selection is made */}

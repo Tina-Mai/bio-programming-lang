@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import CompileButton from "@/components/energy/CompileButton";
 import VisualEditor from "@/components/program/VisualEditor";
 import CodeEditor from "@/components/program/CodeEditor";
+import ProjectTabs from "./ProjectTabs";
 
 const ProgramContents = () => {
 	const { mode, setMode, currentProject: globalCurrentProject } = useGlobal();
@@ -49,7 +50,10 @@ const ProgramContents = () => {
 						<div>/</div>
 						<div className="text-slate-500 font-medium">{globalCurrentProject!.name}</div>
 					</div>
-					<CompileButton />
+					<div className="horizontal items-center gap-5">
+						<ProjectTabs />
+						<CompileButton />
+					</div>
 				</div>
 			</div>
 

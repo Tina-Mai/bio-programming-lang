@@ -314,19 +314,10 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	// click outside the component to clear selection and clicked section
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (containerRef.current) {
-				const target = event.target as HTMLElement;
-				const isInContainer = containerRef.current.contains(target);
-
-				if (!isInContainer) {
-					setSelection(null);
-					setClickedSection(null);
-					setHoveredSection(null);
-				} else if (isInContainer && !target.closest("[data-section-component]")) {
-					setSelection(null);
-					setClickedSection(null);
-					setHoveredSection(null);
-				}
+			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+				setSelection(null);
+				setClickedSection(null);
+				setHoveredSection(null);
 			}
 		};
 
@@ -980,7 +971,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 			</div>
 
 			{/* Sequence display when selection is made */}
-			{/* {selection && sequence && (
+			{selection && sequence && (
 				<div className="absolute bottom-0 left-0 right-0 p-3 bg-slate-200 border-t border-slate-300">
 					<div className="text-sm text-slate-500 mb-1">{`Position ${selection.start + 1} ${selection.start === selection.end ? "" : `- ${selection.end + 1}`} (${
 						selection.end - selection.start + 1
@@ -996,7 +987,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						})()}
 					</div>
 				</div>
-			)} */}
+			)}
 		</div>
 	);
 };

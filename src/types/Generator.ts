@@ -8,7 +8,7 @@ export interface Generator {
 }
 
 export interface GeneratorInstance extends Generator {
-	sections: string[]; // list of section ids that the generator is applied to
+	segments: string[]; // list of segment ids that the generator is applied to
 }
 
 export const generatorOptions: Generator[] = [

@@ -1,5 +1,5 @@
-// a Section is a part/subset of a Sequence
-export interface Section {
+// a Segment is a part/subset of a Construct
+export interface Segment {
 	id: string;
 	label?: string;
 	type?: string;

@@ -4,7 +4,7 @@ export interface Constraint {
 }
 
 export interface ConstraintInstance extends Constraint {
-	sections: string[]; // list of section ids that the constraint is applied to
+	segments: string[]; // list of segment ids that the constraint is applied to
 }
 
 export const constraintOptions: Constraint[] = [

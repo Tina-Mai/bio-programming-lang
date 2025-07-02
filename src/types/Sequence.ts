@@ -1,9 +1,9 @@
-import { Section, ConstraintInstance, GeneratorInstance } from "./";
+import { Segment, ConstraintInstance, GeneratorInstance } from "./";
 
 // TODO: sequence string can have optional positions (?) in case some parts are not generated or are generated separately?
 export interface Sequence {
 	length: number;
-	sections?: Section[];
+	segments?: Segment[];
 	constraints?: ConstraintInstance[];
 	generators?: GeneratorInstance[];
 	name?: string;

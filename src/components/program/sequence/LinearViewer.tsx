@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Sequence, Section } from "@/types";
+import { Sequence, Segment } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 
@@ -10,53 +10,53 @@ interface Selection {
 	end: number;
 }
 
-interface SectionComponentProps {
-	section: Section;
+interface SegmentComponentProps {
+	segment: Segment;
 	index: number;
-	hoveredSection: Section | null;
-	setHoveredSection: (section: Section | null) => void;
-	clickedSection: Section | null;
-	setClickedSection: (section: Section | null) => void;
+	hoveredSegment: Segment | null;
+	setHoveredSegment: (segment: Segment | null) => void;
+	clickedSegment: Segment | null;
+	setClickedSegment: (segment: Segment | null) => void;
 	direction: "forward" | "reverse";
 	baseWidth: number;
 	zoomLevel: number;
 	offset: number;
 }
 
-const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hoveredSection, setHoveredSection, clickedSection, setClickedSection, direction, baseWidth, zoomLevel, offset }) => {
+const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hoveredSegment, setHoveredSegment, clickedSegment, setClickedSegment, direction, baseWidth, zoomLevel, offset }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
-	const sectionPixelWidth = (section.end - section.start + 1) * nucleotideWidth;
-	const sectionLeft = 20 + section.start * nucleotideWidth - offset;
+	const segmentPixelWidth = (segment.end - segment.start + 1) * nucleotideWidth;
+	const segmentLeft = 20 + segment.start * nucleotideWidth - offset;
 	const arrowWidth = 12;
 
 	// get colors for the annotation
 	const getColors = () => {
-		if (section.color) return { fill: section.color, stroke: section.color };
+		if (segment.color) return { fill: segment.color, stroke: segment.color };
 		const colorMap = {
 			CDS: { fill: "rgb(253 224 71 / 0.45)", stroke: "rgb(234 179 8 / 0.8)" }, // yellow
 			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
 			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
 			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
 		};
-		return colorMap[section.type as keyof typeof colorMap] || colorMap.default;
+		return colorMap[segment.type as keyof typeof colorMap] || colorMap.default;
 	};
 
 	const colors = getColors();
-	const isHovered = hoveredSection === section;
-	const isClicked = clickedSection === section;
-	const isHighlighted = isClicked || (isHovered && !clickedSection);
-	const shouldDim = (clickedSection || hoveredSection) && !isHighlighted;
+	const isHovered = hoveredSegment === segment;
+	const isClicked = clickedSegment === segment;
+	const isHighlighted = isClicked || (isHovered && !clickedSegment);
+	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
 
 	// direction-specific configurations
 	const config = {
 		forward: {
-			polygonPoints: `0,2 ${sectionPixelWidth - arrowWidth},2 ${sectionPixelWidth},16 ${sectionPixelWidth - arrowWidth},30 0,30`,
+			polygonPoints: `0,2 ${segmentPixelWidth - arrowWidth},2 ${segmentPixelWidth},16 ${segmentPixelWidth - arrowWidth},30 0,30`,
 			textAlign: "justify-start",
 			paddingLeft: "8px",
 			paddingRight: "16px",
 		},
 		reverse: {
-			polygonPoints: `${arrowWidth},2 ${sectionPixelWidth},2 ${sectionPixelWidth},30 ${arrowWidth},30 0,16`,
+			polygonPoints: `${arrowWidth},2 ${segmentPixelWidth},2 ${segmentPixelWidth},30 ${arrowWidth},30 0,16`,
 			textAlign: "justify-end",
 			paddingLeft: "16px",
 			paddingRight: "8px",
@@ -68,31 +68,31 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 	return (
 		<div
 			key={`${direction}-${index}`}
-			data-section-component
+			data-segment-component
 			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
-				left: `${sectionLeft}px`,
-				width: `${sectionPixelWidth}px`,
+				left: `${segmentLeft}px`,
+				width: `${segmentPixelWidth}px`,
 				height: "32px",
 				zIndex: isHighlighted ? 20 : 10,
 			}}
 			onMouseEnter={() => {
-				if (!clickedSection) {
-					setHoveredSection(section);
+				if (!clickedSegment) {
+					setHoveredSegment(segment);
 				}
 			}}
 			onMouseLeave={() => {
-				if (!clickedSection) {
-					setHoveredSection(null);
+				if (!clickedSegment) {
+					setHoveredSegment(null);
 				}
 			}}
 			onClick={(e) => {
 				e.stopPropagation();
-				setClickedSection(section);
-				setHoveredSection(null);
+				setClickedSegment(segment);
+				setHoveredSegment(null);
 			}}
 		>
-			<svg width="100%" height="32" viewBox={`0 0 ${sectionPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
+			<svg width="100%" height="32" viewBox={`0 0 ${segmentPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
 				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
 			</svg>
 			<div
@@ -106,18 +106,18 @@ const SectionComponent: React.FC<SectionComponentProps> = ({ section, index, hov
 					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
 					style={{ backgroundColor: isHighlighted ? colors.stroke : "transparent" }}
 				>
-					{section.label || "Section"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{section.end - section.start + 1}</span>
+					{segment.label || "Segment"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{segment.end - segment.start + 1}</span>
 				</span>
 			</div>
 		</div>
 	);
 };
 
-const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], constraints = [], generators = [] }) => {
+const LinearViewer: React.FC<Sequence> = ({ length, sequence, segments = [], constraints = [], generators = [] }) => {
 	const [selection, setSelection] = useState<Selection | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
-	const [hoveredSection, setHoveredSection] = useState<Section | null>(null);
-	const [clickedSection, setClickedSection] = useState<Section | null>(null);
+	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
+	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
 	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
@@ -208,13 +208,13 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	// handle mouse events for selection and panning
 	const handleMouseDown = (e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
-		const isClickingSection = target.closest("[data-section-component]") !== null;
+		const isClickingSegment = target.closest("[data-segment-component]") !== null;
 
-		if (!isClickingSection) {
-			setClickedSection(null);
-			setHoveredSection(null);
+		if (!isClickingSegment) {
+			setClickedSegment(null);
+			setHoveredSegment(null);
 		}
-		if (isClickingSection) {
+		if (isClickingSegment) {
 			setSelection(null);
 			return;
 		}
@@ -262,8 +262,8 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 		setIsDragging(false);
 		setIsPanning(false);
 		setIsHovering(false);
-		if (!clickedSection) {
-			setHoveredSection(null);
+		if (!clickedSegment) {
+			setHoveredSegment(null);
 		}
 	};
 
@@ -311,13 +311,13 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 		};
 	}, [isDragging, isPanning, selection, lastMouseX, offset, sequenceLength, nucleotideWidth, visibleWidth, getPositionFromEvent]);
 
-	// click outside the component to clear selection and clicked section
+	// click outside the component to clear selection and clicked segment
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
 				setSelection(null);
-				setClickedSection(null);
-				setHoveredSection(null);
+				setClickedSegment(null);
+				setHoveredSegment(null);
 			}
 		};
 
@@ -394,12 +394,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 		}
 	}
 
-	const forwardSections = sections.filter((section) => section.direction === "forward" || !section.direction);
-	const backwardSections = sections.filter((section) => section.direction === "reverse");
+	const forwardSegments = segments.filter((segment) => segment.direction === "forward" || !segment.direction);
+	const backwardSegments = segments.filter((segment) => segment.direction === "reverse");
 
-	// Get constraints and generators for highlighted section
-	// Prioritize clicked section over hovered section
-	const highlightedSection = clickedSection || hoveredSection;
+	// Get constraints and generators for highlighted segment
+	// Prioritize clicked segment over hovered segment
+	const highlightedSegment = clickedSegment || hoveredSegment;
 
 	return (
 		<div className="w-full h-full">
@@ -510,38 +510,38 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				</div>
 				{/* Main content wrapper - centered */}
 				<div className="flex flex-col justify-center flex-1 pt-8">
-					{/* Constraints Section - Above sequence */}
+					{/* Constraints Segment - Above sequence */}
 					<div className="relative h-40 w-full">
-						{sections.map((section) => {
-							// Only show if this section is hovered or clicked
-							if (highlightedSection?.id !== section.id) return null;
+						{segments.map((segment) => {
+							// Only show if this segment is hovered or clicked
+							if (highlightedSegment?.id !== segment.id) return null;
 
-							// Find all constraints that apply to this section
-							const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(section.id));
+							// Find all constraints that apply to this segment
+							const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(segment.id));
 
-							if (sectionConstraints.length === 0) return null;
+							if (segmentConstraints.length === 0) return null;
 
-							const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+							const segmentCenter = 20 + segment.start * nucleotideWidth + ((segment.end - segment.start + 1) * nucleotideWidth) / 2 - offset;
 
 							// Skip if outside visible area
-							if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
 
 							// Calculate total width of constraint boxes (approximate)
 							const constraintBoxWidth = 180; // Approximate width of each constraint box
-							const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8; // 8px gap
+							const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8; // 8px gap
 							const halfWidth = totalWidth / 2;
 
 							// Calculate adjusted position to keep boxes within container
-							let adjustedLeft = sectionCenter;
+							let adjustedLeft = segmentCenter;
 							const padding = 16;
-							if (sectionCenter - halfWidth < padding) {
+							if (segmentCenter - halfWidth < padding) {
 								adjustedLeft = halfWidth + padding;
-							} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+							} else if (segmentCenter + halfWidth > visibleWidth - padding) {
 								adjustedLeft = visibleWidth - halfWidth - padding;
 							}
 
 							return (
-								<div key={`section-${section.id}-constraints`}>
+								<div key={`segment-${segment.id}-constraints`}>
 									{/* Constraint boxes */}
 									<div
 										className="absolute flex flex-row gap-2 items-end justify-center"
@@ -551,7 +551,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											transform: "translateX(-50%)",
 										}}
 									>
-										{sectionConstraints.map((constraint, idx) => (
+										{segmentConstraints.map((constraint, idx) => (
 											<div key={`constraint-${idx}`} className="relative">
 												<ConstraintBox constraint={constraint} />
 											</div>
@@ -562,11 +562,11 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						})}
 					</div>
 
-					{/* Sequence Section */}
+					{/* Sequence Segment */}
 					<div className="relative h-8 w-full">
 						{/* Single sequence line */}
 						<div
-							className={`absolute top-2 h-5 border-x-4 border-slate-400  ${highlightedSection ? "bg-slate-300/70" : "bg-slate-300"}`}
+							className={`absolute top-2 h-5 border-x-4 border-slate-400  ${highlightedSegment ? "bg-slate-300/70" : "bg-slate-300"}`}
 							style={{
 								left: `${20 - offset}px`,
 								width: `${sequenceLength * nucleotideWidth}px`,
@@ -574,12 +574,12 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						/>
 
 						{/* Annotation hover highlight overlay */}
-						{highlightedSection && (
+						{highlightedSegment && (
 							<div
 								className="absolute h-5 bg-slate-400/60 pointer-events-none transition-all duration-300"
 								style={{
-									left: `${20 + highlightedSection.start * nucleotideWidth - offset}px`,
-									width: `${(highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth}px`,
+									left: `${20 + highlightedSegment.start * nucleotideWidth - offset}px`,
+									width: `${(highlightedSegment.end - highlightedSegment.start + 1) * nucleotideWidth}px`,
 									top: "8px",
 								}}
 							/>
@@ -615,24 +615,24 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						)}
 					</div>
 
-					{/* Forward Annotations Section */}
-					{forwardSections.length > 0 && (
+					{/* Forward Annotations Segment */}
+					{forwardSegments.length > 0 && (
 						<div className="relative h-10 w-full overflow-visible">
-							{forwardSections
-								.filter((section) => {
-									const sectionLeft = 20 + section.start * nucleotideWidth - offset;
-									const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
-									return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
+							{forwardSegments
+								.filter((segment) => {
+									const segmentLeft = 20 + segment.start * nucleotideWidth - offset;
+									const segmentWidth = (segment.end - segment.start + 1) * nucleotideWidth;
+									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
 								})
-								.map((section, index) => (
-									<SectionComponent
+								.map((segment, index) => (
+									<SegmentComponent
 										key={`forward-${index}`}
-										section={section}
+										segment={segment}
 										index={index}
-										hoveredSection={hoveredSection}
-										setHoveredSection={setHoveredSection}
-										clickedSection={clickedSection}
-										setClickedSection={setClickedSection}
+										hoveredSegment={hoveredSegment}
+										setHoveredSegment={setHoveredSegment}
+										clickedSegment={clickedSegment}
+										setClickedSegment={setClickedSegment}
 										direction="forward"
 										baseWidth={baseWidth}
 										zoomLevel={zoomLevel}
@@ -640,25 +640,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									/>
 								))}
 
-							{/* Constraint curves for this section if it's highlighted */}
-							{highlightedSection &&
-								forwardSections.includes(highlightedSection) &&
+							{/* Constraint curves for this segment if it's highlighted */}
+							{highlightedSegment &&
+								forwardSegments.includes(highlightedSegment) &&
 								(() => {
-									const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(highlightedSection.id));
-									if (sectionConstraints.length === 0) return null;
+									const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(highlightedSegment.id));
+									if (segmentConstraints.length === 0) return null;
 
-									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+									const segmentCenter = 20 + highlightedSegment.start * nucleotideWidth + ((highlightedSegment.end - highlightedSegment.start + 1) * nucleotideWidth) / 2 - offset;
 
 									// config: constraint box positions
 									const constraintBoxWidth = 200;
-									const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8;
+									const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8;
 									const halfWidth = totalWidth / 2;
 
-									let adjustedLeft = sectionCenter;
+									let adjustedLeft = segmentCenter;
 									const padding = 16;
-									if (sectionCenter - halfWidth < padding) {
+									if (segmentCenter - halfWidth < padding) {
 										adjustedLeft = halfWidth + padding;
-									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
 										adjustedLeft = visibleWidth - halfWidth - padding;
 									}
 
@@ -673,13 +673,13 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 												overflow: "visible",
 											}}
 										>
-											{sectionConstraints.map((constraint, idx, arr) => {
+											{segmentConstraints.map((constraint, idx, arr) => {
 												const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 												const startX = boxCenterX;
 												const startY = 52; // config: top space to constraint box
-												const endX = sectionCenter;
-												const endY = 142; // config: bottom space to section
+												const endX = segmentCenter;
+												const endY = 142; // config: bottom space to segment
 												const isOffset = Math.abs(startX - endX) > 10;
 
 												if (isOffset) {
@@ -718,25 +718,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									);
 								})()}
 
-							{/* Generator curves for forward sections if highlighted */}
-							{highlightedSection &&
-								forwardSections.includes(highlightedSection) &&
+							{/* Generator curves for forward segments if highlighted */}
+							{highlightedSegment &&
+								forwardSegments.includes(highlightedSegment) &&
 								(() => {
-									const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
-									if (sectionGenerators.length === 0) return null;
+									const segmentGenerators = generators.filter((generator) => generator.segments.includes(highlightedSegment.id));
+									if (segmentGenerators.length === 0) return null;
 
-									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+									const segmentCenter = 20 + highlightedSegment.start * nucleotideWidth + ((highlightedSegment.end - highlightedSegment.start + 1) * nucleotideWidth) / 2 - offset;
 
 									// config: generator box positions
 									const generatorBoxWidth = 180;
-									const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+									const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
 									const halfWidth = totalWidth / 2;
 
-									let adjustedLeft = sectionCenter;
+									let adjustedLeft = segmentCenter;
 									const padding = 16;
-									if (sectionCenter - halfWidth < padding) {
+									if (segmentCenter - halfWidth < padding) {
 										adjustedLeft = halfWidth + padding;
-									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
 										adjustedLeft = visibleWidth - halfWidth - padding;
 									}
 
@@ -745,17 +745,17 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											className="absolute pointer-events-none z-20"
 											style={{
 												left: 0,
-												top: "30px", // config: top space to section
+												top: "30px", // config: top space to segment
 												width: "100%",
 												height: "120px",
 												overflow: "visible",
 											}}
 										>
-											{sectionGenerators.map((generator, idx, arr) => {
+											{segmentGenerators.map((generator, idx, arr) => {
 												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 
-												const startX = sectionCenter;
+												const startX = segmentCenter;
 												const startY = 0;
 												const endX = boxCenterX;
 												const endY = 27; // config: bottom space to generator box
@@ -799,24 +799,24 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						</div>
 					)}
 
-					{/* Backward Annotations Section */}
-					{backwardSections.length > 0 && (
+					{/* Backward Annotations Segment */}
+					{backwardSegments.length > 0 && (
 						<div className="relative h-10 w-full overflow-visible">
-							{backwardSections
-								.filter((section) => {
-									const sectionLeft = 20 + section.start * nucleotideWidth - offset;
-									const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
-									return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
+							{backwardSegments
+								.filter((segment) => {
+									const segmentLeft = 20 + segment.start * nucleotideWidth - offset;
+									const segmentWidth = (segment.end - segment.start + 1) * nucleotideWidth;
+									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
 								})
-								.map((section, index) => (
-									<SectionComponent
+								.map((segment, index) => (
+									<SegmentComponent
 										key={`backward-${index}`}
-										section={section}
+										segment={segment}
 										index={index}
-										hoveredSection={hoveredSection}
-										setHoveredSection={setHoveredSection}
-										clickedSection={clickedSection}
-										setClickedSection={setClickedSection}
+										hoveredSegment={hoveredSegment}
+										setHoveredSegment={setHoveredSegment}
+										clickedSegment={clickedSegment}
+										setClickedSegment={setClickedSegment}
 										direction="reverse"
 										baseWidth={baseWidth}
 										zoomLevel={zoomLevel}
@@ -824,25 +824,25 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 									/>
 								))}
 
-							{/* Generator curves for this section if it's highlighted */}
-							{highlightedSection &&
-								backwardSections.includes(highlightedSection) &&
+							{/* Generator curves for this segment if it's highlighted */}
+							{highlightedSegment &&
+								backwardSegments.includes(highlightedSegment) &&
 								(() => {
-									const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
-									if (sectionGenerators.length === 0) return null;
+									const segmentGenerators = generators.filter((generator) => generator.segments.includes(highlightedSegment.id));
+									if (segmentGenerators.length === 0) return null;
 
-									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+									const segmentCenter = 20 + highlightedSegment.start * nucleotideWidth + ((highlightedSegment.end - highlightedSegment.start + 1) * nucleotideWidth) / 2 - offset;
 
 									// Calculate generator box positions
 									const generatorBoxWidth = 200;
-									const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+									const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
 									const halfWidth = totalWidth / 2;
 
-									let adjustedLeft = sectionCenter;
+									let adjustedLeft = segmentCenter;
 									const padding = 16;
-									if (sectionCenter - halfWidth < padding) {
+									if (segmentCenter - halfWidth < padding) {
 										adjustedLeft = halfWidth + padding;
-									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
 										adjustedLeft = visibleWidth - halfWidth - padding;
 									}
 
@@ -851,18 +851,18 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											className="absolute pointer-events-none z-20"
 											style={{
 												left: 0,
-												top: "40px", // Below section
+												top: "40px", // Below segment
 												width: "100%",
 												height: "120px",
 												overflow: "visible",
 											}}
 										>
-											{sectionGenerators.map((generator, idx, arr) => {
+											{segmentGenerators.map((generator, idx, arr) => {
 												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 
-												const startX = sectionCenter;
-												const startY = 0; // Just below section
+												const startX = segmentCenter;
+												const startY = 0; // Just below segment
 												const endX = boxCenterX;
 												const endY = 20; // Very short line
 
@@ -907,38 +907,38 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						</div>
 					)}
 
-					{/* Generators Section - Below annotations */}
+					{/* Generators Segment - Below annotations */}
 					<div className="relative h-40 w-full">
-						{sections.map((section) => {
-							// Only show if this section is hovered or clicked
-							if (highlightedSection?.id !== section.id) return null;
+						{segments.map((segment) => {
+							// Only show if this segment is hovered or clicked
+							if (highlightedSegment?.id !== segment.id) return null;
 
-							// Find all generators that apply to this section
-							const sectionGenerators = generators.filter((generator) => generator.sections.includes(section.id));
+							// Find all generators that apply to this segment
+							const segmentGenerators = generators.filter((generator) => generator.segments.includes(segment.id));
 
-							if (sectionGenerators.length === 0) return null;
+							if (segmentGenerators.length === 0) return null;
 
-							const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+							const segmentCenter = 20 + segment.start * nucleotideWidth + ((segment.end - segment.start + 1) * nucleotideWidth) / 2 - offset;
 
 							// Skip if outside visible area
-							if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
 
 							// Calculate total width of generator boxes (approximate)
 							const generatorBoxWidth = 200; // Approximate width of each generator box
-							const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8; // 8px gap
+							const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8; // 8px gap
 							const halfWidth = totalWidth / 2;
 
 							// Calculate adjusted position to keep boxes within container
-							let adjustedLeft = sectionCenter;
+							let adjustedLeft = segmentCenter;
 							const padding = 16;
-							if (sectionCenter - halfWidth < padding) {
+							if (segmentCenter - halfWidth < padding) {
 								adjustedLeft = halfWidth + padding;
-							} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+							} else if (segmentCenter + halfWidth > visibleWidth - padding) {
 								adjustedLeft = visibleWidth - halfWidth - padding;
 							}
 
 							return (
-								<div key={`section-${section.id}-generators`}>
+								<div key={`segment-${segment.id}-generators`}>
 									{/* Generator boxes */}
 									<div
 										className="absolute flex flex-row gap-2 items-start justify-center"
@@ -948,7 +948,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 											transform: "translateX(-50%)",
 										}}
 									>
-										{sectionGenerators.map((generator, idx) => (
+										{segmentGenerators.map((generator, idx) => (
 											<div key={`generator-${idx}`} className="relative">
 												<GeneratorBox generator={generator} />
 											</div>

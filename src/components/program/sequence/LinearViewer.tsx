@@ -406,7 +406,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 			{/* Main viewer container */}
 			<div
 				ref={containerRef}
-				className="flex flex-col h-full select-none justify-center overflow-hidden relative"
+				className="flex flex-col h-full select-none overflow-hidden relative"
 				onMouseDown={handleMouseDown}
 				onMouseMove={handleMouseMove}
 				onMouseUp={handleMouseUp}
@@ -433,7 +433,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						<TooltipContent
 							side="top"
 							sideOffset={8}
-							className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-12 !bg-white/40 !backdrop-blur-xs py-0.5 px-1 !shadow-none"
+							className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-10 !bg-white/40 !backdrop-blur-xs py-0.5 px-1 !shadow-none"
 						>
 							<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
 							{sequence && (
@@ -490,7 +490,6 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						/>
 					);
 				})}
-
 				{/* Hover tracking line */}
 				{hoveredPosition !== null && (
 					<div
@@ -501,101 +500,9 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						}}
 					/>
 				)}
-
-				{/* Constraints Section - Above sequence */}
-				<div className="relative h-40 w-full">
-					{sections.map((section) => {
-						// Only show if this section is hovered or clicked
-						if (highlightedSection?.id !== section.id) return null;
-
-						// Find all constraints that apply to this section
-						const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(section.id));
-
-						if (sectionConstraints.length === 0) return null;
-
-						const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
-
-						// Skip if outside visible area
-						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
-
-						// Calculate total width of constraint boxes (approximate)
-						const constraintBoxWidth = 180; // Approximate width of each constraint box
-						const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8; // 8px gap
-						const halfWidth = totalWidth / 2;
-
-						// Calculate adjusted position to keep boxes within container
-						let adjustedLeft = sectionCenter;
-						const padding = 16;
-						if (sectionCenter - halfWidth < padding) {
-							adjustedLeft = halfWidth + padding;
-						} else if (sectionCenter + halfWidth > visibleWidth - padding) {
-							adjustedLeft = visibleWidth - halfWidth - padding;
-						}
-
-						return (
-							<div key={`section-${section.id}-constraints`}>
-								{/* Constraint boxes */}
-								<div
-									className="absolute flex flex-row gap-2 items-end justify-center"
-									style={{
-										left: `${adjustedLeft}px`,
-										bottom: "24px",
-										transform: "translateX(-50%)",
-									}}
-								>
-									{sectionConstraints.map((constraint, idx) => (
-										<div key={`constraint-${idx}`} className="relative">
-											<ConstraintBox constraint={constraint} />
-										</div>
-									))}
-								</div>
-							</div>
-						);
-					})}
-				</div>
-
-				{/* Sequence + Ruler Section */}
-				<div className="relative h-16 w-full">
-					{/* Single sequence line */}
-					<div
-						className={`absolute top-2 h-5 border-x-4 border-slate-400  ${highlightedSection ? "bg-slate-300/70" : "bg-slate-300"}`}
-						style={{
-							left: `${20 - offset}px`,
-							width: `${sequenceLength * nucleotideWidth}px`,
-						}}
-					/>
-
-					{/* Annotation hover highlight overlay */}
-					{highlightedSection && (
-						<div
-							className="absolute h-5 bg-slate-400/60 pointer-events-none transition-all duration-300"
-							style={{
-								left: `${20 + highlightedSection.start * nucleotideWidth - offset}px`,
-								width: `${(highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth}px`,
-								top: "8px",
-							}}
-						/>
-					)}
-
-					{/* Sequence segmentation lines */}
-					{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1)
-						.filter((position) => {
-							const x = 20 + position * nucleotideWidth - offset;
-							return x >= -nucleotideWidth && x <= visibleWidth + nucleotideWidth;
-						})
-						.map((position) => (
-							<div
-								key={position}
-								className="absolute w-px h-5 bg-white opacity-50"
-								style={{
-									left: `${20 + position * nucleotideWidth - offset}px`,
-									top: "8px",
-								}}
-							/>
-						))}
-
-					{/* Ruler */}
-					<div className="absolute w-full top-7">
+				{/* Ruler - At the top */}
+				<div className="absolute top-0 left-0 right-0 h-8 w-full z-30">
+					<div className="absolute w-full top-0">
 						{rulerMarks.map((mark) => {
 							const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
 							const center = leftEdge + nucleotideWidth / 2;
@@ -611,363 +518,459 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 							);
 						})}
 					</div>
+				</div>
+				{/* Main content wrapper - centered */}
+				<div className="flex flex-col justify-center flex-1 pt-8">
+					{/* Constraints Section - Above sequence */}
+					<div className="relative h-40 w-full">
+						{sections.map((section) => {
+							// Only show if this section is hovered or clicked
+							if (highlightedSection?.id !== section.id) return null;
 
-					{/* Selection highlight */}
-					{selection && (
+							// Find all constraints that apply to this section
+							const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(section.id));
+
+							if (sectionConstraints.length === 0) return null;
+
+							const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+
+							// Skip if outside visible area
+							if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+
+							// Calculate total width of constraint boxes (approximate)
+							const constraintBoxWidth = 180; // Approximate width of each constraint box
+							const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8; // 8px gap
+							const halfWidth = totalWidth / 2;
+
+							// Calculate adjusted position to keep boxes within container
+							let adjustedLeft = sectionCenter;
+							const padding = 16;
+							if (sectionCenter - halfWidth < padding) {
+								adjustedLeft = halfWidth + padding;
+							} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+								adjustedLeft = visibleWidth - halfWidth - padding;
+							}
+
+							return (
+								<div key={`section-${section.id}-constraints`}>
+									{/* Constraint boxes */}
+									<div
+										className="absolute flex flex-row gap-2 items-end justify-center"
+										style={{
+											left: `${adjustedLeft}px`,
+											bottom: "24px",
+											transform: "translateX(-50%)",
+										}}
+									>
+										{sectionConstraints.map((constraint, idx) => (
+											<div key={`constraint-${idx}`} className="relative">
+												<ConstraintBox constraint={constraint} />
+											</div>
+										))}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+
+					{/* Sequence Section */}
+					<div className="relative h-8 w-full">
+						{/* Single sequence line */}
 						<div
-							className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
+							className={`absolute top-2 h-5 border-x-4 border-slate-400  ${highlightedSection ? "bg-slate-300/70" : "bg-slate-300"}`}
 							style={{
-								left: `${20 + selection.start * nucleotideWidth - offset}px`,
-								width: `${(selection.end - selection.start + 1) * nucleotideWidth}px`,
-								top: "-8px",
+								left: `${20 - offset}px`,
+								width: `${sequenceLength * nucleotideWidth}px`,
 							}}
 						/>
-					)}
-				</div>
 
-				{/* Forward Annotations Section */}
-				{forwardSections.length > 0 && (
-					<div className="relative h-10 w-full overflow-visible">
-						{forwardSections
-							.filter((section) => {
-								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
-								const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
-								return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
+						{/* Annotation hover highlight overlay */}
+						{highlightedSection && (
+							<div
+								className="absolute h-5 bg-slate-400/60 pointer-events-none transition-all duration-300"
+								style={{
+									left: `${20 + highlightedSection.start * nucleotideWidth - offset}px`,
+									width: `${(highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth}px`,
+									top: "8px",
+								}}
+							/>
+						)}
+
+						{/* Sequence segmentation lines */}
+						{Array.from({ length: sequenceLength - 1 }, (_, i) => i + 1)
+							.filter((position) => {
+								const x = 20 + position * nucleotideWidth - offset;
+								return x >= -nucleotideWidth && x <= visibleWidth + nucleotideWidth;
 							})
-							.map((section, index) => (
-								<SectionComponent
-									key={`forward-${index}`}
-									section={section}
-									index={index}
-									hoveredSection={hoveredSection}
-									setHoveredSection={setHoveredSection}
-									clickedSection={clickedSection}
-									setClickedSection={setClickedSection}
-									direction="forward"
-									baseWidth={baseWidth}
-									zoomLevel={zoomLevel}
-									offset={offset}
-								/>
-							))}
-
-						{/* Constraint curves for this section if it's highlighted */}
-						{highlightedSection &&
-							forwardSections.includes(highlightedSection) &&
-							(() => {
-								const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(highlightedSection.id));
-								if (sectionConstraints.length === 0) return null;
-
-								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
-
-								// config: constraint box positions
-								const constraintBoxWidth = 200;
-								const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8;
-								const halfWidth = totalWidth / 2;
-
-								let adjustedLeft = sectionCenter;
-								const padding = 16;
-								if (sectionCenter - halfWidth < padding) {
-									adjustedLeft = halfWidth + padding;
-								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
-									adjustedLeft = visibleWidth - halfWidth - padding;
-								}
-
-								return (
-									<svg
-										className="absolute pointer-events-none z-20"
-										style={{
-											left: 0,
-											top: "-140px",
-											width: "100%",
-											height: "140px",
-											overflow: "visible",
-										}}
-									>
-										{sectionConstraints.map((constraint, idx, arr) => {
-											const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
-											const boxCenterX = adjustedLeft + boxOffset;
-											const startX = boxCenterX;
-											const startY = 52; // config: top space to constraint box
-											const endX = sectionCenter;
-											const endY = 142; // config: bottom space to section
-											const isOffset = Math.abs(startX - endX) > 10;
-
-											if (isOffset) {
-												const controlY = (startY + endY) / 2;
-												return (
-													<path
-														key={`constraint-curve-${idx}`}
-														d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-														fill="none"
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											} else {
-												return (
-													<line
-														key={`constraint-line-${idx}`}
-														x1={startX}
-														y1={startY}
-														x2={endX}
-														y2={endY}
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											}
-										})}
-									</svg>
-								);
-							})()}
-
-						{/* Generator curves for forward sections if highlighted */}
-						{highlightedSection &&
-							forwardSections.includes(highlightedSection) &&
-							(() => {
-								const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
-								if (sectionGenerators.length === 0) return null;
-
-								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
-
-								// config: generator box positions
-								const generatorBoxWidth = 180;
-								const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
-								const halfWidth = totalWidth / 2;
-
-								let adjustedLeft = sectionCenter;
-								const padding = 16;
-								if (sectionCenter - halfWidth < padding) {
-									adjustedLeft = halfWidth + padding;
-								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
-									adjustedLeft = visibleWidth - halfWidth - padding;
-								}
-
-								return (
-									<svg
-										className="absolute pointer-events-none z-20"
-										style={{
-											left: 0,
-											top: "30px", // config: top space to section
-											width: "100%",
-											height: "120px",
-											overflow: "visible",
-										}}
-									>
-										{sectionGenerators.map((generator, idx, arr) => {
-											const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
-											const boxCenterX = adjustedLeft + boxOffset;
-
-											const startX = sectionCenter;
-											const startY = 0;
-											const endX = boxCenterX;
-											const endY = 27; // config: bottom space to generator box
-											const isOffset = Math.abs(startX - endX) > 10;
-
-											if (isOffset) {
-												const controlY = (startY + endY) / 2;
-												return (
-													<path
-														key={`generator-curve-${idx}`}
-														d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-														fill="none"
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											} else {
-												return (
-													<line
-														key={`generator-line-${idx}`}
-														x1={startX}
-														y1={startY}
-														x2={endX}
-														y2={endY}
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											}
-										})}
-									</svg>
-								);
-							})()}
-					</div>
-				)}
-
-				{/* Backward Annotations Section */}
-				{backwardSections.length > 0 && (
-					<div className="relative h-10 w-full overflow-visible">
-						{backwardSections
-							.filter((section) => {
-								const sectionLeft = 20 + section.start * nucleotideWidth - offset;
-								const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
-								return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
-							})
-							.map((section, index) => (
-								<SectionComponent
-									key={`backward-${index}`}
-									section={section}
-									index={index}
-									hoveredSection={hoveredSection}
-									setHoveredSection={setHoveredSection}
-									clickedSection={clickedSection}
-									setClickedSection={setClickedSection}
-									direction="reverse"
-									baseWidth={baseWidth}
-									zoomLevel={zoomLevel}
-									offset={offset}
-								/>
-							))}
-
-						{/* Generator curves for this section if it's highlighted */}
-						{highlightedSection &&
-							backwardSections.includes(highlightedSection) &&
-							(() => {
-								const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
-								if (sectionGenerators.length === 0) return null;
-
-								const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
-
-								// Calculate generator box positions
-								const generatorBoxWidth = 200;
-								const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
-								const halfWidth = totalWidth / 2;
-
-								let adjustedLeft = sectionCenter;
-								const padding = 16;
-								if (sectionCenter - halfWidth < padding) {
-									adjustedLeft = halfWidth + padding;
-								} else if (sectionCenter + halfWidth > visibleWidth - padding) {
-									adjustedLeft = visibleWidth - halfWidth - padding;
-								}
-
-								return (
-									<svg
-										className="absolute pointer-events-none z-20"
-										style={{
-											left: 0,
-											top: "40px", // Below section
-											width: "100%",
-											height: "120px",
-											overflow: "visible",
-										}}
-									>
-										{sectionGenerators.map((generator, idx, arr) => {
-											const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
-											const boxCenterX = adjustedLeft + boxOffset;
-
-											const startX = sectionCenter;
-											const startY = 0; // Just below section
-											const endX = boxCenterX;
-											const endY = 20; // Very short line
-
-											// Use straight line if close to center, curve if offset
-											const isOffset = Math.abs(startX - endX) > 10;
-
-											if (isOffset) {
-												const controlY = (startY + endY) / 2;
-												return (
-													<path
-														key={`generator-curve-${idx}`}
-														d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-														fill="none"
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											} else {
-												return (
-													<line
-														key={`generator-line-${idx}`}
-														x1={startX}
-														y1={startY}
-														x2={endX}
-														y2={endY}
-														stroke="oklch(55.4% 0.046 257.417)"
-														strokeWidth="1.5"
-														strokeDasharray="3, 3"
-														className="stroke-dash-anim"
-													/>
-												);
-											}
-										})}
-									</svg>
-								);
-							})()}
-					</div>
-				)}
-
-				{/* Generators Section - Below annotations */}
-				<div className="relative h-40 w-full">
-					{sections.map((section) => {
-						// Only show if this section is hovered or clicked
-						if (highlightedSection?.id !== section.id) return null;
-
-						// Find all generators that apply to this section
-						const sectionGenerators = generators.filter((generator) => generator.sections.includes(section.id));
-
-						if (sectionGenerators.length === 0) return null;
-
-						const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
-
-						// Skip if outside visible area
-						if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
-
-						// Calculate total width of generator boxes (approximate)
-						const generatorBoxWidth = 200; // Approximate width of each generator box
-						const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8; // 8px gap
-						const halfWidth = totalWidth / 2;
-
-						// Calculate adjusted position to keep boxes within container
-						let adjustedLeft = sectionCenter;
-						const padding = 16;
-						if (sectionCenter - halfWidth < padding) {
-							adjustedLeft = halfWidth + padding;
-						} else if (sectionCenter + halfWidth > visibleWidth - padding) {
-							adjustedLeft = visibleWidth - halfWidth - padding;
-						}
-
-						return (
-							<div key={`section-${section.id}-generators`}>
-								{/* Generator boxes */}
+							.map((position) => (
 								<div
-									className="absolute flex flex-row gap-2 items-start justify-center"
+									key={position}
+									className="absolute w-px h-5 bg-white opacity-50"
 									style={{
-										left: `${adjustedLeft}px`,
-										top: "16px",
-										transform: "translateX(-50%)",
+										left: `${20 + position * nucleotideWidth - offset}px`,
+										top: "8px",
 									}}
-								>
-									{sectionGenerators.map((generator, idx) => (
-										<div key={`generator-${idx}`} className="relative">
-											<GeneratorBox generator={generator} />
-										</div>
-									))}
+								/>
+							))}
+
+						{/* Selection highlight */}
+						{selection && (
+							<div
+								className="absolute h-full bg-blue-200 border-x-3 border-blue-500 opacity-30 z-30"
+								style={{
+									left: `${20 + selection.start * nucleotideWidth - offset}px`,
+									width: `${(selection.end - selection.start + 1) * nucleotideWidth}px`,
+									top: "-8px",
+								}}
+							/>
+						)}
+					</div>
+
+					{/* Forward Annotations Section */}
+					{forwardSections.length > 0 && (
+						<div className="relative h-10 w-full overflow-visible">
+							{forwardSections
+								.filter((section) => {
+									const sectionLeft = 20 + section.start * nucleotideWidth - offset;
+									const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
+									return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
+								})
+								.map((section, index) => (
+									<SectionComponent
+										key={`forward-${index}`}
+										section={section}
+										index={index}
+										hoveredSection={hoveredSection}
+										setHoveredSection={setHoveredSection}
+										clickedSection={clickedSection}
+										setClickedSection={setClickedSection}
+										direction="forward"
+										baseWidth={baseWidth}
+										zoomLevel={zoomLevel}
+										offset={offset}
+									/>
+								))}
+
+							{/* Constraint curves for this section if it's highlighted */}
+							{highlightedSection &&
+								forwardSections.includes(highlightedSection) &&
+								(() => {
+									const sectionConstraints = constraints.filter((constraint) => constraint.sections.includes(highlightedSection.id));
+									if (sectionConstraints.length === 0) return null;
+
+									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+									// config: constraint box positions
+									const constraintBoxWidth = 200;
+									const totalWidth = sectionConstraints.length * constraintBoxWidth + (sectionConstraints.length - 1) * 8;
+									const halfWidth = totalWidth / 2;
+
+									let adjustedLeft = sectionCenter;
+									const padding = 16;
+									if (sectionCenter - halfWidth < padding) {
+										adjustedLeft = halfWidth + padding;
+									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+										adjustedLeft = visibleWidth - halfWidth - padding;
+									}
+
+									return (
+										<svg
+											className="absolute pointer-events-none z-20"
+											style={{
+												left: 0,
+												top: "-140px",
+												width: "100%",
+												height: "140px",
+												overflow: "visible",
+											}}
+										>
+											{sectionConstraints.map((constraint, idx, arr) => {
+												const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
+												const boxCenterX = adjustedLeft + boxOffset;
+												const startX = boxCenterX;
+												const startY = 52; // config: top space to constraint box
+												const endX = sectionCenter;
+												const endY = 142; // config: bottom space to section
+												const isOffset = Math.abs(startX - endX) > 10;
+
+												if (isOffset) {
+													const controlY = (startY + endY) / 2;
+													return (
+														<path
+															key={`constraint-curve-${idx}`}
+															d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+															fill="none"
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												} else {
+													return (
+														<line
+															key={`constraint-line-${idx}`}
+															x1={startX}
+															y1={startY}
+															x2={endX}
+															y2={endY}
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												}
+											})}
+										</svg>
+									);
+								})()}
+
+							{/* Generator curves for forward sections if highlighted */}
+							{highlightedSection &&
+								forwardSections.includes(highlightedSection) &&
+								(() => {
+									const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
+									if (sectionGenerators.length === 0) return null;
+
+									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+									// config: generator box positions
+									const generatorBoxWidth = 180;
+									const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+									const halfWidth = totalWidth / 2;
+
+									let adjustedLeft = sectionCenter;
+									const padding = 16;
+									if (sectionCenter - halfWidth < padding) {
+										adjustedLeft = halfWidth + padding;
+									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+										adjustedLeft = visibleWidth - halfWidth - padding;
+									}
+
+									return (
+										<svg
+											className="absolute pointer-events-none z-20"
+											style={{
+												left: 0,
+												top: "30px", // config: top space to section
+												width: "100%",
+												height: "120px",
+												overflow: "visible",
+											}}
+										>
+											{sectionGenerators.map((generator, idx, arr) => {
+												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
+												const boxCenterX = adjustedLeft + boxOffset;
+
+												const startX = sectionCenter;
+												const startY = 0;
+												const endX = boxCenterX;
+												const endY = 27; // config: bottom space to generator box
+												const isOffset = Math.abs(startX - endX) > 10;
+
+												if (isOffset) {
+													const controlY = (startY + endY) / 2;
+													return (
+														<path
+															key={`generator-curve-${idx}`}
+															d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+															fill="none"
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												} else {
+													return (
+														<line
+															key={`generator-line-${idx}`}
+															x1={startX}
+															y1={startY}
+															x2={endX}
+															y2={endY}
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												}
+											})}
+										</svg>
+									);
+								})()}
+						</div>
+					)}
+
+					{/* Backward Annotations Section */}
+					{backwardSections.length > 0 && (
+						<div className="relative h-10 w-full overflow-visible">
+							{backwardSections
+								.filter((section) => {
+									const sectionLeft = 20 + section.start * nucleotideWidth - offset;
+									const sectionWidth = (section.end - section.start + 1) * nucleotideWidth;
+									return sectionLeft + sectionWidth >= 0 && sectionLeft <= visibleWidth;
+								})
+								.map((section, index) => (
+									<SectionComponent
+										key={`backward-${index}`}
+										section={section}
+										index={index}
+										hoveredSection={hoveredSection}
+										setHoveredSection={setHoveredSection}
+										clickedSection={clickedSection}
+										setClickedSection={setClickedSection}
+										direction="reverse"
+										baseWidth={baseWidth}
+										zoomLevel={zoomLevel}
+										offset={offset}
+									/>
+								))}
+
+							{/* Generator curves for this section if it's highlighted */}
+							{highlightedSection &&
+								backwardSections.includes(highlightedSection) &&
+								(() => {
+									const sectionGenerators = generators.filter((generator) => generator.sections.includes(highlightedSection.id));
+									if (sectionGenerators.length === 0) return null;
+
+									const sectionCenter = 20 + highlightedSection.start * nucleotideWidth + ((highlightedSection.end - highlightedSection.start + 1) * nucleotideWidth) / 2 - offset;
+
+									// Calculate generator box positions
+									const generatorBoxWidth = 200;
+									const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8;
+									const halfWidth = totalWidth / 2;
+
+									let adjustedLeft = sectionCenter;
+									const padding = 16;
+									if (sectionCenter - halfWidth < padding) {
+										adjustedLeft = halfWidth + padding;
+									} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+										adjustedLeft = visibleWidth - halfWidth - padding;
+									}
+
+									return (
+										<svg
+											className="absolute pointer-events-none z-20"
+											style={{
+												left: 0,
+												top: "40px", // Below section
+												width: "100%",
+												height: "120px",
+												overflow: "visible",
+											}}
+										>
+											{sectionGenerators.map((generator, idx, arr) => {
+												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
+												const boxCenterX = adjustedLeft + boxOffset;
+
+												const startX = sectionCenter;
+												const startY = 0; // Just below section
+												const endX = boxCenterX;
+												const endY = 20; // Very short line
+
+												// Use straight line if close to center, curve if offset
+												const isOffset = Math.abs(startX - endX) > 10;
+
+												if (isOffset) {
+													const controlY = (startY + endY) / 2;
+													return (
+														<path
+															key={`generator-curve-${idx}`}
+															d={`M ${startX} ${startY} 
+															C ${startX} ${controlY}, 
+															${endX} ${controlY}, 
+															${endX} ${endY}`}
+															fill="none"
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												} else {
+													return (
+														<line
+															key={`generator-line-${idx}`}
+															x1={startX}
+															y1={startY}
+															x2={endX}
+															y2={endY}
+															stroke="oklch(55.4% 0.046 257.417)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													);
+												}
+											})}
+										</svg>
+									);
+								})()}
+						</div>
+					)}
+
+					{/* Generators Section - Below annotations */}
+					<div className="relative h-40 w-full">
+						{sections.map((section) => {
+							// Only show if this section is hovered or clicked
+							if (highlightedSection?.id !== section.id) return null;
+
+							// Find all generators that apply to this section
+							const sectionGenerators = generators.filter((generator) => generator.sections.includes(section.id));
+
+							if (sectionGenerators.length === 0) return null;
+
+							const sectionCenter = 20 + section.start * nucleotideWidth + ((section.end - section.start + 1) * nucleotideWidth) / 2 - offset;
+
+							// Skip if outside visible area
+							if (sectionCenter < -100 || sectionCenter > visibleWidth + 100) return null;
+
+							// Calculate total width of generator boxes (approximate)
+							const generatorBoxWidth = 200; // Approximate width of each generator box
+							const totalWidth = sectionGenerators.length * generatorBoxWidth + (sectionGenerators.length - 1) * 8; // 8px gap
+							const halfWidth = totalWidth / 2;
+
+							// Calculate adjusted position to keep boxes within container
+							let adjustedLeft = sectionCenter;
+							const padding = 16;
+							if (sectionCenter - halfWidth < padding) {
+								adjustedLeft = halfWidth + padding;
+							} else if (sectionCenter + halfWidth > visibleWidth - padding) {
+								adjustedLeft = visibleWidth - halfWidth - padding;
+							}
+
+							return (
+								<div key={`section-${section.id}-generators`}>
+									{/* Generator boxes */}
+									<div
+										className="absolute flex flex-row gap-2 items-start justify-center"
+										style={{
+											left: `${adjustedLeft}px`,
+											top: "16px",
+											transform: "translateX(-50%)",
+										}}
+									>
+										{sectionGenerators.map((generator, idx) => (
+											<div key={`generator-${idx}`} className="relative">
+												<GeneratorBox generator={generator} />
+											</div>
+										))}
+									</div>
 								</div>
-							</div>
-						);
-					})}
-				</div>
+							);
+						})}
+					</div>
+				</div>{" "}
+				{/* End of main content wrapper */}
 			</div>
 
 			{/* Sequence display when selection is made */}

@@ -11,28 +11,24 @@ const LinearViewerDemo = () => {
 			id: "1",
 			label: "Promoter",
 			type: "promoter",
-			start: 0,
-			end: 10,
+			length: 10,
 		},
 		{
 			id: "2",
 			label: "CDS",
 			type: "CDS",
-			start: 11,
-			end: 40,
+			length: 30,
 		},
 		{
 			id: "3",
 			label: "Custom Section",
-			start: 41,
-			end: 65,
+			length: 25,
 		},
 		{
 			id: "4",
 			label: "CDS",
 			type: "CDS",
-			start: 66,
-			end: 80,
+			length: 15,
 		},
 	];
 

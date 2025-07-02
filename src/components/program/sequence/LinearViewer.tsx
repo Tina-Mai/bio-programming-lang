@@ -11,35 +11,21 @@ interface SegmentComponentProps {
 	setHoveredSegment: (segment: Segment | null) => void;
 	clickedSegment: Segment | null;
 	setClickedSegment: (segment: Segment | null) => void;
-	direction: "forward" | "reverse";
 	baseWidth: number;
 	zoomLevel: number;
 	offset: number;
-	position: number; // Position in the linear layout
+	position: number; // bp position based on length of prev segments
 }
 
-const SegmentComponent: React.FC<SegmentComponentProps> = ({
-	segment,
-	index,
-	hoveredSegment,
-	setHoveredSegment,
-	clickedSegment,
-	setClickedSegment,
-	direction,
-	baseWidth,
-	zoomLevel,
-	offset,
-	position,
-}) => {
+const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hoveredSegment, setHoveredSegment, clickedSegment, setClickedSegment, baseWidth, zoomLevel, offset, position }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
-	const segmentLength = segment.end - segment.start + 1;
+	const segmentLength = segment.length;
 	const segmentPixelWidth = segmentLength * nucleotideWidth;
 	const segmentLeft = 20 + position * nucleotideWidth - offset;
 	const arrowWidth = 12;
 
 	// get colors for the annotation
 	const getColors = () => {
-		if (segment.color) return { fill: segment.color, stroke: segment.color };
 		const colorMap = {
 			CDS: { fill: "rgb(253 224 71 / 0.45)", stroke: "rgb(234 179 8 / 0.8)" }, // yellow
 			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
@@ -55,27 +41,12 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	const isHighlighted = isClicked || (isHovered && !clickedSegment);
 	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
 
-	// direction-specific configurations
-	const config = {
-		forward: {
-			polygonPoints: `0,2 ${segmentPixelWidth - arrowWidth},2 ${segmentPixelWidth},16 ${segmentPixelWidth - arrowWidth},30 0,30`,
-			textAlign: "justify-start",
-			paddingLeft: "8px",
-			paddingRight: "16px",
-		},
-		reverse: {
-			polygonPoints: `${arrowWidth},2 ${segmentPixelWidth},2 ${segmentPixelWidth},30 ${arrowWidth},30 0,16`,
-			textAlign: "justify-end",
-			paddingLeft: "16px",
-			paddingRight: "8px",
-		},
-	};
-
-	const currentConfig = config[direction];
+	// Forward arrow configuration
+	const polygonPoints = `0,2 ${segmentPixelWidth - arrowWidth},2 ${segmentPixelWidth},16 ${segmentPixelWidth - arrowWidth},30 0,30`;
 
 	return (
 		<div
-			key={`${direction}-${index}`}
+			key={`segment-${index}`}
 			data-segment-component
 			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
 			style={{
@@ -101,13 +72,13 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 			}}
 		>
 			<svg width="100%" height="32" viewBox={`0 0 ${segmentPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
-				<polygon points={currentConfig.polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
+				<polygon points={polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
 			</svg>
 			<div
-				className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium ${currentConfig.textAlign}`}
+				className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-start`}
 				style={{
-					paddingLeft: currentConfig.paddingLeft,
-					paddingRight: currentConfig.paddingRight,
+					paddingLeft: "8px",
+					paddingRight: "16px",
 				}}
 			>
 				<span
@@ -137,7 +108,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	const nucleotideWidth = baseWidth * zoomLevel;
 
 	// Calculate total length from all segments
-	const totalLength = segments.reduce((acc, segment) => acc + (segment.end - segment.start + 1), 0);
+	const totalLength = segments.reduce((acc, segment) => acc + segment.length, 0);
 
 	// update visible width from container
 	const updateVisibleWidth = useCallback(() => {
@@ -358,11 +329,8 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	let currentPosition = 0;
 	segments.forEach((segment) => {
 		segmentPositions.set(segment.id, currentPosition);
-		currentPosition += segment.end - segment.start + 1;
+		currentPosition += segment.length;
 	});
-
-	const forwardSegments = segments.filter((segment) => segment.direction === "forward" || !segment.direction);
-	const backwardSegments = segments.filter((segment) => segment.direction === "reverse");
 
 	// Get constraints and generators for highlighted segment
 	const highlightedSegment = clickedSegment || hoveredSegment;
@@ -454,7 +422,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							if (segmentConstraints.length === 0) return null;
 
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
-							const segmentLength = segment.end - segment.start + 1;
+							const segmentLength = segment.length;
 							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
 							// Skip if outside visible area
@@ -496,27 +464,26 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 						})}
 					</div>
 
-					{/* Forward Segments */}
-					{forwardSegments.length > 0 && (
+					{/* Segments */}
+					{segments.length > 0 && (
 						<div className="relative h-10 w-full overflow-visible">
-							{forwardSegments
+							{segments
 								.filter((segment) => {
 									const segmentPosition = segmentPositions.get(segment.id) || 0;
-									const segmentLength = segment.end - segment.start + 1;
+									const segmentLength = segment.length;
 									const segmentLeft = 20 + segmentPosition * nucleotideWidth - offset;
 									const segmentWidth = segmentLength * nucleotideWidth;
 									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
 								})
 								.map((segment, index) => (
 									<SegmentComponent
-										key={`forward-${index}`}
+										key={`segment-${index}`}
 										segment={segment}
 										index={index}
 										hoveredSegment={hoveredSegment}
 										setHoveredSegment={setHoveredSegment}
 										clickedSegment={clickedSegment}
 										setClickedSegment={setClickedSegment}
-										direction="forward"
 										baseWidth={baseWidth}
 										zoomLevel={zoomLevel}
 										offset={offset}
@@ -524,15 +491,15 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 									/>
 								))}
 
-							{/* Constraint curves for forward segments */}
+							{/* Constraint curves */}
 							{highlightedSegment &&
-								forwardSegments.includes(highlightedSegment) &&
+								segments.includes(highlightedSegment) &&
 								(() => {
 									const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(highlightedSegment.id));
 									if (segmentConstraints.length === 0) return null;
 
 									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
-									const segmentLength = highlightedSegment.end - highlightedSegment.start + 1;
+									const segmentLength = highlightedSegment.length;
 									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
 									// config: constraint box positions
@@ -604,15 +571,15 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 									);
 								})()}
 
-							{/* Generator curves for forward segments */}
+							{/* Generator curves */}
 							{highlightedSegment &&
-								forwardSegments.includes(highlightedSegment) &&
+								segments.includes(highlightedSegment) &&
 								(() => {
 									const segmentGenerators = generators.filter((generator) => generator.segments.includes(highlightedSegment.id));
 									if (segmentGenerators.length === 0) return null;
 
 									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
-									const segmentLength = highlightedSegment.end - highlightedSegment.start + 1;
+									const segmentLength = highlightedSegment.length;
 									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
 									// config: generator box positions
@@ -687,118 +654,6 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 						</div>
 					)}
 
-					{/* Backward Segments */}
-					{backwardSegments.length > 0 && (
-						<div className="relative h-10 w-full overflow-visible">
-							{backwardSegments
-								.filter((segment) => {
-									const segmentPosition = segmentPositions.get(segment.id) || 0;
-									const segmentLength = segment.end - segment.start + 1;
-									const segmentLeft = 20 + segmentPosition * nucleotideWidth - offset;
-									const segmentWidth = segmentLength * nucleotideWidth;
-									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
-								})
-								.map((segment, index) => (
-									<SegmentComponent
-										key={`backward-${index}`}
-										segment={segment}
-										index={index}
-										hoveredSegment={hoveredSegment}
-										setHoveredSegment={setHoveredSegment}
-										clickedSegment={clickedSegment}
-										setClickedSegment={setClickedSegment}
-										direction="reverse"
-										baseWidth={baseWidth}
-										zoomLevel={zoomLevel}
-										offset={offset}
-										position={segmentPositions.get(segment.id) || 0}
-									/>
-								))}
-
-							{/* Generator curves for backward segments */}
-							{highlightedSegment &&
-								backwardSegments.includes(highlightedSegment) &&
-								(() => {
-									const segmentGenerators = generators.filter((generator) => generator.segments.includes(highlightedSegment.id));
-									if (segmentGenerators.length === 0) return null;
-
-									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
-									const segmentLength = highlightedSegment.end - highlightedSegment.start + 1;
-									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
-
-									// Calculate generator box positions
-									const generatorBoxWidth = 200;
-									const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
-									const halfWidth = totalWidth / 2;
-
-									let adjustedLeft = segmentCenter;
-									const padding = 16;
-									if (segmentCenter - halfWidth < padding) {
-										adjustedLeft = halfWidth + padding;
-									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
-										adjustedLeft = visibleWidth - halfWidth - padding;
-									}
-
-									return (
-										<svg
-											className="absolute pointer-events-none z-20"
-											style={{
-												left: 0,
-												top: "40px",
-												width: "100%",
-												height: "120px",
-												overflow: "visible",
-											}}
-										>
-											{segmentGenerators.map((generator, idx, arr) => {
-												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
-												const boxCenterX = adjustedLeft + boxOffset;
-
-												const startX = segmentCenter;
-												const startY = 0;
-												const endX = boxCenterX;
-												const endY = 20;
-
-												const isOffset = Math.abs(startX - endX) > 10;
-
-												if (isOffset) {
-													const controlY = (startY + endY) / 2;
-													return (
-														<path
-															key={`generator-curve-${idx}`}
-															d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-															fill="none"
-															stroke="oklch(55.4% 0.046 257.417)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												} else {
-													return (
-														<line
-															key={`generator-line-${idx}`}
-															x1={startX}
-															y1={startY}
-															x2={endX}
-															y2={endY}
-															stroke="oklch(55.4% 0.046 257.417)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												}
-											})}
-										</svg>
-									);
-								})()}
-						</div>
-					)}
-
 					{/* Generators Segment - Below segments */}
 					<div className="relative h-40 w-full">
 						{segments.map((segment) => {
@@ -811,7 +666,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							if (segmentGenerators.length === 0) return null;
 
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
-							const segmentLength = segment.end - segment.start + 1;
+							const segmentLength = segment.length;
 							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
 							// Skip if outside visible area

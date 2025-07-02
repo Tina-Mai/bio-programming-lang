@@ -379,7 +379,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 	const rulerInterval = calculateRulerInterval(zoomLevel);
 
 	// generate ruler marks based on visible area
-	const rulerMarks = [];
+	const rulerMarks: number[] = [];
 	const startIndex = Math.floor(offset / nucleotideWidth);
 	const endIndex = Math.ceil((offset + visibleWidth) / nucleotideWidth);
 	const firstBpInView = Math.max(1, startIndex + 1);
@@ -473,6 +473,7 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				{/* Ruler - At the top */}
 				<div className="absolute top-0 left-0 right-0 h-8 w-full z-30">
 					<div className="absolute w-full top-0">
+						{/* Main ruler marks */}
 						{rulerMarks.map((mark) => {
 							const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
 							const center = leftEdge + nucleotideWidth / 2;
@@ -487,6 +488,24 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 								</div>
 							);
 						})}
+
+						{/* Intermediate ruler marks - only show if interval > 1 */}
+						{rulerInterval > 1 &&
+							rulerMarks.map((mark, index) => {
+								if (index === 0) return null; // Skip first mark
+
+								const prevMark = rulerMarks[index - 1];
+								const midPoint = prevMark + Math.floor((mark - prevMark) / 2);
+								const leftEdge = 20 + (midPoint - 1) * nucleotideWidth - offset;
+								const center = leftEdge + nucleotideWidth / 2;
+
+								if (center < -50 || center > visibleWidth + 50) return null;
+								return (
+									<div key={`mid-${prevMark}-${mark}`} className="absolute" style={{ left: `${center}px` }}>
+										<div className="h-1.5 w-px bg-slate-400/70" style={{ transform: "translateX(-50%)" }} />
+									</div>
+								);
+							})}
 					</div>
 				</div>
 				{/* Main content wrapper - centered */}

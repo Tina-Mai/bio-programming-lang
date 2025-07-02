@@ -433,43 +433,9 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 						<TooltipContent
 							side="top"
 							sideOffset={8}
-							className="vertical border-slate-400/60 gap-1 justify-center items-center translate-y-10 !bg-white/40 !backdrop-blur-xs py-0.5 px-1 !shadow-none"
+							className="vertical gap-1 justify-center items-center translate-y-8.5 border-0 !bg-slate-400 py-0 px-[2.5px] !shadow-none !rounded-xs"
 						>
-							<div className="font-mono text-center text-slate-500/70">{hoveredPosition + 1}</div>
-							{sequence && (
-								<div className="flex">
-									{(() => {
-										// handle sequence length mismatches
-										const safeSequence = sequence.length > sequenceLength ? sequence.substring(0, sequenceLength) : sequence;
-										const windowStart = Math.max(0, hoveredPosition - 4);
-										const windowEnd = Math.min(sequenceLength, hoveredPosition + 5);
-										const windowArray = [];
-										for (let i = windowStart; i < windowEnd; i++) {
-											if (i < safeSequence.length) {
-												windowArray.push(safeSequence[i]);
-											} else {
-												windowArray.push("·");
-											}
-										}
-
-										// TODO: for the very start and end of a sequence the gradient shouldn't be focused in the middle since the focused nucleotide is not in the middle!
-										return windowArray.map((letter, index) => {
-											const isCenter = windowStart + index === hoveredPosition;
-											return (
-												<span
-													key={index}
-													className={`text-slate-500`}
-													style={{
-														opacity: isCenter ? 1 : Math.max(0.1, 1 - Math.abs(index - (windowArray.length - 1) / 2) / ((windowArray.length - 1) / 2)),
-													}}
-												>
-													{letter}
-												</span>
-											);
-										});
-									})()}
-								</div>
-							)}
+							<div className="font-mono text-center text-white">{hoveredPosition + 1}</div>
 						</TooltipContent>
 					</Tooltip>
 				)}
@@ -493,12 +459,16 @@ const LinearViewer: React.FC<Sequence> = ({ length, sequence, sections = [], con
 				{/* Hover tracking line */}
 				{hoveredPosition !== null && (
 					<div
-						className="absolute top-0 bottom-0 w-px bg-slate-400/60 pointer-events-none z-40"
+						className="absolute top-0 bottom-0 pointer-events-none z-40"
 						style={{
 							left: `${20 + hoveredPosition * nucleotideWidth - offset + nucleotideWidth / 2}px`,
 							transform: "translateX(-50%)",
 						}}
-					/>
+					>
+						<div className="absolute top-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
+						<div className="absolute top-0 bottom-0 w-px bg-slate-400/60" />
+						<div className="absolute bottom-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
+					</div>
 				)}
 				{/* Ruler - At the top */}
 				<div className="absolute top-0 left-0 right-0 h-8 w-full z-30">

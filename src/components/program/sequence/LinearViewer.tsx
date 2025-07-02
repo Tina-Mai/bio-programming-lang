@@ -312,14 +312,19 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	const rulerMarks: number[] = [];
 	const startIndex = Math.floor(offset / nucleotideWidth);
 	const endIndex = Math.ceil((offset + visibleWidth) / nucleotideWidth);
-	const firstBpInView = Math.max(1, startIndex + 1);
-	const lastBpInView = Math.min(totalLength, endIndex + 1);
-	if (firstBpInView <= 1) {
-		rulerMarks.push(1);
+	const firstBpInView = Math.max(0, startIndex);
+	const lastBpInView = Math.min(totalLength, endIndex);
+
+	// Always include 0 if it's in view
+	if (firstBpInView <= 0) {
+		rulerMarks.push(0);
 	}
-	const firstMultiple = Math.ceil(firstBpInView / rulerInterval) * rulerInterval;
+
+	// Start from the first multiple of rulerInterval that's greater than firstBpInView
+	const firstMultiple = Math.ceil((firstBpInView + 1) / rulerInterval) * rulerInterval;
 	for (let bp = firstMultiple; bp <= lastBpInView; bp += rulerInterval) {
-		if (bp !== 1) {
+		if (bp !== 0) {
+			// Avoid duplicating 0
 			rulerMarks.push(bp);
 		}
 	}
@@ -353,17 +358,15 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 			>
 				{/* Vertical grid lines at ruler positions */}
 				{rulerMarks.map((mark) => {
-					const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
-					const center = leftEdge + nucleotideWidth / 2;
+					const leftEdge = 20 + mark * nucleotideWidth - offset;
 
-					if (center < -50 || center > visibleWidth + 50) return null;
+					if (leftEdge < -50 || leftEdge > visibleWidth + 50) return null;
 					return (
 						<div
 							key={`grid-${mark}`}
 							className="absolute top-0 bottom-0 w-px border-l border-dotted border-slate-300/70 pointer-events-none"
 							style={{
-								left: `${center}px`,
-								transform: "translateX(-50%)",
+								left: `${leftEdge}px`,
 							}}
 						/>
 					);
@@ -374,13 +377,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					<div className="absolute w-full top-0">
 						{/* Main ruler marks */}
 						{rulerMarks.map((mark) => {
-							const leftEdge = 20 + (mark - 1) * nucleotideWidth - offset;
-							const center = leftEdge + nucleotideWidth / 2;
+							const leftEdge = 20 + mark * nucleotideWidth - offset;
 
-							if (center < -50 || center > visibleWidth + 50) return null;
+							if (leftEdge < -50 || leftEdge > visibleWidth + 50) return null;
 							return (
-								<div key={mark} className="absolute" style={{ left: `${center}px` }}>
-									<div className="h-2 w-px bg-slate-400" style={{ transform: "translateX(-50%)" }} />
+								<div key={mark} className="absolute" style={{ left: `${leftEdge}px` }}>
+									<div className="h-2 w-px bg-slate-400" />
 									<div className="font-mono text-[10px] text-slate-500 mt-0.5" style={{ transform: "translateX(-50%)" }}>
 										{mark}
 									</div>
@@ -395,13 +397,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 
 								const prevMark = rulerMarks[index - 1];
 								const midPoint = prevMark + Math.floor((mark - prevMark) / 2);
-								const leftEdge = 20 + (midPoint - 1) * nucleotideWidth - offset;
-								const center = leftEdge + nucleotideWidth / 2;
+								const leftEdge = 20 + midPoint * nucleotideWidth - offset;
 
-								if (center < -50 || center > visibleWidth + 50) return null;
+								if (leftEdge < -50 || leftEdge > visibleWidth + 50) return null;
 								return (
-									<div key={`mid-${prevMark}-${mark}`} className="absolute" style={{ left: `${center}px` }}>
-										<div className="h-1.5 w-px bg-slate-400/70" style={{ transform: "translateX(-50%)" }} />
+									<div key={`mid-${prevMark}-${mark}`} className="absolute" style={{ left: `${leftEdge}px` }}>
+										<div className="h-1.5 w-px bg-slate-400/70" />
 									</div>
 								);
 							})}

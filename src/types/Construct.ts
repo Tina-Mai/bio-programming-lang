@@ -1,13 +1,10 @@
-import { Segment, ConstraintInstance, GeneratorInstance } from "./";
+import { Segment, ConstraintInstance, GeneratorInstance } from ".";
 
-// TODO: sequence string can have optional positions (?) in case some parts are not generated or are generated separately?
-export interface Sequence {
-	length: number;
+export interface Construct {
 	segments?: Segment[];
 	constraints?: ConstraintInstance[];
 	generators?: GeneratorInstance[];
 	name?: string;
-	sequence?: string; // TODO: rename to output or sequenceString for clarity?
 }
 
 export const nucleotideColors = {

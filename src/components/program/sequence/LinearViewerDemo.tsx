@@ -62,17 +62,15 @@ const LinearViewerDemo = () => {
 		},
 	];
 
-	const SequenceInstance = ({
+	const ConstructInstance = ({
 		name,
 		length,
-		sequence,
 		segments,
 		constraints,
 		generators,
 	}: {
 		name: string;
 		length: number;
-		sequence?: string;
 		segments: Segment[];
 		constraints: ConstraintInstance[];
 		generators: GeneratorInstance[];
@@ -89,7 +87,7 @@ const LinearViewerDemo = () => {
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>
-				<LinearViewer length={length} sequence={sequence} segments={segments} constraints={constraints} generators={generators} />
+				<LinearViewer segments={segments} constraints={constraints} generators={generators} />
 			</div>
 		);
 	};
@@ -97,8 +95,7 @@ const LinearViewerDemo = () => {
 	return (
 		// mt-[52px] is to offset the header at the top of Program.tsx
 		<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] flex-1">
-			<SequenceInstance name="Example" length={85} segments={segments} constraints={constraints} generators={generators} />
-			{/* <SequenceInstance name="Longer Sequence" length={819} sections={longSections} /> */}
+			<ConstructInstance name="Example" length={85} segments={segments} constraints={constraints} generators={generators} />
 		</div>
 	);
 };

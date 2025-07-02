@@ -1,5 +1,5 @@
 export * from "./Project";
-export * from "./Sequence";
+export * from "./Construct";
 export * from "./Node";
 export * from "./Constraint";
 export * from "./Generator";

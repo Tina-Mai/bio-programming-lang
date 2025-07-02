@@ -41,7 +41,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 	const isHighlighted = isClicked || (isHovered && !clickedSegment);
 	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
 
-	// Forward arrow configuration
+	// segment arrow configuration
 	const polygonPoints = `0,2 ${segmentPixelWidth - arrowWidth},2 ${segmentPixelWidth},16 ${segmentPixelWidth - arrowWidth},30 0,30`;
 
 	return (
@@ -71,7 +71,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 				setHoveredSegment(null);
 			}}
 		>
-			<svg width="100%" height="32" viewBox={`0 0 ${segmentPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible backdrop-blur-[2px]">
+			<svg width="100%" height="32" viewBox={`0 0 ${segmentPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
 				<polygon points={polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
 			</svg>
 			<div
@@ -449,7 +449,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 										className="absolute flex flex-row gap-2 items-end justify-center"
 										style={{
 											left: `${adjustedLeft}px`,
-											bottom: "24px",
+											bottom: "75px", // config: how high up the constraint boxes are
 											transform: "translateX(-50%)",
 										}}
 									>
@@ -530,7 +530,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 												const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 												const startX = boxCenterX;
-												const startY = 52;
+												const startY = 65;
 												const endX = segmentCenter;
 												const endY = 142;
 												const isOffset = Math.abs(startX - endX) > 10;

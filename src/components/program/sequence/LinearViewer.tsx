@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Construct, Segment } from "@/types";
+import { Construct, Segment, getSegmentColors, calculateSegmentPixelWidth, SEGMENT_ARROW_WIDTH } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 
@@ -21,29 +21,14 @@ interface SegmentComponentProps {
 const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hoveredSegment, setHoveredSegment, clickedSegment, setClickedSegment, baseWidth, zoomLevel, offset, position }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const segmentLength = segment.length;
-	const segmentPixelWidth = segmentLength * nucleotideWidth;
+	const segmentPixelWidth = calculateSegmentPixelWidth(segment, nucleotideWidth);
 	const segmentLeft = 20 + position * nucleotideWidth - offset;
-	const arrowWidth = 12;
-
-	// get colors for the annotation
-	const getColors = () => {
-		const colorMap = {
-			CDS: { fill: "rgb(253 224 71 / 0.45)", stroke: "rgb(234 179 8 / 0.8)" }, // yellow
-			promoter: { fill: "rgb(167 243 208 / 0.45)", stroke: "rgb(52 211 153 / 0.8)" }, // emerald
-			terminator: { fill: "rgb(196 181 253 / 0.45)", stroke: "rgb(147 114 243 / 0.8)" }, // purple
-			default: { fill: "rgb(165 180 252 / 0.45)", stroke: "rgb(129 140 248 / 0.8)" }, // indigo
-		};
-		return colorMap[segment.type as keyof typeof colorMap] || colorMap.default;
-	};
-
-	const colors = getColors();
+	const colors = getSegmentColors(segment);
 	const isHovered = hoveredSegment === segment;
 	const isClicked = clickedSegment === segment;
 	const isHighlighted = isClicked || (isHovered && !clickedSegment);
 	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
-
-	// segment arrow configuration
-	const polygonPoints = `0,2 ${segmentPixelWidth - arrowWidth},2 ${segmentPixelWidth},16 ${segmentPixelWidth - arrowWidth},30 0,30`;
+	const polygonPoints = `0,2 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},2 ${segmentPixelWidth},16 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},30 0,30`;
 
 	return (
 		<div
@@ -106,12 +91,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const baseWidth = 10.1; // base nucleotide width at zoom level 1
+	const baseWidth = 10.1;
 	const nucleotideWidth = baseWidth * zoomLevel;
 
-	// Calculate total length from all segments
+	// calculate total length from all segments
 	const actualTotalLength = segments.reduce((acc, segment) => acc + segment.length, 0);
-	const totalLength = Math.max(100, actualTotalLength); // Minimum ruler length of 100
+	const totalLength = Math.max(100, actualTotalLength); // min ruler length of 100
 
 	// update visible width from container
 	const updateVisibleWidth = useCallback(() => {
@@ -334,22 +319,17 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	const endIndex = Math.ceil((offset + visibleWidth) / nucleotideWidth);
 	const firstBpInView = Math.max(0, startIndex);
 	const lastBpInView = Math.min(totalLength, endIndex);
-
-	// Always include 0 if it's in view
 	if (firstBpInView <= 0) {
 		rulerMarks.push(0);
 	}
-
-	// Start from the first multiple of rulerInterval that's greater than firstBpInView
 	const firstMultiple = Math.ceil((firstBpInView + 1) / rulerInterval) * rulerInterval;
 	for (let bp = firstMultiple; bp <= lastBpInView; bp += rulerInterval) {
 		if (bp !== 0) {
-			// Avoid duplicating 0
 			rulerMarks.push(bp);
 		}
 	}
 
-	// Calculate segment positions - segments are connected in order
+	// calculate segment positions - segments are connected in order
 	const segmentPositions = new Map<string, number>();
 	let currentPosition = 0;
 	segments.forEach((segment) => {
@@ -357,12 +337,11 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 		currentPosition += segment.length;
 	});
 
-	// Get constraints and generators for highlighted segment
+	// get constraints and generators for highlighted segment
 	const highlightedSegment = clickedSegment || hoveredSegment;
 
 	return (
 		<div className="w-full h-full">
-			{/* Main viewer container */}
 			<div
 				ref={containerRef}
 				className="flex flex-col h-full select-none overflow-hidden relative"
@@ -384,11 +363,8 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							left: `${20 + hoveredPosition * nucleotideWidth - offset}px`,
 						}}
 					>
-						{/* Vertical tracking line with dots */}
 						<div className="absolute top-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
 						<div className="absolute top-0 bottom-0 w-px bg-slate-400/60" />
-
-						{/* Position tooltip */}
 						<Tooltip open={true}>
 							<TooltipTrigger asChild>
 								<div
@@ -406,7 +382,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					</div>
 				)}
 
-				{/* Vertical grid lines at ruler positions */}
+				{/* Vertical grid lines */}
 				{rulerMarks.map((mark) => {
 					const leftEdge = 20 + mark * nucleotideWidth - offset;
 
@@ -422,7 +398,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					);
 				})}
 
-				{/* Ruler - At the top */}
+				{/* Ruler */}
 				<div className="absolute top-0 left-0 right-0 h-8 w-full z-30">
 					<div className="absolute w-full top-0">
 						{/* Main ruler marks */}
@@ -440,7 +416,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							);
 						})}
 
-						{/* Intermediate ruler marks - only show if interval > 1 */}
+						{/* In-between ruler marks */}
 						{rulerInterval > 1 &&
 							rulerMarks.map((mark, index) => {
 								if (index === 0) return null;
@@ -459,32 +435,30 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					</div>
 				</div>
 
-				{/* Main content wrapper - centered */}
+				{/* Main content wrapper*/}
 				<div className="flex flex-col justify-center flex-1 pt-8">
-					{/* Constraints Segment - Above segments */}
+					{/* Constraints */}
 					<div className="relative h-40 w-full">
 						{segments.map((segment) => {
-							// Only show if this segment is hovered or clicked
+							// only show if segment is hovered or clicked
 							if (highlightedSegment?.id !== segment.id) return null;
 
-							// Find all constraints that apply to this segment
+							// find all constraints that apply to this segment
 							const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(segment.id));
-
 							if (segmentConstraints.length === 0) return null;
-
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
 							const segmentLength = segment.length;
 							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
-							// Skip if outside visible area
+							// skip if outside visible area
 							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
 
-							// Calculate total width of constraint boxes
+							// calculate total width of constraint boxes
 							const constraintBoxWidth = 180;
 							const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8;
 							const halfWidth = totalWidth / 2;
 
-							// Calculate adjusted position to keep boxes within container
+							// calculate adjusted position to keep boxes within container
 							let adjustedLeft = segmentCenter;
 							const padding = 16;
 							if (segmentCenter - halfWidth < padding) {
@@ -542,7 +516,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 									/>
 								))}
 
-							{/* Constraint curves */}
+							{/* Constraint connecting lines */}
 							{highlightedSegment &&
 								segments.includes(highlightedSegment) &&
 								(() => {
@@ -622,7 +596,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 									);
 								})()}
 
-							{/* Generator curves */}
+							{/* Generator connecting lines */}
 							{highlightedSegment &&
 								segments.includes(highlightedSegment) &&
 								(() => {
@@ -705,30 +679,25 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 						</div>
 					)}
 
-					{/* Generators Segment - Below segments */}
+					{/* Generators */}
 					<div className="relative h-40 w-full">
 						{segments.map((segment) => {
-							// Only show if this segment is hovered or clicked
 							if (highlightedSegment?.id !== segment.id) return null;
 
-							// Find all generators that apply to this segment
+							// find all generators that apply to this segment
 							const segmentGenerators = generators.filter((generator) => generator.segments.includes(segment.id));
-
 							if (segmentGenerators.length === 0) return null;
-
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
 							const segmentLength = segment.length;
 							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
-
-							// Skip if outside visible area
 							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
 
-							// Calculate total width of generator boxes
+							// calculate total width of generator boxes
 							const generatorBoxWidth = 200;
 							const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
 							const halfWidth = totalWidth / 2;
 
-							// Calculate adjusted position to keep boxes within container
+							// calculate adjusted position to keep boxes within container
 							let adjustedLeft = segmentCenter;
 							const padding = 16;
 							if (segmentCenter - halfWidth < padding) {

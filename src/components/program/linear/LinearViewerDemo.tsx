@@ -9,22 +9,18 @@ const LinearViewerDemo = () => {
 	const construct = [
 		{
 			id: "1",
-			label: "Section",
 			length: 10,
 		},
 		{
 			id: "2",
-			label: "Section",
 			length: 30,
 		},
 		{
 			id: "3",
-			label: "Section",
 			length: 25,
 		},
 		{
 			id: "4",
-			label: "Section",
 			length: 15,
 		},
 	];

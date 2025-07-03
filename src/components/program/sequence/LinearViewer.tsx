@@ -28,17 +28,17 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 	const isClicked = clickedSegment === segment;
 	const isHighlighted = isClicked || (isHovered && !clickedSegment);
 	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
-	const polygonPoints = `0,2 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},2 ${segmentPixelWidth},16 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},30 0,30`;
+	const polygonPoints = `0,2 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},2 ${segmentPixelWidth},20 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},38 0,38`;
 
 	return (
 		<div
 			key={`segment-${index}`}
 			data-segment-component
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-30" : "opacity-100"} cursor-pointer`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${segmentLeft}px`,
 				width: `${segmentPixelWidth}px`,
-				height: "32px",
+				height: "40px",
 				zIndex: isHighlighted ? 20 : 10,
 			}}
 			onMouseEnter={() => {
@@ -57,8 +57,8 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 				setHoveredSegment(null);
 			}}
 		>
-			<svg width="100%" height="32" viewBox={`0 0 ${segmentPixelWidth} 32`} preserveAspectRatio="none" className="overflow-visible">
-				<polygon points={polygonPoints} fill={colors.fill} stroke={colors.stroke} strokeWidth="1" />
+			<svg width="100%" height="40" viewBox={`0 0 ${segmentPixelWidth} 40`} preserveAspectRatio="none" className="overflow-visible">
+				<polygon points={polygonPoints} fill={colors.fill} stroke={isClicked ? colors.highlight : colors.stroke} strokeWidth={isClicked ? "3" : "2"} />
 			</svg>
 			<div
 				className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-start`}
@@ -69,7 +69,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 			>
 				<span
 					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
-					style={{ backgroundColor: isHighlighted ? colors.stroke : "transparent" }}
+					style={{ backgroundColor: isHighlighted ? colors.highlight : "transparent" }}
 				>
 					{segment.label || "Segment"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{segmentLength}</span>
 				</span>
@@ -491,7 +491,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 
 					{/* Segments */}
 					{segments.length > 0 && (
-						<div className="relative h-10 w-full overflow-visible">
+						<div className="relative h-12 w-full overflow-visible">
 							{segments
 								.filter((segment) => {
 									const segmentPosition = segmentPositions.get(segment.id) || 0;
@@ -545,9 +545,9 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 											className="absolute pointer-events-none z-20"
 											style={{
 												left: 0,
-												top: "-140px",
+												top: "-148px",
 												width: "100%",
-												height: "140px",
+												height: "148px",
 												overflow: "visible",
 											}}
 										>
@@ -557,7 +557,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 												const startX = boxCenterX;
 												const startY = 65;
 												const endX = segmentCenter;
-												const endY = 142;
+												const endY = 150;
 												const isOffset = Math.abs(startX - endX) > 10;
 
 												if (isOffset) {
@@ -625,7 +625,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 											className="absolute pointer-events-none z-20"
 											style={{
 												left: 0,
-												top: "30px",
+												top: "38px",
 												width: "100%",
 												height: "120px",
 												overflow: "visible",

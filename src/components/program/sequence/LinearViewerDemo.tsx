@@ -6,28 +6,25 @@ import { Draggable } from "@carbon/icons-react";
 import SequencePopover from "./SequencePopover";
 
 const LinearViewerDemo = () => {
-	const segments = [
+	const construct = [
 		{
 			id: "1",
-			label: "Promoter",
-			type: "promoter",
+			label: "Section",
 			length: 10,
 		},
 		{
 			id: "2",
-			label: "CDS",
-			type: "CDS",
+			label: "Section",
 			length: 30,
 		},
 		{
 			id: "3",
-			label: "Custom Section",
+			label: "Section",
 			length: 25,
 		},
 		{
 			id: "4",
-			label: "CDS",
-			type: "CDS",
+			label: "Section",
 			length: 15,
 		},
 	];
@@ -91,7 +88,7 @@ const LinearViewerDemo = () => {
 	return (
 		// mt-[52px] is to offset the header at the top of Program.tsx
 		<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] flex-1">
-			<ConstructInstance name="Example" length={85} segments={segments} constraints={constraints} generators={generators} />
+			<ConstructInstance name="Example" length={85} segments={construct} constraints={constraints} generators={generators} />
 		</div>
 	);
 };

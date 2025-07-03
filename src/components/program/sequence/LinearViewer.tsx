@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { Construct, Segment, getSegmentColors, calculateSegmentPixelWidth, SEGMENT_ARROW_WIDTH } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
@@ -571,7 +572,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 															${endX} ${controlY}, 
 															${endX} ${endY}`}
 															fill="none"
-															stroke="oklch(55.4% 0.046 257.417)"
+															stroke="oklch(70.4% 0.04 256.788)"
 															strokeWidth="1.5"
 															strokeDasharray="3, 3"
 															className="stroke-dash-anim"
@@ -585,7 +586,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 															y1={startY}
 															x2={endX}
 															y2={endY}
-															stroke="oklch(55.4% 0.046 257.417)"
+															stroke="oklch(70.4% 0.04 256.788)"
 															strokeWidth="1.5"
 															strokeDasharray="3, 3"
 															className="stroke-dash-anim"
@@ -636,10 +637,10 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 
-												const startX = segmentCenter;
-												const startY = 0;
-												const endX = boxCenterX;
-												const endY = 27;
+												const startX = boxCenterX;
+												const startY = 27;
+												const endX = segmentCenter;
+												const endY = 0;
 												const isOffset = Math.abs(startX - endX) > 10;
 
 												if (isOffset) {
@@ -652,7 +653,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 															${endX} ${controlY}, 
 															${endX} ${endY}`}
 															fill="none"
-															stroke="oklch(55.4% 0.046 257.417)"
+															stroke="oklch(70.4% 0.04 256.788)"
 															strokeWidth="1.5"
 															strokeDasharray="3, 3"
 															className="stroke-dash-anim"
@@ -666,7 +667,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 															y1={startY}
 															x2={endX}
 															y2={endY}
-															stroke="oklch(55.4% 0.046 257.417)"
+															stroke="oklch(70.4% 0.04 256.788)"
 															strokeWidth="1.5"
 															strokeDasharray="3, 3"
 															className="stroke-dash-anim"
@@ -728,6 +729,19 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							);
 						})}
 					</div>
+				</div>
+
+				{/* Bottom buttons */}
+				<div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-50">
+					<Button variant="outline" size="sm">
+						New constraint
+					</Button>
+					<Button variant="outline" size="sm">
+						New generator
+					</Button>
+					<Button variant="outline" size="sm">
+						New segment
+					</Button>
 				</div>
 			</div>
 		</div>

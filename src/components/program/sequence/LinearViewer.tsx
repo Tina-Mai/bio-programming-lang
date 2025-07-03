@@ -375,25 +375,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					touchAction: "none",
 				}}
 			>
-				{/* Hover tooltip showing position */}
-				{hoveredPosition !== null && (
-					<Tooltip open={true}>
-						<TooltipTrigger asChild>
-							<div
-								className="absolute w-1 h-full pointer-events-none"
-								style={{
-									top: 0,
-									left: `${18.5 + hoveredPosition * nucleotideWidth - offset}px`,
-								}}
-							/>
-						</TooltipTrigger>
-						<TooltipContent side="top" sideOffset={8} className="gap-1 justify-center items-center translate-y-8.5 border-0 !bg-slate-400 py-0 px-[2.5px] !shadow-none !rounded-xs">
-							<div className="font-mono text-center text-white">{hoveredPosition}</div>
-						</TooltipContent>
-					</Tooltip>
-				)}
-
-				{/* Hover tracking line */}
+				{/* Hover line and tooltip */}
 				{hoveredPosition !== null && (
 					<div
 						className="absolute top-0 bottom-0 pointer-events-none z-40"
@@ -401,9 +383,25 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							left: `${20 + hoveredPosition * nucleotideWidth - offset}px`,
 						}}
 					>
+						{/* Vertical tracking line with dots */}
 						<div className="absolute top-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
 						<div className="absolute top-0 bottom-0 w-px bg-slate-400/60" />
-						<div className="absolute bottom-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
+
+						{/* Position tooltip */}
+						<Tooltip open={true}>
+							<TooltipTrigger asChild>
+								<div
+									className="absolute w-1 h-8"
+									style={{
+										top: 0,
+										left: "-1.5px",
+									}}
+								/>
+							</TooltipTrigger>
+							<TooltipContent side="top" sideOffset={8} className="gap-1 justify-center items-center translate-y-8.5 border-0 !bg-slate-400 py-0 px-[2.5px] !shadow-none !rounded-xs">
+								<div className="font-mono text-center text-white">{hoveredPosition}</div>
+							</TooltipContent>
+						</Tooltip>
 					</div>
 				)}
 
@@ -444,7 +442,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 						{/* Intermediate ruler marks - only show if interval > 1 */}
 						{rulerInterval > 1 &&
 							rulerMarks.map((mark, index) => {
-								if (index === 0) return null; // Skip first mark
+								if (index === 0) return null;
 
 								const prevMark = rulerMarks[index - 1];
 								const midPoint = prevMark + Math.floor((mark - prevMark) / 2);

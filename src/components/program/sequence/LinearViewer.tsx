@@ -110,7 +110,8 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	const nucleotideWidth = baseWidth * zoomLevel;
 
 	// Calculate total length from all segments
-	const totalLength = segments.reduce((acc, segment) => acc + segment.length, 0);
+	const actualTotalLength = segments.reduce((acc, segment) => acc + segment.length, 0);
+	const totalLength = Math.max(100, actualTotalLength); // Minimum ruler length of 100
 
 	// update visible width from container
 	const updateVisibleWidth = useCallback(() => {
@@ -126,7 +127,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 		const x = e.clientX - rect.left;
 		const adjustedX = x - 20;
 		const position = Math.floor((adjustedX + offset) / nucleotideWidth);
-		return Math.max(0, Math.min(totalLength - 1, position));
+		return Math.max(0, Math.min(totalLength, position));
 	};
 
 	// calculate minimum zoom level to fit entire sequence in container
@@ -313,15 +314,15 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 
 	// calculate dynamic ruler interval based on zoom level
 	const calculateRulerInterval = (zoom: number): number => {
-		if (zoom >= 8) return 1;
-		if (zoom >= 4) return 2;
-		if (zoom >= 2) return 5;
-		if (zoom >= 1) return 10;
-		if (zoom >= 0.5) return 20;
-		if (zoom >= 0.25) return 50;
-		if (zoom >= 0.1) return 100;
-		if (zoom >= 0.05) return 200;
-		if (zoom >= 0.025) return 500;
+		if (zoom >= 5) return 1;
+		if (zoom >= 2.5) return 2;
+		if (zoom >= 1.2) return 5;
+		if (zoom >= 0.6) return 10;
+		if (zoom >= 0.3) return 20;
+		if (zoom >= 0.15) return 50;
+		if (zoom >= 0.06) return 100;
+		if (zoom >= 0.03) return 200;
+		if (zoom >= 0.015) return 500;
 		return 1000;
 	};
 

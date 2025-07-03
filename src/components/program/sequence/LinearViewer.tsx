@@ -22,13 +22,15 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const segmentLength = segment.length;
 	const segmentPixelWidth = calculateSegmentPixelWidth(segment, nucleotideWidth);
+	// Segments start at their actual position on the grid
 	const segmentLeft = 20 + position * nucleotideWidth - offset;
 	const colors = getSegmentColors(segment);
 	const isHovered = hoveredSegment === segment;
 	const isClicked = clickedSegment === segment;
 	const isHighlighted = isClicked || (isHovered && !clickedSegment);
 	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
-	const polygonPoints = `0,2 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},2 ${segmentPixelWidth},20 ${segmentPixelWidth - SEGMENT_ARROW_WIDTH},38 0,38`;
+	// All segments have the same interlocking shape - inverse arrow on left, extending arrow on right
+	const polygonPoints = `0,2 ${segmentPixelWidth},2 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH},20 ${segmentPixelWidth},38 0,38 ${SEGMENT_ARROW_WIDTH},20`;
 
 	return (
 		<div
@@ -37,7 +39,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} cursor-pointer`}
 			style={{
 				left: `${segmentLeft}px`,
-				width: `${segmentPixelWidth}px`,
+				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
 				height: "40px",
 				zIndex: isHighlighted ? 20 : 10,
 			}}
@@ -57,14 +59,14 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 				setHoveredSegment(null);
 			}}
 		>
-			<svg width="100%" height="40" viewBox={`0 0 ${segmentPixelWidth} 40`} preserveAspectRatio="none" className="overflow-visible">
+			<svg width="100%" height="40" viewBox={`0 0 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH} 40`} preserveAspectRatio="none" className="overflow-visible">
 				<polygon points={polygonPoints} fill={colors.fill} stroke={isClicked ? colors.highlight : colors.stroke} strokeWidth={isClicked ? "3" : "2"} />
 			</svg>
 			<div
 				className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-start`}
 				style={{
-					paddingLeft: "8px",
-					paddingRight: "16px",
+					paddingLeft: `${SEGMENT_ARROW_WIDTH + 8}px`,
+					paddingRight: `${SEGMENT_ARROW_WIDTH + 8}px`,
 				}}
 			>
 				<span
@@ -527,7 +529,6 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 									const segmentLength = highlightedSegment.length;
 									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
-									// config: constraint box positions
 									const constraintBoxWidth = 200;
 									const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8;
 									const halfWidth = totalWidth / 2;
@@ -555,7 +556,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 												const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
 												const boxCenterX = adjustedLeft + boxOffset;
 												const startX = boxCenterX;
-												const startY = 65;
+												const startY = 72; // config: where the constraint line starts
 												const endX = segmentCenter;
 												const endY = 150;
 												const isOffset = Math.abs(startX - endX) > 10;

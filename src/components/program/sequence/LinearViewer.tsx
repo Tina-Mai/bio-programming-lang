@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Construct, Segment } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
@@ -95,6 +96,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], generators = [] }) => {
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
+	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
 	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
 	const [offset, setOffset] = useState<number>(0);
@@ -116,6 +118,16 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 			setVisibleWidth(containerRef.current.clientWidth);
 		}
 	}, []);
+
+	// calculate position from mouse event
+	const getPositionFromEvent = (e: React.MouseEvent | MouseEvent) => {
+		if (!containerRef.current) return null;
+		const rect = containerRef.current.getBoundingClientRect();
+		const x = e.clientX - rect.left;
+		const adjustedX = x - 20;
+		const position = Math.floor((adjustedX + offset) / nucleotideWidth);
+		return Math.max(0, Math.min(totalLength - 1, position));
+	};
 
 	// calculate minimum zoom level to fit entire sequence in container
 	const calculateMinZoomLevel = useCallback(() => {
@@ -195,6 +207,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 			setOffset(newOffset);
 			setTargetOffset(newOffset);
 			setLastMouseX(e.clientX);
+			return;
+		}
+
+		const position = getPositionFromEvent(e);
+		if (position !== null) {
+			setHoveredPosition(position);
 		}
 	};
 
@@ -203,6 +221,7 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 	};
 
 	const handleMouseLeave = () => {
+		setHoveredPosition(null);
 		setIsPanning(false);
 		setIsHovering(false);
 		if (!clickedSegment) {
@@ -356,6 +375,38 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 					touchAction: "none",
 				}}
 			>
+				{/* Hover tooltip showing position */}
+				{hoveredPosition !== null && (
+					<Tooltip open={true}>
+						<TooltipTrigger asChild>
+							<div
+								className="absolute w-1 h-full pointer-events-none"
+								style={{
+									top: 0,
+									left: `${18.5 + hoveredPosition * nucleotideWidth - offset}px`,
+								}}
+							/>
+						</TooltipTrigger>
+						<TooltipContent side="top" sideOffset={8} className="gap-1 justify-center items-center translate-y-8.5 border-0 !bg-slate-400 py-0 px-[2.5px] !shadow-none !rounded-xs">
+							<div className="font-mono text-center text-white">{hoveredPosition}</div>
+						</TooltipContent>
+					</Tooltip>
+				)}
+
+				{/* Hover tracking line */}
+				{hoveredPosition !== null && (
+					<div
+						className="absolute top-0 bottom-0 pointer-events-none z-40"
+						style={{
+							left: `${20 + hoveredPosition * nucleotideWidth - offset}px`,
+						}}
+					>
+						<div className="absolute top-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
+						<div className="absolute top-0 bottom-0 w-px bg-slate-400/60" />
+						<div className="absolute bottom-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
+					</div>
+				)}
+
 				{/* Vertical grid lines at ruler positions */}
 				{rulerMarks.map((mark) => {
 					const leftEdge = 20 + mark * nucleotideWidth - offset;

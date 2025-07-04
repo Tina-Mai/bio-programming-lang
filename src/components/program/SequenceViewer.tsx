@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Nucleotide, nucleotideColors, OutputMetadata } from "@/types";
+import { Nucleotide, nucleotideColors } from "@/types";
 import { Copy, Checkmark, ChevronDown, ChevronUp, Download } from "@carbon/icons-react";
 import { Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HelpTooltip from "@/components/global/HelpTooltip";
-import { cn, downloadProgramOutputs } from "@/lib/utils";
-import { useProgram } from "@/context/ProgramContext";
+import { cn } from "@/lib/utils";
 
 const SequenceKey = () => {
 	return (
@@ -57,11 +56,8 @@ const NucleotideTooltip = ({ tooltipPosition, hoveredNucleotide }: { tooltipPosi
 	);
 };
 
-const SequenceViewer = ({ output, showSequence, setShowSequence }: { output: OutputMetadata; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
-	const { currentProgramGraphData } = useProgram();
-	const programIdForCsv = currentProgramGraphData?.program?.id;
-
-	const sequenceString = output.sequence || "";
+const SequenceViewer = ({ sequence, showSequence, setShowSequence }: { sequence: string; showSequence: boolean; setShowSequence: (showSequence: boolean) => void }) => {
+	const sequenceString = sequence || "";
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number>(0);
@@ -449,6 +445,21 @@ const SequenceViewer = ({ output, showSequence, setShowSequence }: { output: Out
 		return () => mediaQuery.removeEventListener("change", handleDprChange);
 	}, [dpr, setupCanvas]);
 
+	// handle download
+	const handleDownload = useCallback(() => {
+		if (!sequenceString) return;
+
+		const blob = new Blob([sequenceString], { type: "text/plain" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `sequence_${Date.now()}.txt`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}, [sequenceString]);
+
 	return (
 		<div className="vertical w-full gap-5">
 			<div className="flex justify-between items-center px-5">
@@ -488,21 +499,9 @@ const SequenceViewer = ({ output, showSequence, setShowSequence }: { output: Out
 							<Copy size={16} />
 						</motion.div>
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="text-xs h-6 !px-2 text-slate-500 group-hover:text-slate-700"
-						onClick={async () => {
-							if (programIdForCsv) {
-								await downloadProgramOutputs(programIdForCsv);
-							} else {
-								console.warn("Program ID is not available from context to download CSV.");
-							}
-						}}
-						disabled={!programIdForCsv}
-					>
+					<Button variant="outline" size="sm" className="text-xs h-6 !px-2 text-slate-500 group-hover:text-slate-700" onClick={handleDownload} disabled={!sequenceString}>
 						<Download className="text-slate-400" />
-						Download full CSV
+						Download sequence
 					</Button>
 				</div>
 

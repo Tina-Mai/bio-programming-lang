@@ -1,7 +1,7 @@
 import LinearViewer from "@/components/program/linear/LinearViewer";
 import { ConstraintInstance, GeneratorInstance, Construct } from "@/types";
 import { Draggable } from "@carbon/icons-react";
-import SequencePopover from "@/components/program/linear/SequencePopover";
+import ConstructPopover from "@/components/program/linear/ConstructPopover";
 import { useProgram } from "@/context/ProgramContext";
 
 const VisualEditor = () => {
@@ -27,7 +27,7 @@ const VisualEditor = () => {
 						<div className="font-mono text-sm text-slate-500/60">{totalLength} bp</div>
 					</div>
 					<div className="horizontal gap-1 items-center">
-						<SequencePopover />
+						<ConstructPopover />
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>

@@ -1,71 +1,17 @@
-import { RawProgramGraphData, SupabaseDBEdge } from "@/lib/utils";
-
 export interface ProgramValidationError {
 	nodeId: string | null; // null for program-wide errors like "no sequence nodes"
 	message: string;
 	nodeType?: "sequence" | "constraint";
 }
 
-export function validateProgramGraph(programGraphData: RawProgramGraphData | null): ProgramValidationError[] {
+export function validateProgramGraph(): ProgramValidationError[] {
+	// TODO: implement
+	// - must have at least one segment
+	// - all segments must have a generator
+	// - all generator nodes must have a generator selected (key)
+	// - all constraints must have a constraint selected (key)
+	// - all [constructs?] must have a sequence type selected
 	const errors: ProgramValidationError[] = [];
-
-	if (!programGraphData) {
-		errors.push({ nodeId: null, message: "Program data is not loaded or available for validation" });
-		return errors;
-	}
-
-	const { sequenceNodes = [], constraintNodes = [], edges = [] } = programGraphData;
-
-	// Check 1: no sequence nodes
-	if (sequenceNodes.length === 0) {
-		errors.push({ nodeId: null, message: "Program must contain at least one sequence node" });
-	} else {
-		// Check 2: sequence nodes missing a generator or sequence type
-		sequenceNodes.forEach((node) => {
-			if (!node.type) {
-				errors.push({
-					nodeId: node.id,
-					message: `Missing a sequence type`,
-					nodeType: "sequence",
-				});
-			}
-			if (!node.generator_id) {
-				errors.push({
-					nodeId: node.id,
-					message: `Missing a generator`,
-					nodeType: "sequence",
-				});
-			}
-		});
-	}
-
-	// Check 3: constraint nodes missing a constraint (key)
-	constraintNodes.forEach((node) => {
-		if (!node.key) {
-			errors.push({
-				nodeId: node.id,
-				message: `Missing a constraint selection`,
-				nodeType: "constraint",
-			});
-		}
-	});
-
-	// Check 4: free-floating constraint nodes
-	const allNodeIdsInEdges = new Set<string>();
-	edges.forEach((edge: SupabaseDBEdge) => {
-		if (edge.constraint_id) allNodeIdsInEdges.add(edge.constraint_id);
-		if (edge.sequence_id) allNodeIdsInEdges.add(edge.sequence_id);
-	});
-	constraintNodes.forEach((node) => {
-		if (!edges.some((edge) => edge.constraint_id === node.id)) {
-			errors.push({
-				nodeId: node.id,
-				message: `Constraint node must be connected to a sequence node`,
-				nodeType: "constraint",
-			});
-		}
-	});
-
 	return errors;
 }
 

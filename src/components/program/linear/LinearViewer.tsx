@@ -50,7 +50,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		return Math.max(0, Math.min(totalLength, position));
 	};
 
-	// calculate minimum zoom level to fit entire sequence in container
+	// calculate minimum zoom level to fit entire construct in container
 	const calculateMinZoomLevel = useCallback(() => {
 		const container = containerRef.current;
 		if (!container || !totalLength) return 0.1;

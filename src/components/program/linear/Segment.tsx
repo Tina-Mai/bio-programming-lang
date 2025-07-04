@@ -46,13 +46,14 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 		<div
 			key={`segment-${index}`}
 			data-segment-component
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} ${isDragging ? "opacity-70 z-50" : ""}`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} ${isDragging ? "opacity-40" : ""}`}
 			style={{
 				left: `${segmentLeft}px`,
 				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
 				height: "40px",
-				zIndex: isDragging ? 50 : isHighlighted ? 20 : 10,
+				zIndex: isDragging ? 10 : isHighlighted ? 20 : 10,
 				cursor: isDragging ? "grabbing" : "grab",
+				filter: isDragging ? "grayscale(80%)" : "none",
 			}}
 			onMouseEnter={() => {
 				if (!clickedSegment && !isDragging) {

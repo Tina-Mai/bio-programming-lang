@@ -11,7 +11,7 @@ interface ConstraintBoxProps {
 
 const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
 	const [searchTerm, setSearchTerm] = useState("");
-	const filteredConstraints = constraintOptions.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+	const filteredConstraints = constraintOptions.filter((c) => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return (
 		<div className="w-[180px] bg-system-yellow/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">

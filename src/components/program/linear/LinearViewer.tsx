@@ -1,13 +1,19 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Construct, Segment } from "@/types";
+import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 import SegmentComponent from "./Segment";
 import NewButtons from "./NewButtons";
 
-const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], generators = [] }) => {
+interface LinearViewerProps {
+	segments: Segment[];
+	constraints: ConstraintInstance[];
+	generators: GeneratorInstance[];
+}
+
+const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [] }) => {
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -373,7 +379,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							if (highlightedSegment?.id !== segment.id) return null;
 
 							// find all constraints that apply to this segment
-							const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(segment.id));
+							const segmentConstraints = constraints
+								.filter((constraint) => constraint.segments.includes(segment.id) && constraint.key)
+								.map((constraint) => {
+									const constraintDef = constraintOptions.find((c) => c.key === constraint.key);
+									return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
+								});
 							if (segmentConstraints.length === 0) return null;
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
 							const segmentLength = segment.length;
@@ -449,7 +460,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							{highlightedSegment &&
 								segments.includes(highlightedSegment) &&
 								(() => {
-									const segmentConstraints = constraints.filter((constraint) => constraint.segments.includes(highlightedSegment.id));
+									const segmentConstraints = constraints
+										.filter((constraint) => constraint.segments.includes(highlightedSegment.id) && constraint.key)
+										.map((constraint) => {
+											const constraintDef = constraintOptions.find((c) => c.key === constraint.key);
+											return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
+										});
 									if (segmentConstraints.length === 0) return null;
 
 									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
@@ -528,7 +544,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							{highlightedSegment &&
 								segments.includes(highlightedSegment) &&
 								(() => {
-									const segmentGenerators = generators.filter((generator) => generator.segments.includes(highlightedSegment.id));
+									const segmentGenerators = generators
+										.filter((generator) => generator.segments.includes(highlightedSegment.id) && generator.key)
+										.map((generator) => {
+											const generatorDef = generatorOptions.find((g) => g.key === generator.key);
+											return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
+										});
 									if (segmentGenerators.length === 0) return null;
 
 									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
@@ -613,7 +634,12 @@ const LinearViewer: React.FC<Construct> = ({ segments = [], constraints = [], ge
 							if (highlightedSegment?.id !== segment.id) return null;
 
 							// find all generators that apply to this segment
-							const segmentGenerators = generators.filter((generator) => generator.segments.includes(segment.id));
+							const segmentGenerators = generators
+								.filter((generator) => generator.segments.includes(segment.id) && generator.key)
+								.map((generator) => {
+									const generatorDef = generatorOptions.find((g) => g.key === generator.key);
+									return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
+								});
 							if (segmentGenerators.length === 0) return null;
 							const segmentPosition = segmentPositions.get(segment.id) || 0;
 							const segmentLength = segment.length;

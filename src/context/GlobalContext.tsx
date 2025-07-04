@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Project } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { SupabaseProgram, SupabaseConstraintNode, SupabaseSequenceNode, SupabaseDBEdge } from "@/lib/utils";
+import { SupabaseProgram } from "@/lib/utils/program";
 
 // define ProjectJSON based on what Supabase 'projects' table returns
 export interface ProjectJSON {
@@ -125,26 +125,27 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			if (programIds.length > 0) {
 				console.log(`Found ${programIds.length} programs to delete for project ${projectId}:`, programIds);
 
-				// 2. for each program, delete its associated nodes and edges
-				// (batching these deletes would be more efficient for many programs)
+				// 2. For each program, delete its associated data
+				// Note: Most associated data will be cascade deleted due to foreign key constraints
+				// We need to handle constructs and their related data
 				for (const programId of programIds) {
-					console.log(`Deleting graph components for program ${programId}...`);
-					const deletePromises = [
-						supabase.from("edges").delete().eq("program_id", programId),
-						supabase.from("constraint_nodes").delete().eq("program_id", programId),
-						supabase.from("sequence_nodes").delete().eq("program_id", programId),
-					];
-					const results = await Promise.allSettled(deletePromises);
-					results.forEach((result, index) => {
-						if (result.status === "rejected") {
-							const tables = ["edges", "constraint_nodes", "sequence_nodes"];
-							console.warn(`Error deleting from ${tables[index]} for program ${programId}: ${result.reason?.message}`);
-							// TODO: decide if to throw or continue. For now, log and continue.
-						}
-					});
+					console.log(`Deleting data for program ${programId}...`);
+
+					// Get constructs for this program (just to check for errors)
+					const { error: constructsError } = await supabase.from("constructs").select("id").eq("program_id", programId);
+
+					if (constructsError) {
+						console.warn(`Error fetching constructs for program ${programId}: ${constructsError.message}`);
+					}
+
+					// Cascade delete will handle:
+					// - construct_segment_order
+					// - outputs linked to constructs
+					// - constraints and constraint_segment_links
+					// - generators and generator_segment_links
 				}
 
-				// 3. delete all programs for the project
+				// 3. delete all programs for the project (cascade will handle related data)
 				console.log(`Deleting programs for project ${projectId}...`);
 				const { error: deleteProgramsError } = await supabase.from("programs").delete().in("id", programIds);
 				if (deleteProgramsError) {
@@ -195,14 +196,17 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				throw new Error(`Failed to fetch original program for duplication: ${fetchProgramsError.message}`);
 			}
 
-			const mostRecentOriginalProgram = originalProgramsData && originalProgramsData.length > 0 ? (originalProgramsData[0] as SupabaseProgram) : null;
+			const mostRecentOriginalProgram = originalProgramsData && originalProgramsData.length > 0 ? originalProgramsData[0] : null;
 
 			let newProgramIdForDuplication: string | undefined = undefined;
 
-			// 5. if a most recent program exists, duplicate it and its contents
+			// 4. if a most recent program exists, duplicate it and its contents
 			if (mostRecentOriginalProgram) {
 				const originalProgram = mostRecentOriginalProgram;
-				const idMap = new Map<string, string>();
+				const segmentIdMap = new Map<string, string>();
+				const constraintIdMap = new Map<string, string>();
+				const generatorIdMap = new Map<string, string>();
+				const constructIdMap = new Map<string, string>();
 
 				const newProgramId = uuidv4();
 				newProgramIdForDuplication = newProgramId;
@@ -219,98 +223,263 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					throw new Error(`Failed to create duplicated program entry: ${createProgramError.message}`);
 				}
 
-				const [constraintsResult, sequencesResult, edgesResult] = await Promise.all([
-					supabase.from("constraint_nodes").select<"*", SupabaseConstraintNode>("*").eq("program_id", originalProgram.id),
-					supabase.from("sequence_nodes").select<"*", SupabaseSequenceNode>("*").eq("program_id", originalProgram.id),
-					supabase.from("edges").select<"*", SupabaseDBEdge>("*").eq("program_id", originalProgram.id),
+				// Fetch all data related to the original program
+				const [constructsResult, constraintsResult, generatorsResult] = await Promise.all([
+					supabase.from("constructs").select("*").eq("program_id", originalProgram.id),
+					supabase.from("constraints").select("*").eq("program_id", originalProgram.id),
+					supabase.from("generators").select("*").eq("program_id", originalProgram.id),
 				]);
 
-				if (constraintsResult.error) {
+				if (constructsResult.error || constraintsResult.error || generatorsResult.error) {
 					await supabase.from("projects").delete().eq("id", newProjectId);
-					throw new Error(`Failed to fetch original constraint nodes for program ${originalProgram.id}: ${constraintsResult.error.message}`);
-				}
-				if (sequencesResult.error) {
-					await supabase.from("projects").delete().eq("id", newProjectId);
-					throw new Error(`Failed to fetch original sequence nodes for program ${originalProgram.id}: ${sequencesResult.error.message}`);
-				}
-				if (edgesResult.error) {
-					await supabase.from("projects").delete().eq("id", newProjectId);
-					throw new Error(`Failed to fetch original edges for program ${originalProgram.id}: ${edgesResult.error.message}`);
+					throw new Error("Failed to fetch original program data for duplication");
 				}
 
+				const originalConstructs = constructsResult.data || [];
 				const originalConstraints = constraintsResult.data || [];
-				const originalSequences = sequencesResult.data || [];
-				const originalEdges = edgesResult.data || [];
+				const originalGenerators = generatorsResult.data || [];
 
-				// c. duplicate constraint nodes
-				if (originalConstraints.length > 0) {
-					const newConstraintsToInsert = originalConstraints.map((cn) => {
-						const newId = uuidv4();
-						idMap.set(cn.id, newId);
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { id: _id, /* project_id: _project_id, */ program_id: _program_id, created_at: _created_at, ...rest } = cn; // Removed project_id
-						return { ...rest, id: newId, program_id: newProgramId }; // project_id is not re-added
+				// Fetch segments and their relationships for all constructs
+				interface SegmentData {
+					id: string;
+					length: number;
+					label?: string;
+					created_at?: string;
+					updated_at?: string;
+				}
+
+				interface SegmentOrder {
+					construct_id: string;
+					segment_id: string;
+					order_idx: number;
+					segments?: SegmentData;
+				}
+
+				interface SegmentLink {
+					constraint_id?: string;
+					generator_id?: string;
+					segment_id: string;
+				}
+
+				let allSegments: SegmentData[] = [];
+				let allSegmentOrders: SegmentOrder[] = [];
+				let allConstraintLinks: SegmentLink[] = [];
+				let allGeneratorLinks: SegmentLink[] = [];
+
+				if (originalConstructs.length > 0) {
+					const constructIds = originalConstructs.map((c) => c.id);
+
+					// Fetch construct-segment orders
+					const { data: segmentOrders, error: orderError } = await supabase.from("construct_segment_order").select("*, segments(*)").in("construct_id", constructIds);
+
+					if (orderError) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error("Failed to fetch segment orders");
+					}
+
+					allSegmentOrders = segmentOrders || [];
+
+					// Extract unique segments
+					const segmentMap = new Map();
+					allSegmentOrders.forEach((order) => {
+						if (order.segments) {
+							segmentMap.set(order.segments.id, order.segments);
+						}
 					});
-					const { error } = await supabase.from("constraint_nodes").insert(newConstraintsToInsert);
-					if (error) {
-						await supabase.from("projects").delete().eq("id", newProjectId); // Rollback
-						throw new Error(`Failed to duplicate constraint_nodes for program ${newProgramId}: ${error.message}`);
+					allSegments = Array.from(segmentMap.values());
+
+					// Fetch constraint and generator links
+					if (allSegments.length > 0) {
+						const segmentIds = allSegments.map((s) => s.id);
+
+						const [constraintLinksResult, generatorLinksResult] = await Promise.all([
+							supabase.from("constraint_segment_links").select("*").in("segment_id", segmentIds),
+							supabase.from("generator_segment_links").select("*").in("segment_id", segmentIds),
+						]);
+
+						allConstraintLinks = constraintLinksResult.data || [];
+						allGeneratorLinks = generatorLinksResult.data || [];
 					}
 				}
 
-				// d. duplicate sequence nodes (handling generator_id mapping)
-				if (originalSequences.length > 0) {
-					const newSequencesToInsert = originalSequences.map((sn) => {
-						const newId = uuidv4();
-						idMap.set(sn.id, newId);
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { id: _id, /* project_id: _project_id, */ program_id: _program_id, created_at: _created_at, generator_id: _generator_id_destructured, ...rest } = sn;
-						const newGeneratorId = sn.generator_id;
-						return { ...rest, id: newId, program_id: newProgramId, generator_id: newGeneratorId };
-					});
-					const { error } = await supabase.from("sequence_nodes").insert(newSequencesToInsert);
+				// Duplicate segments first
+				interface NewSegment {
+					id: string;
+					length: number;
+					label?: string;
+				}
+
+				const newSegments: NewSegment[] = [];
+				for (const segment of allSegments) {
+					const newSegmentId = uuidv4();
+					segmentIdMap.set(segment.id, newSegmentId);
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { id, created_at, updated_at, ...segmentData } = segment;
+					newSegments.push({ id: newSegmentId, ...segmentData });
+				}
+
+				if (newSegments.length > 0) {
+					const { error } = await supabase.from("segments").insert(newSegments);
 					if (error) {
 						await supabase.from("projects").delete().eq("id", newProjectId);
-						throw new Error(`Failed to duplicate sequence_nodes for program ${newProgramId}: ${error.message}`);
+						throw new Error(`Failed to duplicate segments: ${error.message}`);
 					}
 				}
 
-				// e. duplicate edges
-				if (originalEdges.length > 0) {
-					const newEdgesToInsert = originalEdges
-						.map((edge) => {
-							const newSourceId = idMap.get(edge.constraint_id);
-							const newTargetId = idMap.get(edge.sequence_id);
+				// Duplicate constraints
+				interface NewConstraint {
+					id: string;
+					program_id: string;
+					key?: string;
+					label?: string;
+				}
+				const newConstraints: NewConstraint[] = [];
+				for (const constraint of originalConstraints) {
+					const newConstraintId = uuidv4();
+					constraintIdMap.set(constraint.id, newConstraintId);
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { id, created_at, updated_at, program_id, ...constraintData } = constraint;
+					newConstraints.push({ id: newConstraintId, program_id: newProgramId, ...constraintData });
+				}
 
-							if (!newSourceId && edge.constraint_id) {
-								console.warn(`Skipping edge during duplication: Source node ${edge.constraint_id} not found in idMap for new program ${newProgramId}. Original edge ID: ${edge.id}`);
-								return null;
-							}
-							if (!newTargetId && edge.sequence_id) {
-								console.warn(`Skipping edge during duplication: Target node ${edge.sequence_id} not found in idMap for new program ${newProgramId}. Original edge ID: ${edge.id}`);
-								return null;
-							}
+				if (newConstraints.length > 0) {
+					const { error } = await supabase.from("constraints").insert(newConstraints);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate constraints: ${error.message}`);
+					}
+				}
 
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
-							const { id: _id, program_id: _program_id, created_at: _created_at, constraint_id: _orig_constraint_id, sequence_id: _orig_sequence_id, ...rest } = edge;
-							return {
-								...rest,
-								id: uuidv4(),
-								program_id: newProgramId,
-								constraint_id: newSourceId || null,
-								sequence_id: newTargetId || null,
-							};
-						})
-						.filter((e) => e !== null) as Omit<SupabaseDBEdge, "created_at" | "project_id">[];
+				// Duplicate generators
+				interface NewGenerator {
+					id: string;
+					program_id: string;
+					key?: string;
+					label?: string;
+				}
+				const newGenerators: NewGenerator[] = [];
+				for (const generator of originalGenerators) {
+					const newGeneratorId = uuidv4();
+					generatorIdMap.set(generator.id, newGeneratorId);
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { id, created_at, updated_at, program_id, ...generatorData } = generator;
+					newGenerators.push({ id: newGeneratorId, program_id: newProgramId, ...generatorData });
+				}
 
-					if (newEdgesToInsert.length > 0) {
-						const { error } = await supabase.from("edges").insert(newEdgesToInsert);
-						if (error) {
-							await supabase.from("projects").delete().eq("id", newProjectId);
-							throw new Error(`Failed to duplicate edges for program ${newProgramId}: ${error.message}`);
+				if (newGenerators.length > 0) {
+					const { error } = await supabase.from("generators").insert(newGenerators);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate generators: ${error.message}`);
+					}
+				}
+
+				// Duplicate constructs
+				interface NewConstruct {
+					id: string;
+					program_id: string;
+				}
+				const newConstructs: NewConstruct[] = [];
+				for (const construct of originalConstructs) {
+					const newConstructId = uuidv4();
+					constructIdMap.set(construct.id, newConstructId);
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { id, created_at, updated_at, program_id, output_id, ...constructData } = construct;
+					newConstructs.push({ id: newConstructId, program_id: newProgramId, ...constructData });
+				}
+
+				if (newConstructs.length > 0) {
+					const { error } = await supabase.from("constructs").insert(newConstructs);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate constructs: ${error.message}`);
+					}
+				}
+
+				// Duplicate construct-segment orders
+				interface NewSegmentOrder {
+					construct_id: string;
+					segment_id: string;
+					order_idx: number;
+				}
+				const newSegmentOrders: NewSegmentOrder[] = [];
+				for (const order of allSegmentOrders) {
+					const newConstructId = constructIdMap.get(order.construct_id);
+					const newSegmentId = segmentIdMap.get(order.segment_id);
+
+					if (newConstructId && newSegmentId) {
+						newSegmentOrders.push({
+							construct_id: newConstructId,
+							segment_id: newSegmentId,
+							order_idx: order.order_idx,
+						});
+					}
+				}
+
+				if (newSegmentOrders.length > 0) {
+					const { error } = await supabase.from("construct_segment_order").insert(newSegmentOrders);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate construct segment orders: ${error.message}`);
+					}
+				}
+
+				// Duplicate constraint-segment links
+				interface NewConstraintLink {
+					constraint_id: string;
+					segment_id: string;
+				}
+				const newConstraintLinks: NewConstraintLink[] = [];
+				for (const link of allConstraintLinks) {
+					if (link.constraint_id) {
+						const newConstraintId = constraintIdMap.get(link.constraint_id);
+						const newSegmentId = segmentIdMap.get(link.segment_id);
+
+						if (newConstraintId && newSegmentId) {
+							newConstraintLinks.push({
+								constraint_id: newConstraintId,
+								segment_id: newSegmentId,
+							});
 						}
 					}
 				}
+
+				if (newConstraintLinks.length > 0) {
+					const { error } = await supabase.from("constraint_segment_links").insert(newConstraintLinks);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate constraint segment links: ${error.message}`);
+					}
+				}
+
+				// Duplicate generator-segment links
+				interface NewGeneratorLink {
+					generator_id: string;
+					segment_id: string;
+				}
+				const newGeneratorLinks: NewGeneratorLink[] = [];
+				for (const link of allGeneratorLinks) {
+					if (link.generator_id) {
+						const newGeneratorId = generatorIdMap.get(link.generator_id);
+						const newSegmentId = segmentIdMap.get(link.segment_id);
+
+						if (newGeneratorId && newSegmentId) {
+							newGeneratorLinks.push({
+								generator_id: newGeneratorId,
+								segment_id: newSegmentId,
+							});
+						}
+					}
+				}
+
+				if (newGeneratorLinks.length > 0) {
+					const { error } = await supabase.from("generator_segment_links").insert(newGeneratorLinks);
+					if (error) {
+						await supabase.from("projects").delete().eq("id", newProjectId);
+						throw new Error(`Failed to duplicate generator segment links: ${error.message}`);
+					}
+				}
+
 				console.log(`Successfully duplicated program ${originalProgram.id} to ${newProgramId} for project ${newProjectId}`);
 			} else {
 				console.log(`No programs found in original project ${originalProjectId}. Creating a default initial program for duplicated project ${newProjectId}.`);

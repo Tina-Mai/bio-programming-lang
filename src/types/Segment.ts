@@ -4,6 +4,8 @@ export interface Segment {
 	length: number;
 	label?: string;
 	type?: string;
+	created_at: string;
+	updated_at?: string;
 }
 
 // TODO: special segment types

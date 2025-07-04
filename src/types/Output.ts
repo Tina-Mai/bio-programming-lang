@@ -1,6 +1,9 @@
 export interface Output {
 	id: string;
-	metadata: OutputMetadata; // metadata is just a json blob that we'd need to parse to get stuff like sequence, num_step, energy_score, etc.
+	construct_id?: string;
+	metadata?: OutputMetadata;
+	created_at: string;
+	updated_at?: string;
 }
 
 export interface OutputMetadata {

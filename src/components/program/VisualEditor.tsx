@@ -84,6 +84,7 @@ const VisualEditor = () => {
 			<div className="vertical h-full w-full justify-center items-center">
 				{/* mt-[52px] is to offset the header at the top of Program.tsx */}
 				<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] flex-1">
+					{/* TODO: map through all the constructs in a given program here */}
 					<ConstructInstance name="Example" length={85} segments={construct} constraints={constraints} generators={generators} />
 				</div>
 			</div>

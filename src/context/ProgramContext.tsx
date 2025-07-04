@@ -13,7 +13,7 @@ import {
 	transformConstraintWithSegments,
 	transformGeneratorWithSegments,
 } from "@/lib/utils/program";
-import { Construct, ConstraintInstance, GeneratorInstance } from "@/types";
+import { Construct, ConstraintInstance, GeneratorInstance, Segment } from "@/types";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -133,10 +133,27 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 
 	const reorderSegments = useCallback(
 		async (constructId: string, segmentIds: string[]) => {
-			try {
-				console.log("Reordering segments for construct:", constructId);
-				console.log("New segment order:", segmentIds);
+			const originalConstructs = constructs;
 
+			setConstructs((prevConstructs) =>
+				prevConstructs.map((c) => {
+					if (c.id === constructId && c.segments) {
+						const constructToUpdate = { ...c };
+						const segmentMap = new Map(c.segments.map((s) => [s.id, s]));
+						const reorderedSegments = segmentIds.map((id) => segmentMap.get(id)).filter((s): s is Segment => !!s);
+
+						if (reorderedSegments.length === segmentIds.length) {
+							constructToUpdate.segments = reorderedSegments;
+						} else {
+							console.error("Segment ID mismatch during optimistic reorder.");
+						}
+						return constructToUpdate;
+					}
+					return c;
+				})
+			);
+
+			try {
 				const { error } = await supabase.rpc("reorder_segments", {
 					p_construct_id: constructId,
 					p_segment_ids: segmentIds,
@@ -145,16 +162,16 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				if (error) {
 					throw new Error(`Failed to reorder segments: ${error.message}`);
 				}
-
-				// Refresh the program data to get the updated order
-				await fetchProgramData();
-			} catch (error) {
-				console.error("Error reordering segments:", error);
-				setError(error instanceof Error ? error.message : "Failed to reorder segments");
-				throw error;
+			} catch (err) {
+				// Rollback on error
+				setConstructs(originalConstructs);
+				console.error("Error reordering segments:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to reorder segments";
+				setError(errorMessage);
+				throw err;
 			}
 		},
-		[supabase, fetchProgramData]
+		[constructs, supabase]
 	);
 
 	// fetch data when program changes

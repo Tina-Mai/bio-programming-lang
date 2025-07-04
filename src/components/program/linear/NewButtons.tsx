@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Bookmark, SettingsAdjust, Chip } from "@carbon/icons-react";
+import { SettingsAdjust, Chip } from "@carbon/icons-react";
+import SegmentSymbol from "./SegmentSymbol";
 
 const NewButton = ({ children }: { children: React.ReactNode }) => {
 	return (
@@ -23,7 +24,7 @@ const NewButtons = () => {
 				New Generator
 			</NewButton>
 			<NewButton>
-				<Bookmark className="rotate-90 text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
+				<SegmentSymbol width={18} height={12} className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
 				New Segment
 			</NewButton>
 		</div>

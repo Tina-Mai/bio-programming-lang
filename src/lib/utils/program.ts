@@ -1,6 +1,6 @@
 import { Program, Construct, Segment, ConstraintInstance, GeneratorInstance, Output, OutputMetadata } from "@/types";
 
-// Helper interfaces for Supabase data
+// helper interfaces for Supabase data
 export interface SupabaseProgram extends Program {
 	constructs?: SupabaseConstruct[];
 }
@@ -39,7 +39,7 @@ export interface SupabaseGeneratorSegmentLink {
 
 export type SupabaseOutput = Output;
 
-// Helper function to parse output metadata
+// parse output metadata
 export function parseOutputMetadata(rawMetadata: Record<string, unknown> | undefined | null): OutputMetadata {
 	if (!rawMetadata) return {};
 
@@ -53,7 +53,7 @@ export function parseOutputMetadata(rawMetadata: Record<string, unknown> | undef
 	};
 }
 
-// Transform constraint data with segment links
+// transform constraint data with segment links
 export function transformConstraintWithSegments(constraint: SupabaseConstraint, segmentLinks: SupabaseConstraintSegmentLink[]): ConstraintInstance {
 	const linkedSegmentIds = segmentLinks.filter((link) => link.constraint_id === constraint.id).map((link) => link.segment_id);
 
@@ -63,7 +63,7 @@ export function transformConstraintWithSegments(constraint: SupabaseConstraint, 
 	};
 }
 
-// Transform generator data with segment links
+// transform generator data with segment links
 export function transformGeneratorWithSegments(generator: SupabaseGenerator, segmentLinks: SupabaseGeneratorSegmentLink[]): GeneratorInstance {
 	const linkedSegmentIds = segmentLinks.filter((link) => link.generator_id === generator.id).map((link) => link.segment_id);
 
@@ -73,7 +73,7 @@ export function transformGeneratorWithSegments(generator: SupabaseGenerator, seg
 	};
 }
 
-// Transform construct data with ordered segments
+// transform construct data with ordered segments
 export function transformConstructWithSegments(construct: SupabaseConstruct, segmentOrder: SupabaseConstructSegmentOrder[]): Construct {
 	const orderedSegments = segmentOrder
 		.filter((order) => order.construct_id === construct.id)

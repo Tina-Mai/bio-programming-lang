@@ -4,7 +4,7 @@ export interface Constraint {
 	description?: string;
 }
 
-// Constraint instance from database
+// constraint instance from database
 export interface ConstraintInstance {
 	id: string;
 	program_id: string;

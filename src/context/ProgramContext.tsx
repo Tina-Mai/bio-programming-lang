@@ -58,7 +58,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			const programId = currentProgram.id;
 			console.log(`ProgramProvider: Fetching data for program ID: ${programId}`);
 
-			// Fetch constructs, constraints, and generators
+			// fetch constructs, constraints, and generators
 			const [constructsResult, constraintsResult, generatorsResult] = await Promise.all([
 				supabase.from("constructs").select("*").eq("program_id", programId),
 				supabase.from("constraints").select("*").eq("program_id", programId),
@@ -73,7 +73,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			const fetchedConstraints = (constraintsResult.data as SupabaseConstraint[]) || [];
 			const fetchedGenerators = (generatorsResult.data as SupabaseGenerator[]) || [];
 
-			// Fetch segment data for constructs
+			// fetch segment data for constructs
 			let segmentOrders: SupabaseConstructSegmentOrder[] = [];
 			if (fetchedConstructs.length > 0) {
 				const constructIds = fetchedConstructs.map((c) => c.id);
@@ -88,7 +88,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.log("Fetched segment orders:", segmentOrders);
 			}
 
-			// Fetch constraint and generator segment links
+			// fetch constraint and generator segment links
 			let constraintLinks: SupabaseConstraintSegmentLink[] = [];
 			let generatorLinks: SupabaseGeneratorSegmentLink[] = [];
 
@@ -108,7 +108,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				generatorLinks = linkData || [];
 			}
 
-			// Transform the data
+			// transform the data
 			const transformedConstructs = fetchedConstructs.map((construct) => transformConstructWithSegments(construct, segmentOrders));
 
 			const transformedConstraints = fetchedConstraints.map((constraint) => transformConstraintWithSegments(constraint, constraintLinks));
@@ -130,7 +130,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		}
 	}, [currentProgram, supabase]);
 
-	// Fetch data when program changes
+	// fetch data when program changes
 	useEffect(() => {
 		fetchProgramData();
 	}, [fetchProgramData]);

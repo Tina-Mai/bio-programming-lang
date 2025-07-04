@@ -99,7 +99,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
 		if (programError) {
 			console.error("Failed to create initial program for new project. Full error object:", JSON.stringify(programError, null, 2));
-			// Attempt to delete the just-created project if program creation fails
+			// attempt to delete the just-created project if program creation fails
 			await supabase.from("projects").delete().eq("id", projectJson.id);
 			throw new Error(`Failed to create initial program: ${programError.message}`);
 		}
@@ -125,24 +125,17 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			if (programIds.length > 0) {
 				console.log(`Found ${programIds.length} programs to delete for project ${projectId}:`, programIds);
 
-				// 2. For each program, delete its associated data
-				// Note: Most associated data will be cascade deleted due to foreign key constraints
-				// We need to handle constructs and their related data
+				// 2. for each program, delete its associated data
+				// note: most associated data will be cascade deleted due to foreign key constraints
 				for (const programId of programIds) {
 					console.log(`Deleting data for program ${programId}...`);
 
-					// Get constructs for this program (just to check for errors)
+					// get constructs for this program (just to check for errors)
 					const { error: constructsError } = await supabase.from("constructs").select("id").eq("program_id", programId);
 
 					if (constructsError) {
 						console.warn(`Error fetching constructs for program ${programId}: ${constructsError.message}`);
 					}
-
-					// Cascade delete will handle:
-					// - construct_segment_order
-					// - outputs linked to constructs
-					// - constraints and constraint_segment_links
-					// - generators and generator_segment_links
 				}
 
 				// 3. delete all programs for the project (cascade will handle related data)
@@ -223,7 +216,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					throw new Error(`Failed to create duplicated program entry: ${createProgramError.message}`);
 				}
 
-				// Fetch all data related to the original program
+				// fetch all data related to the original program
 				const [constructsResult, constraintsResult, generatorsResult] = await Promise.all([
 					supabase.from("constructs").select("*").eq("program_id", originalProgram.id),
 					supabase.from("constraints").select("*").eq("program_id", originalProgram.id),
@@ -239,7 +232,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				const originalConstraints = constraintsResult.data || [];
 				const originalGenerators = generatorsResult.data || [];
 
-				// Fetch segments and their relationships for all constructs
+				// fetch segments and their relationships for all constructs
 				interface SegmentData {
 					id: string;
 					length: number;
@@ -269,7 +262,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				if (originalConstructs.length > 0) {
 					const constructIds = originalConstructs.map((c) => c.id);
 
-					// Fetch construct-segment orders
+					// fetch construct-segment orders
 					const { data: segmentOrders, error: orderError } = await supabase.from("construct_segment_order").select("*, segments(*)").in("construct_id", constructIds);
 
 					if (orderError) {
@@ -279,7 +272,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 					allSegmentOrders = segmentOrders || [];
 
-					// Extract unique segments
+					// extract unique segments
 					const segmentMap = new Map();
 					allSegmentOrders.forEach((order) => {
 						if (order.segments) {
@@ -288,7 +281,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					});
 					allSegments = Array.from(segmentMap.values());
 
-					// Fetch constraint and generator links
+					// fetch constraint and generator links
 					if (allSegments.length > 0) {
 						const segmentIds = allSegments.map((s) => s.id);
 
@@ -302,7 +295,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate segments first
+				// duplicate segments first
 				interface NewSegment {
 					id: string;
 					length: number;
@@ -326,7 +319,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate constraints
+				// duplicate constraints
 				interface NewConstraint {
 					id: string;
 					program_id: string;
@@ -350,7 +343,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate generators
+				// duplicate generators
 				interface NewGenerator {
 					id: string;
 					program_id: string;
@@ -374,7 +367,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate constructs
+				// duplicate constructs
 				interface NewConstruct {
 					id: string;
 					program_id: string;
@@ -396,7 +389,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate construct-segment orders
+				// duplicate construct-segment orders
 				interface NewSegmentOrder {
 					construct_id: string;
 					segment_id: string;
@@ -424,7 +417,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate constraint-segment links
+				// duplicate constraint-segment links
 				interface NewConstraintLink {
 					constraint_id: string;
 					segment_id: string;
@@ -452,7 +445,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 					}
 				}
 
-				// Duplicate generator-segment links
+				// duplicate generator-segment links
 				interface NewGeneratorLink {
 					generator_id: string;
 					segment_id: string;
@@ -483,7 +476,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				console.log(`Successfully duplicated program ${originalProgram.id} to ${newProgramId} for project ${newProjectId}`);
 			} else {
 				console.log(`No programs found in original project ${originalProjectId}. Creating a default initial program for duplicated project ${newProjectId}.`);
-				// create a default initial program for the new project
+				// create a default initial program for the duplicated project
 				const now = new Date().toISOString();
 				const initialProgramPayload = {
 					project_id: newProjectId,

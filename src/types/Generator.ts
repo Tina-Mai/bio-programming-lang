@@ -1,4 +1,4 @@
-type SequenceType = "dna" | "rna" | "protein";
+import { SequenceType } from "@/types";
 
 export interface Generator {
 	key: string;
@@ -8,7 +8,7 @@ export interface Generator {
 	hyperparameters?: Record<string, unknown>;
 }
 
-// Generator instance from database
+// generator instance from database
 export interface GeneratorInstance {
 	id: string;
 	program_id: string;

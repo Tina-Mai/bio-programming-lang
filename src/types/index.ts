@@ -5,3 +5,4 @@ export * from "./Segment";
 export * from "./Constraint";
 export * from "./Generator";
 export * from "./Output";
+export * from "./Sequence";

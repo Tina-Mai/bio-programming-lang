@@ -15,8 +15,11 @@ export type SegmentType = "CDS" | "promoter" | "terminator";
 export const SEGMENT_COLORS: Record<SegmentType | "default", { fill: string; stroke: string; highlight: string }> = {
 	default: {
 		fill: "oklch(0.9582 0.0183 269.09)",
-		stroke: "oklch(0.766 0.093 268.47 / 0.7)",
-		highlight: "oklch(0.766 0.093 268.47)",
+		stroke: "oklch(0.6635 0.0982 267.74 / 0.6)",
+		highlight: "oklch(0.6635 0.0982 267.74)",
+		// fill: "oklch(0.9601 0.0103 261.79)",
+		// stroke: "oklch(0.6635 0.0982 267.74 / 0.6)",
+		// highlight: "oklch(0.6635 0.0982 267.74)",
 	},
 	CDS: {
 		fill: "rgb(253 224 71 / 0.45)", // yellow

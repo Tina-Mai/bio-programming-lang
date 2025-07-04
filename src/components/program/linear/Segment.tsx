@@ -14,6 +14,7 @@ interface SegmentComponentProps {
 	offset: number;
 	position: number; // bp position based on length of prev segments
 	isDragging?: boolean;
+	isAnySegmentDragging?: boolean;
 	onDragStart?: (e: React.MouseEvent) => void;
 	baseLeftOffset?: number;
 }
@@ -30,6 +31,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	offset,
 	position,
 	isDragging = false,
+	isAnySegmentDragging = false,
 	onDragStart,
 	baseLeftOffset = 20,
 }) => {
@@ -38,37 +40,37 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	const segmentPixelWidth = calculateSegmentPixelWidth(segment, nucleotideWidth);
 	const segmentLeft = baseLeftOffset + position * nucleotideWidth - offset;
 	const colors = getSegmentColors(segment);
-	const isHovered = hoveredSegment === segment;
-	const isClicked = clickedSegment === segment;
-	const isHighlighted = isClicked || (isHovered && !clickedSegment);
-	const shouldDim = (clickedSegment || hoveredSegment) && !isHighlighted;
+	const isHovered = !isAnySegmentDragging && hoveredSegment === segment;
+	const isClicked = !isAnySegmentDragging && clickedSegment === segment;
+	const isHighlighted = !isAnySegmentDragging && (isClicked || (isHovered && !clickedSegment));
+	const shouldDim = !isAnySegmentDragging && (clickedSegment || hoveredSegment) && !isHighlighted;
 	const polygonPoints = `0,2 ${segmentPixelWidth},2 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH},20 ${segmentPixelWidth},38 0,38 ${SEGMENT_ARROW_WIDTH},20`;
 
 	return (
 		<div
 			key={`segment-${index}`}
 			data-segment-component
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} ${isDragging ? "opacity-40" : ""}`}
+			className={`group absolute transition-all duration-200 ${isDragging ? "opacity-50" : shouldDim ? "opacity-60" : ""}`}
 			style={{
 				left: `${segmentLeft}px`,
 				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
 				height: "40px",
 				zIndex: isDragging ? 10 : isHighlighted ? 20 : 10,
 				cursor: isDragging ? "grabbing" : "grab",
-				filter: isDragging ? "grayscale(80%)" : "none",
+				filter: isDragging ? "grayscale(80%)" : shouldDim ? "grayscale(100%)" : "none",
 			}}
 			onMouseEnter={() => {
-				if (!clickedSegment && !isDragging) {
+				if (!clickedSegment && !isAnySegmentDragging) {
 					setHoveredSegment(segment);
 				}
 			}}
 			onMouseLeave={() => {
-				if (!clickedSegment && !isDragging) {
+				if (!clickedSegment && !isAnySegmentDragging) {
 					setHoveredSegment(null);
 				}
 			}}
 			onClick={(e) => {
-				if (!isDragging) {
+				if (!isAnySegmentDragging) {
 					e.stopPropagation();
 					setClickedSegment(segment);
 					setHoveredSegment(null);

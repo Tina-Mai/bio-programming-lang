@@ -30,7 +30,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 
-	// Drag and drop state
+	// drag and drop state
 	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
 	const [draggedSegmentIndex, setDraggedSegmentIndex] = useState<number | null>(null);
 	const [dropPreviewIndex, setDropPreviewIndex] = useState<number | null>(null);
@@ -134,9 +134,10 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		}
 	};
 
+	// handle mouse move for drag & drop segments
 	const handleMouseMove = (e: React.MouseEvent) => {
 		if (isDragging && draggedSegment) {
-			// Update drag mouse position
+			// update drag mouse position
 			const rect = containerRef.current?.getBoundingClientRect();
 			if (rect) {
 				setDragMousePosition({
@@ -144,16 +145,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					y: e.clientY,
 				});
 			}
-
-			// Handle drag preview positioning
 			if (!rect) return;
 
-			// Calculate which position to snap to
+			// calculate which position to snap to
 			const mouseX = e.clientX - rect.left + offset;
-			let accumulatedWidth = 20; // Starting offset
+			let accumulatedWidth = 20;
 			let newIndex = 0;
 
-			// Find the insertion point
+			// find insertion point
 			for (let i = 0; i < segments.length; i++) {
 				const segmentWidth = segments[i].length * nucleotideWidth;
 				const segmentMidpoint = accumulatedWidth + segmentWidth / 2;
@@ -167,10 +166,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				newIndex = i + 1;
 			}
 
-			// Set the visual drop index (where the indicator appears)
 			setVisualDropIndex(newIndex);
 
-			// Don't update if it's the same position
 			if (draggedSegmentIndex !== null && newIndex > draggedSegmentIndex) {
 				newIndex--;
 			}
@@ -196,11 +193,11 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		}
 	};
 
+	// handle mouse up for drag & drop segments
 	const handleMouseUp = () => {
 		if (isDragging && draggedSegment && dropPreviewIndex !== null && draggedSegmentIndex !== null && constructId) {
-			// Only reorder if the position actually changed
+			// only reorder if the position actually changed
 			if (dropPreviewIndex !== draggedSegmentIndex) {
-				// Create new order array
 				const newSegments = [...segments];
 				console.log(
 					"Original segments:",
@@ -212,7 +209,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				const [removed] = newSegments.splice(draggedSegmentIndex, 1);
 				newSegments.splice(dropPreviewIndex, 0, removed);
 
-				// Get segment IDs in new order
+				// get segment IDs in new order
 				const segmentIds = newSegments.map((s) => s.id);
 				console.log("New segment IDs order:", segmentIds);
 				console.log(
@@ -220,18 +217,16 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					newSegments.map((s) => ({ id: s.id, label: s.label }))
 				);
 
-				// Check for duplicates
 				const uniqueIds = new Set(segmentIds);
 				if (uniqueIds.size !== segmentIds.length) {
 					console.error("Duplicate segment IDs detected!");
 				}
 
-				// Call the reorder function
 				reorderSegments(constructId, segmentIds).catch(console.error);
 			}
 		}
 
-		// Reset drag state
+		// reset drag state
 		setDraggedSegment(null);
 		setDraggedSegmentIndex(null);
 		setDropPreviewIndex(null);
@@ -260,7 +255,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			if (isDragging && draggedSegment && containerRef.current) {
 				const rect = containerRef.current.getBoundingClientRect();
 
-				// Update drag mouse position
 				setDragMousePosition({
 					x: e.clientX,
 					y: e.clientY,
@@ -283,7 +277,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					newIndex = i + 1;
 				}
 
-				// Set the visual drop index (where the indicator appears)
 				setVisualDropIndex(newIndex);
 
 				if (draggedSegmentIndex !== null && newIndex > draggedSegmentIndex) {
@@ -420,13 +413,13 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const segmentPositions = new Map<string, number>();
 	let currentPosition = 0;
 
-	// Calculate positions for original segments (for ghost rendering)
+	// calculate positions for original segments (for ghost rendering)
 	segments.forEach((segment) => {
 		segmentPositions.set(segment.id, currentPosition);
 		currentPosition += segment.length;
 	});
 
-	// Calculate positions considering drag preview
+	// calculate positions considering drag preview
 	const displaySegmentPositions = new Map<string, number>();
 	const displaySegments = [...segments];
 	if (isDragging && draggedSegmentIndex !== null && dropPreviewIndex !== null && draggedSegmentIndex !== dropPreviewIndex) {
@@ -441,7 +434,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	});
 
 	// get constraints and generators for highlighted segment
-	const highlightedSegment = clickedSegment || hoveredSegment;
+	const highlightedSegment = isDragging ? null : clickedSegment || hoveredSegment;
 
 	return (
 		<div className="w-full h-full">
@@ -612,14 +605,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									}}
 								>
 									<svg width={SEGMENT_ARROW_WIDTH} height="40" viewBox={`0 0 ${SEGMENT_ARROW_WIDTH} 40`} className="overflow-visible">
-										<polyline points={`0,2 ${SEGMENT_ARROW_WIDTH},20 0,38`} fill="none" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+										<polyline points={`0,2 ${SEGMENT_ARROW_WIDTH},20 0,38`} fill="none" stroke="#3b82f6" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
 									</svg>
-									<div className="absolute -top-1 -left-[5px]">
-										<div className="size-2.5 bg-blue-500 rounded-full" />
-									</div>
-									<div className="absolute -bottom-1 -left-[5px]">
-										<div className="size-2.5 bg-blue-500 rounded-full" />
-									</div>
 								</div>
 							)}
 
@@ -649,6 +636,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											offset={offset}
 											position={segmentPositions.get(segment.id) || 0}
 											isDragging={isDraggedSegment}
+											isAnySegmentDragging={isDragging}
 											onDragStart={(e) => {
 												e.stopPropagation();
 												setDraggedSegment(segment);
@@ -657,6 +645,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												setVisualDropIndex(originalIndex);
 												setIsDragging(true);
 												setDragMousePosition({ x: e.clientX, y: e.clientY });
+												// Clear hover and click states when dragging starts
+												setHoveredSegment(null);
+												setClickedSegment(null);
 											}}
 										/>
 									);
@@ -920,6 +911,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 							offset={0}
 							position={0}
 							isDragging={false}
+							isAnySegmentDragging={isDragging}
 							baseLeftOffset={0}
 						/>
 					</div>

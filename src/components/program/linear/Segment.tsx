@@ -15,6 +15,7 @@ interface SegmentComponentProps {
 	position: number; // bp position based on length of prev segments
 	isDragging?: boolean;
 	onDragStart?: (e: React.MouseEvent) => void;
+	baseLeftOffset?: number;
 }
 
 const SegmentComponent: React.FC<SegmentComponentProps> = ({
@@ -30,11 +31,12 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	position,
 	isDragging = false,
 	onDragStart,
+	baseLeftOffset = 20,
 }) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const segmentLength = segment.length;
 	const segmentPixelWidth = calculateSegmentPixelWidth(segment, nucleotideWidth);
-	const segmentLeft = 20 + position * nucleotideWidth - offset;
+	const segmentLeft = baseLeftOffset + position * nucleotideWidth - offset;
 	const colors = getSegmentColors(segment);
 	const isHovered = hoveredSegment === segment;
 	const isClicked = clickedSegment === segment;

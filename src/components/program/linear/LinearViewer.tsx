@@ -7,6 +7,7 @@ import GeneratorBox from "./Generator";
 import SegmentComponent from "./Segment";
 import NewButtons from "./NewButtons";
 import { useProgram } from "@/context/ProgramContext";
+import Portal from "../../global/Portal";
 
 interface LinearViewerProps {
 	segments: Segment[];
@@ -139,8 +140,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			const rect = containerRef.current?.getBoundingClientRect();
 			if (rect) {
 				setDragMousePosition({
-					x: e.clientX - rect.left,
-					y: e.clientY - rect.top,
+					x: e.clientX,
+					y: e.clientY,
 				});
 			}
 
@@ -261,8 +262,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 				// Update drag mouse position
 				setDragMousePosition({
-					x: e.clientX - rect.left,
-					y: e.clientY - rect.top,
+					x: e.clientX,
+					y: e.clientY,
 				});
 
 				const mouseX = e.clientX - rect.left + offset;
@@ -647,6 +648,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												setDropPreviewIndex(originalIndex);
 												setVisualDropIndex(originalIndex);
 												setIsDragging(true);
+												setDragMousePosition({ x: e.clientX, y: e.clientY });
 											}}
 										/>
 									);
@@ -883,34 +885,37 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			{/* Bottom buttons */}
 			<NewButtons />
 
-			{/* Floating dragged segment - rendered outside main container */}
-			{isDragging && draggedSegment && containerRef.current && (
-				<div
-					className="fixed pointer-events-none"
-					style={{
-						left: `${containerRef.current.getBoundingClientRect().left + dragMousePosition.x - (draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH) / 2}px`,
-						top: `${containerRef.current.getBoundingClientRect().top + dragMousePosition.y - 20}px`,
-						width: `${draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH}px`,
-						height: "40px",
-						zIndex: 9999,
-						transform: "scale(1.05)",
-						filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))",
-					}}
-				>
-					<SegmentComponent
-						segment={draggedSegment}
-						index={draggedSegmentIndex || 0}
-						hoveredSegment={null}
-						setHoveredSegment={() => {}}
-						clickedSegment={null}
-						setClickedSegment={() => {}}
-						baseWidth={baseWidth}
-						zoomLevel={zoomLevel}
-						offset={0}
-						position={0}
-						isDragging={false}
-					/>
-				</div>
+			{/* Floating dragged segment - rendered outside main container in a portal */}
+			{isDragging && draggedSegment && (
+				<Portal>
+					<div
+						className="fixed pointer-events-none"
+						style={{
+							left: `${dragMousePosition.x - (draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH) / 2}px`,
+							top: `${dragMousePosition.y - 20}px`,
+							width: `${draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH}px`,
+							height: "40px",
+							zIndex: 9999,
+							transform: "scale(1.05)",
+							filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))",
+						}}
+					>
+						<SegmentComponent
+							segment={draggedSegment}
+							index={draggedSegmentIndex || 0}
+							hoveredSegment={null}
+							setHoveredSegment={() => {}}
+							clickedSegment={null}
+							setClickedSegment={() => {}}
+							baseWidth={baseWidth}
+							zoomLevel={zoomLevel}
+							offset={0}
+							position={0}
+							isDragging={false}
+							baseLeftOffset={0}
+						/>
+					</div>
+				</Portal>
 			)}
 		</div>
 	);

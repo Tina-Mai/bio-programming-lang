@@ -603,15 +603,23 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 							{/* Drop zone indicator */}
 							{isDragging && visualDropIndex !== null && (
 								<div
-									className="absolute h-12 w-1 bg-blue-500"
+									className="absolute"
 									style={{
-										left: `${20 + segments.slice(0, visualDropIndex).reduce((acc, s) => acc + s.length, 0) * nucleotideWidth - offset}px`,
+										left: `${20 + segments.slice(0, visualDropIndex).reduce((acc, s) => acc + s.length, 0) * nucleotideWidth - offset - 2}px`,
+										top: 0,
 										zIndex: 40,
-										boxShadow: "0 0 8px rgba(59, 130, 246, 0.5)",
+										filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))",
 									}}
 								>
-									<div className="absolute -top-2 -left-1.5 w-4 h-4 bg-blue-500 rounded-full" />
-									<div className="absolute -bottom-2 -left-1.5 w-4 h-4 bg-blue-500 rounded-full" />
+									<svg width={SEGMENT_ARROW_WIDTH} height="40" viewBox={`0 0 ${SEGMENT_ARROW_WIDTH} 40`} className="overflow-visible">
+										<polyline points={`0,2 ${SEGMENT_ARROW_WIDTH},20 0,38`} fill="none" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+									</svg>
+									<div className="absolute -top-1 -left-[5px]">
+										<div className="size-2.5 bg-blue-500 rounded-full" />
+									</div>
+									<div className="absolute -bottom-1 -left-[5px]">
+										<div className="size-2.5 bg-blue-500 rounded-full" />
+									</div>
 								</div>
 							)}
 

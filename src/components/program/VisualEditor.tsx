@@ -31,7 +31,7 @@ const VisualEditor = () => {
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>
-				<LinearViewer segments={segments} constraints={constructConstraints} generators={constructGenerators} />
+				<LinearViewer segments={segments} constraints={constructConstraints} generators={constructGenerators} constructId={construct.id} />
 			</div>
 		);
 	};

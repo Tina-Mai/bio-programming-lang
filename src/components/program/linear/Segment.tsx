@@ -13,9 +13,24 @@ interface SegmentComponentProps {
 	zoomLevel: number;
 	offset: number;
 	position: number; // bp position based on length of prev segments
+	isDragging?: boolean;
+	onDragStart?: (e: React.MouseEvent) => void;
 }
 
-const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hoveredSegment, setHoveredSegment, clickedSegment, setClickedSegment, baseWidth, zoomLevel, offset, position }) => {
+const SegmentComponent: React.FC<SegmentComponentProps> = ({
+	segment,
+	index,
+	hoveredSegment,
+	setHoveredSegment,
+	clickedSegment,
+	setClickedSegment,
+	baseWidth,
+	zoomLevel,
+	offset,
+	position,
+	isDragging = false,
+	onDragStart,
+}) => {
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const segmentLength = segment.length;
 	const segmentPixelWidth = calculateSegmentPixelWidth(segment, nucleotideWidth);
@@ -31,27 +46,35 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({ segment, index, hov
 		<div
 			key={`segment-${index}`}
 			data-segment-component
-			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} cursor-pointer`}
+			className={`group absolute transition-opacity duration-200 ${shouldDim ? "opacity-50" : "opacity-100"} ${isDragging ? "opacity-70 z-50" : ""}`}
 			style={{
 				left: `${segmentLeft}px`,
 				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
 				height: "40px",
-				zIndex: isHighlighted ? 20 : 10,
+				zIndex: isDragging ? 50 : isHighlighted ? 20 : 10,
+				cursor: isDragging ? "grabbing" : "grab",
 			}}
 			onMouseEnter={() => {
-				if (!clickedSegment) {
+				if (!clickedSegment && !isDragging) {
 					setHoveredSegment(segment);
 				}
 			}}
 			onMouseLeave={() => {
-				if (!clickedSegment) {
+				if (!clickedSegment && !isDragging) {
 					setHoveredSegment(null);
 				}
 			}}
 			onClick={(e) => {
-				e.stopPropagation();
-				setClickedSegment(segment);
-				setHoveredSegment(null);
+				if (!isDragging) {
+					e.stopPropagation();
+					setClickedSegment(segment);
+					setHoveredSegment(null);
+				}
+			}}
+			onMouseDown={(e) => {
+				if (onDragStart) {
+					onDragStart(e);
+				}
 			}}
 		>
 			<svg width="100%" height="40" viewBox={`0 0 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH} 40`} preserveAspectRatio="none" className="overflow-visible">

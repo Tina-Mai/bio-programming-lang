@@ -29,6 +29,7 @@ interface ProgramContextProps {
 	isLoading: boolean;
 	error: string | null;
 	refreshProgramData: () => Promise<void>;
+	reorderSegments: (constructId: string, segmentIds: string[]) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -130,6 +131,32 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		}
 	}, [currentProgram, supabase]);
 
+	const reorderSegments = useCallback(
+		async (constructId: string, segmentIds: string[]) => {
+			try {
+				console.log("Reordering segments for construct:", constructId);
+				console.log("New segment order:", segmentIds);
+
+				const { error } = await supabase.rpc("reorder_segments", {
+					p_construct_id: constructId,
+					p_segment_ids: segmentIds,
+				});
+
+				if (error) {
+					throw new Error(`Failed to reorder segments: ${error.message}`);
+				}
+
+				// Refresh the program data to get the updated order
+				await fetchProgramData();
+			} catch (error) {
+				console.error("Error reordering segments:", error);
+				setError(error instanceof Error ? error.message : "Failed to reorder segments");
+				throw error;
+			}
+		},
+		[supabase, fetchProgramData]
+	);
+
 	// fetch data when program changes
 	useEffect(() => {
 		fetchProgramData();
@@ -142,6 +169,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		isLoading,
 		error,
 		refreshProgramData: fetchProgramData,
+		reorderSegments,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

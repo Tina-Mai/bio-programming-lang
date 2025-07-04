@@ -1,19 +1,22 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions } from "@/types";
+import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 import SegmentComponent from "./Segment";
 import NewButtons from "./NewButtons";
+import { useProgram } from "@/context/ProgramContext";
 
 interface LinearViewerProps {
 	segments: Segment[];
 	constraints: ConstraintInstance[];
 	generators: GeneratorInstance[];
+	constructId?: string;
 }
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [] }) => {
+const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
+	const { reorderSegments } = useProgram();
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -25,6 +28,13 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [isPanning, setIsPanning] = useState<boolean>(false);
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
+
+	// Drag and drop state
+	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
+	const [draggedSegmentIndex, setDraggedSegmentIndex] = useState<number | null>(null);
+	const [dropPreviewIndex, setDropPreviewIndex] = useState<number | null>(null);
+	const [isDragging, setIsDragging] = useState<boolean>(false);
+
 	const containerRef = useRef<HTMLDivElement>(null);
 	const baseWidth = 10.1;
 	const nucleotideWidth = baseWidth * zoomLevel;
@@ -114,13 +124,46 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setHoveredSegment(null);
 		}
 
-		if (!isClickingSegment && isHovering) {
+		if (!isClickingSegment && isHovering && !isDragging) {
 			setIsPanning(true);
 			setLastMouseX(e.clientX);
 		}
 	};
 
 	const handleMouseMove = (e: React.MouseEvent) => {
+		if (isDragging && draggedSegment) {
+			// Handle drag preview positioning
+			const rect = containerRef.current?.getBoundingClientRect();
+			if (!rect) return;
+
+			// Calculate which position to snap to
+			const mouseX = e.clientX - rect.left + offset;
+			let accumulatedWidth = 20; // Starting offset
+			let newIndex = 0;
+
+			// Find the insertion point
+			for (let i = 0; i < segments.length; i++) {
+				const segmentWidth = segments[i].length * nucleotideWidth;
+				const segmentMidpoint = accumulatedWidth + segmentWidth / 2;
+
+				if (mouseX < segmentMidpoint) {
+					newIndex = i;
+					break;
+				}
+
+				accumulatedWidth += segmentWidth;
+				newIndex = i + 1;
+			}
+
+			// Don't update if it's the same position
+			if (draggedSegmentIndex !== null && newIndex > draggedSegmentIndex) {
+				newIndex--;
+			}
+
+			setDropPreviewIndex(newIndex);
+			return;
+		}
+
 		if (isPanning) {
 			const deltaX = e.clientX - lastMouseX;
 			const totalContentWidth = totalLength * nucleotideWidth + 40;
@@ -138,6 +181,45 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	};
 
 	const handleMouseUp = () => {
+		if (isDragging && draggedSegment && dropPreviewIndex !== null && draggedSegmentIndex !== null && constructId) {
+			// Only reorder if the position actually changed
+			if (dropPreviewIndex !== draggedSegmentIndex) {
+				// Create new order array
+				const newSegments = [...segments];
+				console.log(
+					"Original segments:",
+					segments.map((s) => ({ id: s.id, label: s.label }))
+				);
+				console.log("Dragged segment index:", draggedSegmentIndex);
+				console.log("Drop preview index:", dropPreviewIndex);
+
+				const [removed] = newSegments.splice(draggedSegmentIndex, 1);
+				newSegments.splice(dropPreviewIndex, 0, removed);
+
+				// Get segment IDs in new order
+				const segmentIds = newSegments.map((s) => s.id);
+				console.log("New segment IDs order:", segmentIds);
+				console.log(
+					"New segments:",
+					newSegments.map((s) => ({ id: s.id, label: s.label }))
+				);
+
+				// Check for duplicates
+				const uniqueIds = new Set(segmentIds);
+				if (uniqueIds.size !== segmentIds.length) {
+					console.error("Duplicate segment IDs detected!");
+				}
+
+				// Call the reorder function
+				reorderSegments(constructId, segmentIds).catch(console.error);
+			}
+		}
+
+		// Reset drag state
+		setDraggedSegment(null);
+		setDraggedSegmentIndex(null);
+		setDropPreviewIndex(null);
+		setIsDragging(false);
 		setIsPanning(false);
 	};
 
@@ -157,6 +239,32 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	// global mouse events for dragging outside container
 	useEffect(() => {
 		const handleGlobalMouseMove = (e: MouseEvent) => {
+			if (isDragging && draggedSegment && containerRef.current) {
+				const rect = containerRef.current.getBoundingClientRect();
+				const mouseX = e.clientX - rect.left + offset;
+				let accumulatedWidth = 20;
+				let newIndex = 0;
+
+				for (let i = 0; i < segments.length; i++) {
+					const segmentWidth = segments[i].length * nucleotideWidth;
+					const segmentMidpoint = accumulatedWidth + segmentWidth / 2;
+
+					if (mouseX < segmentMidpoint) {
+						newIndex = i;
+						break;
+					}
+
+					accumulatedWidth += segmentWidth;
+					newIndex = i + 1;
+				}
+
+				if (draggedSegmentIndex !== null && newIndex > draggedSegmentIndex) {
+					newIndex--;
+				}
+
+				setDropPreviewIndex(newIndex);
+			}
+
 			if (isPanning) {
 				const deltaX = e.clientX - lastMouseX;
 				const totalContentWidth = totalLength * nucleotideWidth + 40;
@@ -168,10 +276,24 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		};
 
 		const handleGlobalMouseUp = () => {
+			if (isDragging && draggedSegment && dropPreviewIndex !== null && draggedSegmentIndex !== null && constructId) {
+				if (dropPreviewIndex !== draggedSegmentIndex) {
+					const newSegments = [...segments];
+					const [removed] = newSegments.splice(draggedSegmentIndex, 1);
+					newSegments.splice(dropPreviewIndex, 0, removed);
+					const segmentIds = newSegments.map((s) => s.id);
+					reorderSegments(constructId, segmentIds).catch(console.error);
+				}
+			}
+
+			setDraggedSegment(null);
+			setDraggedSegmentIndex(null);
+			setDropPreviewIndex(null);
+			setIsDragging(false);
 			setIsPanning(false);
 		};
 
-		if (isPanning) {
+		if (isPanning || isDragging) {
 			document.addEventListener("mousemove", handleGlobalMouseMove);
 			document.addEventListener("mouseup", handleGlobalMouseUp);
 		}
@@ -180,7 +302,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			document.removeEventListener("mousemove", handleGlobalMouseMove);
 			document.removeEventListener("mouseup", handleGlobalMouseUp);
 		};
-	}, [isPanning, lastMouseX, offset, totalLength, nucleotideWidth, visibleWidth]);
+	}, [isPanning, isDragging, draggedSegment, draggedSegmentIndex, dropPreviewIndex, lastMouseX, offset, totalLength, nucleotideWidth, visibleWidth, segments, constructId, reorderSegments]);
 
 	// click outside the component to clear clicked segment
 	useEffect(() => {
@@ -267,7 +389,15 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	// calculate segment positions - segments are connected in order
 	const segmentPositions = new Map<string, number>();
 	let currentPosition = 0;
-	segments.forEach((segment) => {
+
+	// Calculate positions considering drag preview
+	const displaySegments = [...segments];
+	if (isDragging && draggedSegmentIndex !== null && dropPreviewIndex !== null && draggedSegmentIndex !== dropPreviewIndex) {
+		const [removed] = displaySegments.splice(draggedSegmentIndex, 1);
+		displaySegments.splice(dropPreviewIndex, 0, removed);
+	}
+
+	displaySegments.forEach((segment) => {
 		segmentPositions.set(segment.id, currentPosition);
 		currentPosition += segment.length;
 	});
@@ -286,7 +416,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				onMouseLeave={handleMouseLeave}
 				onMouseEnter={handleMouseEnter}
 				style={{
-					cursor: isPanning ? "grabbing" : "grab",
+					cursor: isDragging ? "grabbing" : isPanning ? "grabbing" : "default",
 					touchAction: "none",
 				}}
 			>
@@ -382,7 +512,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 							const segmentConstraints = constraints
 								.filter((constraint) => constraint.segments.includes(segment.id) && constraint.key)
 								.map((constraint) => {
-									const constraintDef = constraintOptions.find((c) => c.key === constraint.key);
+									const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
 									return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
 								});
 							if (segmentConstraints.length === 0) return null;
@@ -432,7 +562,21 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					{/* Segments */}
 					{segments.length > 0 && (
 						<div className="relative h-12 w-full overflow-visible">
-							{segments
+							{/* Drop zone indicator */}
+							{isDragging && dropPreviewIndex !== null && (
+								<div
+									className="absolute h-12 w-1 bg-blue-500/50"
+									style={{
+										left: `${20 + displaySegments.slice(0, dropPreviewIndex).reduce((acc, s) => acc + s.length, 0) * nucleotideWidth - offset}px`,
+										zIndex: 40,
+									}}
+								>
+									<div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full" />
+									<div className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-500 rounded-full" />
+								</div>
+							)}
+
+							{displaySegments
 								.filter((segment) => {
 									const segmentPosition = segmentPositions.get(segment.id) || 0;
 									const segmentLength = segment.length;
@@ -440,21 +584,34 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const segmentWidth = segmentLength * nucleotideWidth;
 									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
 								})
-								.map((segment, index) => (
-									<SegmentComponent
-										key={`segment-${index}`}
-										segment={segment}
-										index={index}
-										hoveredSegment={hoveredSegment}
-										setHoveredSegment={setHoveredSegment}
-										clickedSegment={clickedSegment}
-										setClickedSegment={setClickedSegment}
-										baseWidth={baseWidth}
-										zoomLevel={zoomLevel}
-										offset={offset}
-										position={segmentPositions.get(segment.id) || 0}
-									/>
-								))}
+								.map((segment) => {
+									const originalIndex = segments.findIndex((s) => s.id === segment.id);
+									const isDraggedSegment = draggedSegment?.id === segment.id;
+
+									return (
+										<SegmentComponent
+											key={`segment-${segment.id}`}
+											segment={segment}
+											index={originalIndex}
+											hoveredSegment={hoveredSegment}
+											setHoveredSegment={setHoveredSegment}
+											clickedSegment={clickedSegment}
+											setClickedSegment={setClickedSegment}
+											baseWidth={baseWidth}
+											zoomLevel={zoomLevel}
+											offset={offset}
+											position={segmentPositions.get(segment.id) || 0}
+											isDragging={isDraggedSegment}
+											onDragStart={(e) => {
+												e.stopPropagation();
+												setDraggedSegment(segment);
+												setDraggedSegmentIndex(originalIndex);
+												setDropPreviewIndex(originalIndex);
+												setIsDragging(true);
+											}}
+										/>
+									);
+								})}
 
 							{/* Constraint connecting lines */}
 							{highlightedSegment &&
@@ -463,7 +620,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const segmentConstraints = constraints
 										.filter((constraint) => constraint.segments.includes(highlightedSegment.id) && constraint.key)
 										.map((constraint) => {
-											const constraintDef = constraintOptions.find((c) => c.key === constraint.key);
+											const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
 											return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
 										});
 									if (segmentConstraints.length === 0) return null;
@@ -547,7 +704,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const segmentGenerators = generators
 										.filter((generator) => generator.segments.includes(highlightedSegment.id) && generator.key)
 										.map((generator) => {
-											const generatorDef = generatorOptions.find((g) => g.key === generator.key);
+											const generatorDef = generatorOptions.find((g: GeneratorType) => g.key === generator.key);
 											return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
 										});
 									if (segmentGenerators.length === 0) return null;
@@ -637,7 +794,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 							const segmentGenerators = generators
 								.filter((generator) => generator.segments.includes(segment.id) && generator.key)
 								.map((generator) => {
-									const generatorDef = generatorOptions.find((g) => g.key === generator.key);
+									const generatorDef = generatorOptions.find((g: GeneratorType) => g.key === generator.key);
 									return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
 								});
 							if (segmentGenerators.length === 0) return null;

@@ -30,6 +30,7 @@ interface ProgramContextProps {
 	error: string | null;
 	refreshProgramData: () => Promise<void>;
 	reorderSegments: (constructId: string, segmentIds: string[]) => Promise<void>;
+	updateSegmentLength: (segmentId: string, newLength: number) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -174,6 +175,55 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		[constructs, supabase]
 	);
 
+	const updateSegmentLength = useCallback(
+		async (segmentId: string, newLength: number) => {
+			// Don't allow segments with length less than 1
+			if (newLength < 1) {
+				console.error("Segment length must be at least 1");
+				return;
+			}
+
+			// Optimistically update the local state
+			const originalConstructs = constructs;
+
+			setConstructs((prevConstructs) =>
+				prevConstructs.map((construct) => {
+					if (construct.segments) {
+						const updatedSegments = construct.segments.map((segment) => {
+							if (segment.id === segmentId) {
+								return { ...segment, length: newLength };
+							}
+							return segment;
+						});
+
+						// Check if any segment was updated
+						if (updatedSegments !== construct.segments) {
+							return { ...construct, segments: updatedSegments };
+						}
+					}
+					return construct;
+				})
+			);
+
+			try {
+				// Update in database
+				const { error } = await supabase.from("segments").update({ length: newLength }).eq("id", segmentId);
+
+				if (error) {
+					throw new Error(`Failed to update segment length: ${error.message}`);
+				}
+			} catch (err) {
+				// Rollback on error
+				setConstructs(originalConstructs);
+				console.error("Error updating segment length:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to update segment length";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[constructs, supabase]
+	);
+
 	// fetch data when program changes
 	useEffect(() => {
 		fetchProgramData();
@@ -187,6 +237,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		error,
 		refreshProgramData: fetchProgramData,
 		reorderSegments,
+		updateSegmentLength,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

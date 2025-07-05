@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH } from "@/types";
+import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 import SegmentComponent from "./Segment";
@@ -17,7 +17,7 @@ interface LinearViewerProps {
 }
 
 const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
-	const { reorderSegments } = useProgram();
+	const { reorderSegments, updateSegmentLength } = useProgram();
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -181,6 +181,13 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		[isHovering, totalLength, baseWidth, visibleWidth, calculateMinZoomLevel]
 	);
 
+	// resize state
+	const [resizingSegment, setResizingSegment] = useState<Segment | null>(null);
+	const [isResizing, setIsResizing] = useState<boolean>(false);
+	const [resizeStartX, setResizeStartX] = useState<number>(0);
+	const [resizeStartLength, setResizeStartLength] = useState<number>(0);
+	const [resizeCurrentLength, setResizeCurrentLength] = useState<number>(0);
+
 	// handle mouse events for panning
 	const handleMouseDown = (e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
@@ -191,14 +198,23 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setHoveredSegment(null);
 		}
 
-		if (!isClickingSegment && isHovering && !isDragging) {
+		if (!isClickingSegment && isHovering && !isDragging && !isResizing) {
 			setIsPanning(true);
 			setLastMouseX(e.clientX);
 		}
 	};
 
-	// handle mouse move for drag & drop segments
+	// handle mouse move for drag & drop segments AND resize
 	const handleMouseMove = (e: React.MouseEvent) => {
+		// Handle resize
+		if (isResizing && resizingSegment) {
+			const deltaX = e.clientX - resizeStartX;
+			const deltaLength = Math.round(deltaX / nucleotideWidth);
+			const newLength = Math.max(1, resizeStartLength + deltaLength);
+			setResizeCurrentLength(newLength);
+			return;
+		}
+
 		// Check if we should start dragging
 		if (potentialDrag.segment && !potentialDrag.hasStarted) {
 			const deltaX = Math.abs(e.clientX - potentialDrag.startX);
@@ -276,8 +292,13 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		}
 	};
 
-	// handle mouse up for drag & drop segments
+	// handle mouse up for drag & drop segments AND resize
 	const handleMouseUp = () => {
+		// Handle resize completion
+		if (isResizing && resizingSegment && resizeCurrentLength !== resizeStartLength) {
+			updateSegmentLength(resizingSegment.id, resizeCurrentLength).catch(console.error);
+		}
+
 		// If we're in potential drag but haven't started dragging, treat as click
 		if (potentialDrag.segment && !potentialDrag.hasStarted) {
 			// Reset potential drag state
@@ -326,13 +347,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		setIsPanning(false);
 		setDragMousePosition({ x: 0, y: 0 });
 		setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
+
+		// reset resize state
+		setResizingSegment(null);
+		setIsResizing(false);
+		setResizeStartX(0);
+		setResizeStartLength(0);
+		setResizeCurrentLength(0);
 	};
 
 	const handleMouseLeave = () => {
 		setHoveredPosition(null);
 		setIsPanning(false);
 		setIsHovering(false);
-		if (!clickedSegment) {
+		if (!clickedSegment && !isResizing) {
 			setHoveredSegment(null);
 		}
 	};
@@ -341,9 +369,17 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		setIsHovering(true);
 	};
 
-	// global mouse events for dragging outside container
+	// global mouse events for dragging outside container AND resize
 	useEffect(() => {
 		const handleGlobalMouseMove = (e: MouseEvent) => {
+			// Handle resize
+			if (isResizing && resizingSegment) {
+				const deltaX = e.clientX - resizeStartX;
+				const deltaLength = Math.round(deltaX / nucleotideWidth);
+				const newLength = Math.max(1, resizeStartLength + deltaLength);
+				setResizeCurrentLength(newLength);
+			}
+
 			// Check if we should start dragging
 			if (potentialDrag.segment && !potentialDrag.hasStarted) {
 				const deltaX = Math.abs(e.clientX - potentialDrag.startX);
@@ -409,6 +445,11 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		};
 
 		const handleGlobalMouseUp = () => {
+			// Handle resize completion
+			if (isResizing && resizingSegment && resizeCurrentLength !== resizeStartLength) {
+				updateSegmentLength(resizingSegment.id, resizeCurrentLength).catch(console.error);
+			}
+
 			// If we're in potential drag but haven't started dragging, treat as click
 			if (potentialDrag.segment && !potentialDrag.hasStarted) {
 				// Reset potential drag state
@@ -435,9 +476,16 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setIsPanning(false);
 			setDragMousePosition({ x: 0, y: 0 });
 			setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
+
+			// reset resize state
+			setResizingSegment(null);
+			setIsResizing(false);
+			setResizeStartX(0);
+			setResizeStartLength(0);
+			setResizeCurrentLength(0);
 		};
 
-		if (isPanning || isDragging || potentialDrag.segment) {
+		if (isPanning || isDragging || potentialDrag.segment || isResizing) {
 			document.addEventListener("mousemove", handleGlobalMouseMove);
 			document.addEventListener("mouseup", handleGlobalMouseUp);
 		}
@@ -462,6 +510,12 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		reorderSegments,
 		potentialDrag,
 		DRAG_THRESHOLD,
+		isResizing,
+		resizingSegment,
+		resizeStartX,
+		resizeStartLength,
+		resizeCurrentLength,
+		updateSegmentLength,
 	]);
 
 	// click outside the component to clear clicked segment
@@ -760,34 +814,105 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 								.map((segment) => {
 									const originalIndex = segments.findIndex((s) => s.id === segment.id);
 									const isDraggedSegment = draggedSegment?.id === segment.id;
+									const isResizingSegment = resizingSegment?.id === segment.id;
+									const currentLength = isResizingSegment && isResizing ? resizeCurrentLength : segment.length;
+
+									// For resize visualization
+									let resizeOverlay = null;
+									if (isResizingSegment && isResizing) {
+										const originalPixelWidth = segment.length * nucleotideWidth;
+										const newPixelWidth = resizeCurrentLength * nucleotideWidth;
+										const position = displaySegmentPositions.get(segment.id) || 0;
+										const segmentLeft = 20 + position * nucleotideWidth - offset;
+
+										if (resizeCurrentLength > segment.length) {
+											// Growing segment - show overlay extending to the right
+											resizeOverlay = (
+												<div
+													className="absolute pointer-events-none"
+													style={{
+														left: `${segmentLeft + originalPixelWidth}px`,
+														top: "0px",
+														width: `${newPixelWidth - originalPixelWidth}px`,
+														height: "40px",
+														backgroundColor: "rgba(59, 130, 246, 0.3)",
+														zIndex: 25,
+													}}
+												/>
+											);
+										} else if (resizeCurrentLength < segment.length) {
+											// Shrinking segment - show grayed out ghost of original
+											const ghostColors = getSegmentColors(segment);
+											const ghostPolygonPoints = `0,2 ${originalPixelWidth},2 ${
+												originalPixelWidth + SEGMENT_ARROW_WIDTH
+											},20 ${originalPixelWidth},38 0,38 ${SEGMENT_ARROW_WIDTH},20`;
+											resizeOverlay = (
+												<div
+													className="absolute pointer-events-none opacity-30"
+													style={{
+														left: `${segmentLeft}px`,
+														top: "0px",
+														width: `${originalPixelWidth + SEGMENT_ARROW_WIDTH}px`,
+														height: "40px",
+														zIndex: 5,
+													}}
+												>
+													<svg
+														width="100%"
+														height="40"
+														viewBox={`0 0 ${originalPixelWidth + SEGMENT_ARROW_WIDTH} 40`}
+														preserveAspectRatio="none"
+														className="overflow-visible"
+													>
+														<polygon points={ghostPolygonPoints} fill={ghostColors.fill} stroke={ghostColors.stroke} strokeWidth="2" />
+													</svg>
+												</div>
+											);
+										}
+									}
 
 									return (
-										<SegmentComponent
-											key={`segment-${segment.id}`}
-											segment={segment}
-											index={originalIndex}
-											hoveredSegment={hoveredSegment}
-											setHoveredSegment={setHoveredSegment}
-											clickedSegment={clickedSegment}
-											setClickedSegment={setClickedSegment}
-											baseWidth={baseWidth}
-											zoomLevel={zoomLevel}
-											offset={offset}
-											position={segmentPositions.get(segment.id) || 0}
-											isDragging={isDraggedSegment}
-											isAnySegmentDragging={isDragging}
-											onDragStart={(e) => {
-												e.stopPropagation();
-												// Set potential drag state instead of starting drag immediately
-												setPotentialDrag({
-													segment: segment,
-													index: originalIndex,
-													startX: e.clientX,
-													startY: e.clientY,
-													hasStarted: false,
-												});
-											}}
-										/>
+										<React.Fragment key={`segment-${segment.id}`}>
+											{resizeOverlay}
+											<SegmentComponent
+												segment={{ ...segment, length: currentLength }}
+												index={originalIndex}
+												hoveredSegment={hoveredSegment}
+												setHoveredSegment={setHoveredSegment}
+												clickedSegment={clickedSegment}
+												setClickedSegment={setClickedSegment}
+												baseWidth={baseWidth}
+												zoomLevel={zoomLevel}
+												offset={offset}
+												position={segmentPositions.get(segment.id) || 0}
+												isDragging={isDraggedSegment}
+												isAnySegmentDragging={isDragging}
+												isResizing={isResizingSegment}
+												isAnySegmentResizing={isResizing}
+												onDragStart={(e) => {
+													e.stopPropagation();
+													// Set potential drag state instead of starting drag immediately
+													setPotentialDrag({
+														segment: segment,
+														index: originalIndex,
+														startX: e.clientX,
+														startY: e.clientY,
+														hasStarted: false,
+													});
+												}}
+												onResizeStart={(e) => {
+													e.stopPropagation();
+													setResizingSegment(segment);
+													setIsResizing(true);
+													setResizeStartX(e.clientX);
+													setResizeStartLength(segment.length);
+													setResizeCurrentLength(segment.length);
+													// Clear other states
+													setHoveredSegment(null);
+													setClickedSegment(null);
+												}}
+											/>
+										</React.Fragment>
 									);
 								})}
 

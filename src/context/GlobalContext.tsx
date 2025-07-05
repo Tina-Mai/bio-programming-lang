@@ -68,13 +68,35 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
-			console.log(`Deleting project: ${projectId}...`);
+			console.log(`Deleting project data from DB for project: ${projectId}...`);
 
-			const { error } = await supabase.from("projects").delete().eq("id", projectId);
+			// 1. Fetch all program IDs for the project
+			const { data: programs, error: fetchProgramsError } = await supabase.from("programs").select("id").eq("project_id", projectId);
 
-			if (error) {
-				console.error(`Failed to delete project ${projectId}:`, error.message);
-				throw error;
+			if (fetchProgramsError) {
+				console.error(`Error fetching programs for project ${projectId}: ${fetchProgramsError.message}`);
+				throw fetchProgramsError;
+			}
+
+			const programIds = programs?.map((p) => p.id) || [];
+
+			// 2. If programs exist, delete them first
+			if (programIds.length > 0) {
+				console.log(`Found ${programIds.length} programs to delete for project ${projectId}.`);
+				const { error: deleteProgramsError } = await supabase.from("programs").delete().in("id", programIds);
+
+				if (deleteProgramsError) {
+					console.error(`Error deleting programs for project ${projectId}: ${deleteProgramsError.message}`);
+					throw deleteProgramsError;
+				}
+			}
+
+			// 3. Finally, delete the project itself
+			const { error: projectError } = await supabase.from("projects").delete().eq("id", projectId);
+
+			if (projectError) {
+				console.error(`Failed to delete project ${projectId}:`, projectError.message);
+				throw projectError;
 			}
 
 			console.log(`Project ${projectId} and its associated data deleted.`);

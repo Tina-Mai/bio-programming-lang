@@ -4,7 +4,7 @@ import { Draggable } from "@carbon/icons-react";
 import { useProgram } from "@/context/ProgramContext";
 import { Button } from "@/components/ui/button";
 import { AddLarge, WarningAlt } from "@carbon/icons-react";
-import ConstructPopover from "@/components/program/linear/ConstructPopover";
+import ConstructConfig from "@/components/program/linear/ConstructConfig";
 
 const VisualEditor = () => {
 	const { constructs, constraints, generators, isLoading, error, createConstruct } = useProgram();
@@ -38,7 +38,7 @@ const VisualEditor = () => {
 						<div className="font-mono text-sm text-slate-500/60">{totalLength} bp</div>
 					</div>
 					<div className="horizontal gap-1 items-center">
-						<ConstructPopover />
+						<ConstructConfig />
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>

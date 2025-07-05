@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
 import ConstraintBox from "./Constraint";
@@ -157,7 +156,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 			if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
 				const scrollAmount = e.deltaX || e.deltaY;
-				const totalContentWidth = totalLength * nucleotideWidth + 40;
+				// Use ref value for accurate calculation during animations
+				const currentNucleotideWidth = baseWidth * currentZoomRef.current;
+				const totalContentWidth = totalLength * currentNucleotideWidth + 40;
 				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current + scrollAmount));
 				// Only set target, let animation handle the actual update
 				setTargetOffset(newOffset);
@@ -650,20 +651,18 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					>
 						<div className="absolute top-0 size-1 bg-slate-400" style={{ left: "-1.5px" }} />
 						<div className="absolute top-0 bottom-0 w-px bg-slate-400/60" />
-						<Tooltip open={true}>
-							<TooltipTrigger asChild>
-								<div
-									className="absolute w-1 h-8"
-									style={{
-										top: 0,
-										left: "-1.5px",
-									}}
-								/>
-							</TooltipTrigger>
-							<TooltipContent side="top" sideOffset={8} className="gap-1 justify-center items-center translate-y-8.5 border-0 !bg-slate-400 py-0 px-[2.5px] !shadow-none !rounded-xs">
-								<div className="font-mono text-center text-white">{hoveredPosition}</div>
-							</TooltipContent>
-						</Tooltip>
+						<div
+							className="absolute bg-slate-400 text-white font-mono text-xs py-0 px-[2.5px] rounded-xs"
+							style={{
+								top: "10px",
+								left: "50%",
+								transform: "translateX(-50%)",
+								whiteSpace: "nowrap",
+								zIndex: 50,
+							}}
+						>
+							{hoveredPosition}
+						</div>
 					</div>
 				)}
 

@@ -49,6 +49,17 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [isDragging, setIsDragging] = useState<boolean>(false);
 	const [dragMousePosition, setDragMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+	// potential drag state - for distinguishing clicks from drags
+	const [potentialDrag, setPotentialDrag] = useState<{
+		segment: Segment | null;
+		index: number | null;
+		startX: number;
+		startY: number;
+		hasStarted: boolean;
+	}>({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
+
+	const DRAG_THRESHOLD = 5; // pixels to move before drag starts
+
 	const containerRef = useRef<HTMLDivElement>(null);
 	const segmentsRef = useRef<HTMLDivElement>(null);
 	const baseWidth = 10.1;
@@ -188,6 +199,26 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	// handle mouse move for drag & drop segments
 	const handleMouseMove = (e: React.MouseEvent) => {
+		// Check if we should start dragging
+		if (potentialDrag.segment && !potentialDrag.hasStarted) {
+			const deltaX = Math.abs(e.clientX - potentialDrag.startX);
+			const deltaY = Math.abs(e.clientY - potentialDrag.startY);
+
+			if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+				// Start actual drag
+				setDraggedSegment(potentialDrag.segment);
+				setDraggedSegmentIndex(potentialDrag.index);
+				setDropPreviewIndex(potentialDrag.index);
+				setVisualDropIndex(potentialDrag.index);
+				setIsDragging(true);
+				setDragMousePosition({ x: e.clientX, y: e.clientY });
+				setPotentialDrag({ ...potentialDrag, hasStarted: true });
+				// Clear hover and click states when dragging starts
+				setHoveredSegment(null);
+				setClickedSegment(null);
+			}
+		}
+
 		if (isDragging && draggedSegment) {
 			// update drag mouse position
 			const rect = containerRef.current?.getBoundingClientRect();
@@ -247,6 +278,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	// handle mouse up for drag & drop segments
 	const handleMouseUp = () => {
+		// If we're in potential drag but haven't started dragging, treat as click
+		if (potentialDrag.segment && !potentialDrag.hasStarted) {
+			// Reset potential drag state
+			setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
+			// The click will be handled by the segment's onClick
+			return;
+		}
+
 		if (isDragging && draggedSegment && dropPreviewIndex !== null && draggedSegmentIndex !== null && constructId) {
 			// only reorder if the position actually changed
 			if (dropPreviewIndex !== draggedSegmentIndex) {
@@ -286,6 +325,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		setIsDragging(false);
 		setIsPanning(false);
 		setDragMousePosition({ x: 0, y: 0 });
+		setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
 	};
 
 	const handleMouseLeave = () => {
@@ -304,6 +344,26 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	// global mouse events for dragging outside container
 	useEffect(() => {
 		const handleGlobalMouseMove = (e: MouseEvent) => {
+			// Check if we should start dragging
+			if (potentialDrag.segment && !potentialDrag.hasStarted) {
+				const deltaX = Math.abs(e.clientX - potentialDrag.startX);
+				const deltaY = Math.abs(e.clientY - potentialDrag.startY);
+
+				if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+					// Start actual drag
+					setDraggedSegment(potentialDrag.segment);
+					setDraggedSegmentIndex(potentialDrag.index);
+					setDropPreviewIndex(potentialDrag.index);
+					setVisualDropIndex(potentialDrag.index);
+					setIsDragging(true);
+					setDragMousePosition({ x: e.clientX, y: e.clientY });
+					setPotentialDrag({ ...potentialDrag, hasStarted: true });
+					// Clear hover and click states when dragging starts
+					setHoveredSegment(null);
+					setClickedSegment(null);
+				}
+			}
+
 			if (isDragging && draggedSegment && containerRef.current) {
 				const rect = containerRef.current.getBoundingClientRect();
 
@@ -349,6 +409,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		};
 
 		const handleGlobalMouseUp = () => {
+			// If we're in potential drag but haven't started dragging, treat as click
+			if (potentialDrag.segment && !potentialDrag.hasStarted) {
+				// Reset potential drag state
+				setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
+				// The click will be handled by the segment's onClick
+				return;
+			}
+
 			if (isDragging && draggedSegment && dropPreviewIndex !== null && draggedSegmentIndex !== null && constructId) {
 				if (dropPreviewIndex !== draggedSegmentIndex) {
 					const newSegments = [...segments];
@@ -366,9 +434,10 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setIsDragging(false);
 			setIsPanning(false);
 			setDragMousePosition({ x: 0, y: 0 });
+			setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
 		};
 
-		if (isPanning || isDragging) {
+		if (isPanning || isDragging || potentialDrag.segment) {
 			document.addEventListener("mousemove", handleGlobalMouseMove);
 			document.addEventListener("mouseup", handleGlobalMouseUp);
 		}
@@ -377,7 +446,23 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			document.removeEventListener("mousemove", handleGlobalMouseMove);
 			document.removeEventListener("mouseup", handleGlobalMouseUp);
 		};
-	}, [isPanning, isDragging, draggedSegment, draggedSegmentIndex, dropPreviewIndex, lastMouseX, offset, totalLength, nucleotideWidth, visibleWidth, segments, constructId, reorderSegments]);
+	}, [
+		isPanning,
+		isDragging,
+		draggedSegment,
+		draggedSegmentIndex,
+		dropPreviewIndex,
+		lastMouseX,
+		offset,
+		totalLength,
+		nucleotideWidth,
+		visibleWidth,
+		segments,
+		constructId,
+		reorderSegments,
+		potentialDrag,
+		DRAG_THRESHOLD,
+	]);
 
 	// click outside the component to clear clicked segment
 	useEffect(() => {
@@ -693,15 +778,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											isAnySegmentDragging={isDragging}
 											onDragStart={(e) => {
 												e.stopPropagation();
-												setDraggedSegment(segment);
-												setDraggedSegmentIndex(originalIndex);
-												setDropPreviewIndex(originalIndex);
-												setVisualDropIndex(originalIndex);
-												setIsDragging(true);
-												setDragMousePosition({ x: e.clientX, y: e.clientY });
-												// Clear hover and click states when dragging starts
-												setHoveredSegment(null);
-												setClickedSegment(null);
+												// Set potential drag state instead of starting drag immediately
+												setPotentialDrag({
+													segment: segment,
+													index: originalIndex,
+													startX: e.clientX,
+													startY: e.clientY,
+													hasStarted: false,
+												});
 											}}
 										/>
 									);

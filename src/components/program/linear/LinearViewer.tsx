@@ -29,6 +29,17 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [isPanning, setIsPanning] = useState<boolean>(false);
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
+	const animationFrameRef = useRef<number | null>(null);
+
+	// refs for animation values to avoid dependency issues
+	const currentZoomRef = useRef<number>(1);
+	const currentOffsetRef = useRef<number>(0);
+
+	// Initialize refs with current values
+	useEffect(() => {
+		currentZoomRef.current = zoomLevel;
+		currentOffsetRef.current = offset;
+	}, []);
 
 	// drag and drop state
 	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
@@ -74,8 +85,47 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	// animate zoom level and offset
 	useEffect(() => {
-		setZoomLevel(targetZoomLevel);
-		setOffset(targetOffset);
+		let isAnimating = true;
+
+		const animate = () => {
+			if (!isAnimating) return;
+
+			const zoomDiff = targetZoomLevel - currentZoomRef.current;
+			const offsetDiff = targetOffset - currentOffsetRef.current;
+
+			// If differences are small enough, snap to target
+			if (Math.abs(zoomDiff) < 0.001 && Math.abs(offsetDiff) < 0.1) {
+				currentZoomRef.current = targetZoomLevel;
+				currentOffsetRef.current = targetOffset;
+				setZoomLevel(targetZoomLevel);
+				setOffset(targetOffset);
+				return;
+			}
+
+			// Simple easing - this was working well before
+			const easingFactor = 0.25;
+			currentZoomRef.current += zoomDiff * easingFactor;
+			currentOffsetRef.current += offsetDiff * easingFactor;
+
+			setZoomLevel(currentZoomRef.current);
+			setOffset(currentOffsetRef.current);
+
+			animationFrameRef.current = requestAnimationFrame(animate);
+		};
+
+		// Cancel any existing animation
+		if (animationFrameRef.current) {
+			cancelAnimationFrame(animationFrameRef.current);
+		}
+
+		animate();
+
+		return () => {
+			isAnimating = false;
+			if (animationFrameRef.current) {
+				cancelAnimationFrame(animationFrameRef.current);
+			}
+		};
 	}, [targetZoomLevel, targetOffset]);
 
 	// handle scrolling and zooming
@@ -88,8 +138,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
 				const scrollAmount = e.deltaX || e.deltaY;
 				const totalContentWidth = totalLength * nucleotideWidth + 40;
-				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset + scrollAmount));
-				setOffset(newOffset);
+				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current + scrollAmount));
+				// Only set target, let animation handle the actual update
 				setTargetOffset(newOffset);
 				return;
 			}
@@ -97,16 +147,18 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			const minZoomLevel = calculateMinZoomLevel();
 			const direction = e.deltaY < 0 ? 1 : -1;
 			const zoomFactor = 0.1;
-			const newZoomLevel = Math.max(minZoomLevel, Math.min(10, zoomLevel + direction * zoomFactor));
+			const currentZoom = currentZoomRef.current;
+			const newZoomLevel = Math.max(minZoomLevel, Math.min(10, currentZoom + direction * zoomFactor));
 
-			if (newZoomLevel === zoomLevel) return;
+			if (Math.abs(newZoomLevel - currentZoom) < 0.001) return;
 
 			const rect = containerRef.current?.getBoundingClientRect();
 			if (!rect) return;
 
 			const cursorXRelativeToViewport = e.clientX - rect.left;
-			const cursorXRelativeToContent = cursorXRelativeToViewport + offset;
-			const totalCurrentContentWidth = totalLength * nucleotideWidth + 40;
+			const cursorXRelativeToContent = cursorXRelativeToViewport + currentOffsetRef.current;
+			const currentNucleotideWidth = baseWidth * currentZoom;
+			const totalCurrentContentWidth = totalLength * currentNucleotideWidth + 40;
 			const cursorRatio = cursorXRelativeToContent / totalCurrentContentWidth;
 			const newContentWidth = totalLength * baseWidth * newZoomLevel + 40;
 			const newOffset = cursorRatio * newContentWidth - cursorXRelativeToViewport;
@@ -115,7 +167,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setTargetZoomLevel(newZoomLevel);
 			setTargetOffset(clampedNewOffset);
 		},
-		[isHovering, zoomLevel, offset, totalLength, nucleotideWidth, baseWidth, visibleWidth, calculateMinZoomLevel]
+		[isHovering, totalLength, baseWidth, visibleWidth, calculateMinZoomLevel]
 	);
 
 	// handle mouse events for panning
@@ -180,8 +232,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		if (isPanning) {
 			const deltaX = e.clientX - lastMouseX;
 			const totalContentWidth = totalLength * nucleotideWidth + 40;
-			const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset - deltaX));
-			setOffset(newOffset);
+			const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
+			// Only set target, let animation handle the actual update
 			setTargetOffset(newOffset);
 			setLastMouseX(e.clientX);
 			return;
@@ -289,8 +341,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			if (isPanning) {
 				const deltaX = e.clientX - lastMouseX;
 				const totalContentWidth = totalLength * nucleotideWidth + 40;
-				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, offset - deltaX));
-				setOffset(newOffset);
+				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
+				// Only set target, let animation handle the actual update
 				setTargetOffset(newOffset);
 				setLastMouseX(e.clientX);
 			}
@@ -616,7 +668,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const segmentLength = segment.length;
 									const segmentLeft = 20 + segmentPosition * nucleotideWidth - offset;
 									const segmentWidth = segmentLength * nucleotideWidth;
-									return segmentLeft + segmentWidth >= 0 && segmentLeft <= visibleWidth;
+									// Add buffer zone to prevent segments from popping in/out
+									const buffer = 200;
+									return segmentLeft + segmentWidth >= -buffer && segmentLeft <= visibleWidth + buffer;
 								})
 								.map((segment) => {
 									const originalIndex = segments.findIndex((s) => s.id === segment.id);
@@ -890,9 +944,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					<div
 						className="fixed pointer-events-none"
 						style={{
-							left: `${dragMousePosition.x - (draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH) / 2}px`,
+							left: `${dragMousePosition.x - (draggedSegment.length * baseWidth * zoomLevel + SEGMENT_ARROW_WIDTH) / 2}px`,
 							top: `${dragMousePosition.y - 20}px`,
-							width: `${draggedSegment.length * nucleotideWidth + SEGMENT_ARROW_WIDTH}px`,
+							width: `${draggedSegment.length * baseWidth * zoomLevel + SEGMENT_ARROW_WIDTH}px`,
 							height: "40px",
 							zIndex: 9999,
 							transform: "scale(1.05)",

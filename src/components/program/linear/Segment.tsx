@@ -50,7 +50,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 		<div
 			key={`segment-${index}`}
 			data-segment-component
-			className={`group absolute transition-all duration-200 ${isDragging ? "opacity-50" : shouldDim ? "opacity-60" : ""}`}
+			className={`group absolute ${isDragging ? "opacity-50" : shouldDim ? "opacity-60" : ""}`}
 			style={{
 				left: `${segmentLeft}px`,
 				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
@@ -58,6 +58,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				zIndex: isDragging ? 10 : isHighlighted ? 20 : 10,
 				cursor: isDragging ? "grabbing" : "grab",
 				filter: isDragging ? "grayscale(80%)" : shouldDim ? "grayscale(100%)" : "none",
+				// Remove all transitions - they conflict with JS animation
 			}}
 			onMouseEnter={() => {
 				if (!clickedSegment && !isAnySegmentDragging) {
@@ -93,7 +94,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				}}
 			>
 				<span
-					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
+					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"}`}
 					style={{ backgroundColor: isHighlighted ? colors.highlight : "transparent" }}
 				>
 					{segment.label || "Segment"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{segmentLength}</span>

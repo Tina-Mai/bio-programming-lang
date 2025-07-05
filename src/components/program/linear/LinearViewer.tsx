@@ -15,6 +15,10 @@ interface LinearViewerProps {
 	constructId?: string;
 }
 
+const INITIAL_RULER_MIN_LENGTH = 100; // min starting ruler length
+const RULER_PADDING = 10; // extra ruler spacing at end of segment
+const DRAG_THRESHOLD = 5; // pixels to move before drag starts
+
 const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength } = useProgram();
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
@@ -34,7 +38,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const currentZoomRef = useRef<number>(1);
 	const currentOffsetRef = useRef<number>(0);
 
-	// Initialize refs with current values
 	useEffect(() => {
 		currentZoomRef.current = zoomLevel;
 		currentOffsetRef.current = offset;
@@ -61,8 +64,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		hasStarted: boolean;
 	}>({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
 
-	const DRAG_THRESHOLD = 5; // pixels to move before drag starts
-
 	const containerRef = useRef<HTMLDivElement>(null);
 	const segmentsRef = useRef<HTMLDivElement>(null);
 	const baseWidth = 10.1;
@@ -75,7 +76,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	// calculate total length from all segments
 	const actualTotalLength = segmentsState.reduce((acc, segment) => acc + segment.length, 0);
-	const totalLength = Math.max(100, actualTotalLength); // min ruler length of 100
+	const totalLength = actualTotalLength < INITIAL_RULER_MIN_LENGTH ? INITIAL_RULER_MIN_LENGTH : actualTotalLength + RULER_PADDING;
 
 	// update visible width from container
 	const updateVisibleWidth = useCallback(() => {
@@ -95,7 +96,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	};
 
 	// calculate minimum zoom level to fit entire construct in container
-	const calculateMinZoomLevel = useCallback(() => {
+	const calculateFitZoomLevel = useCallback(() => {
 		const container = containerRef.current;
 		if (!container || !totalLength) return 0.1;
 		const availableWidth = container.clientWidth - 40;
@@ -112,7 +113,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			const zoomDiff = targetZoomLevel - currentZoomRef.current;
 			const offsetDiff = targetOffset - currentOffsetRef.current;
 
-			// If differences are small enough, snap to target
 			if (Math.abs(zoomDiff) < 0.001 && Math.abs(offsetDiff) < 0.1) {
 				currentZoomRef.current = targetZoomLevel;
 				currentOffsetRef.current = targetOffset;
@@ -121,7 +121,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				return;
 			}
 
-			// Simple easing - this was working well before
 			const easingFactor = 0.25;
 			currentZoomRef.current += zoomDiff * easingFactor;
 			currentOffsetRef.current += offsetDiff * easingFactor;
@@ -132,7 +131,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			animationFrameRef.current = requestAnimationFrame(animate);
 		};
 
-		// Cancel any existing animation
 		if (animationFrameRef.current) {
 			cancelAnimationFrame(animationFrameRef.current);
 		}
@@ -156,16 +154,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 			if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
 				const scrollAmount = e.deltaX || e.deltaY;
-				// Use ref value for accurate calculation during animations
 				const currentNucleotideWidth = baseWidth * currentZoomRef.current;
 				const totalContentWidth = totalLength * currentNucleotideWidth + 40;
 				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current + scrollAmount));
-				// Only set target, let animation handle the actual update
 				setTargetOffset(newOffset);
 				return;
 			}
 
-			const minZoomLevel = calculateMinZoomLevel();
+			const minZoomLevel = calculateFitZoomLevel();
 			const direction = e.deltaY < 0 ? 1 : -1;
 			const zoomFactor = 0.1;
 			const currentZoom = currentZoomRef.current;
@@ -188,7 +184,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			setTargetZoomLevel(newZoomLevel);
 			setTargetOffset(clampedNewOffset);
 		},
-		[isHovering, totalLength, baseWidth, visibleWidth, calculateMinZoomLevel]
+		[isHovering, totalLength, baseWidth, visibleWidth, calculateFitZoomLevel]
 	);
 
 	// handle mouse events for panning
@@ -222,8 +218,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			if (newLength !== resizingSegment.length) {
 				const updatedSegment = { ...resizingSegment, length: newLength };
 				setResizingSegment(updatedSegment);
-
-				// Optimistically update the main segments array for seamless rendering
 				setSegmentsState((prevSegments) => prevSegments.map((s) => (s.id === updatedSegment.id ? updatedSegment : s)));
 			}
 			return;
@@ -274,7 +268,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			const deltaX = e.clientX - lastMouseX;
 			const totalContentWidth = totalLength * nucleotideWidth + 40;
 			const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
-			// Only set target, let animation handle the actual update
 			setTargetOffset(newOffset);
 			setLastMouseX(e.clientX);
 			return;
@@ -288,7 +281,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	// handle mouse up for drag & drop segments
 	const handleMouseUp = () => {
-		// If we're resizing
+		// if resizing
 		if (isResizing && resizingSegment) {
 			if (resizingSegment.length > 0) {
 				updateSegmentLength(resizingSegment.id, resizingSegment.length).catch(console.error);
@@ -299,11 +292,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 			return;
 		}
 
-		// If we're in potential drag but haven't started dragging, treat as click
+		// if potential drag but not started dragging, treat as click
 		if (potentialDrag.segment && !potentialDrag.hasStarted) {
-			// Reset potential drag state
 			setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
-			// The click will be handled by the segment's onClick
 			return;
 		}
 
@@ -351,7 +342,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 	const handleMouseLeave = () => {
 		setHoveredPosition(null);
-		// Don't stop panning/dragging/resizing if mouse leaves container
 		if (!isPanning && !isDragging && !isResizing) {
 			setIsHovering(false);
 			if (!clickedSegment) {
@@ -385,13 +375,11 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				}
 				return;
 			}
-			// Check if we should start dragging
 			if (potentialDrag.segment && !potentialDrag.hasStarted) {
 				const deltaX = Math.abs(e.clientX - potentialDrag.startX);
 				const deltaY = Math.abs(e.clientY - potentialDrag.startY);
 
 				if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
-					// Start actual drag
 					setDraggedSegment(potentialDrag.segment);
 					setDraggedSegmentIndex(potentialDrag.index);
 					setDropPreviewIndex(potentialDrag.index);
@@ -399,7 +387,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 					setIsDragging(true);
 					setDragMousePosition({ x: e.clientX, y: e.clientY });
 					setPotentialDrag({ ...potentialDrag, hasStarted: true });
-					// Clear hover and click states when dragging starts
 					setHoveredSegment(null);
 					setClickedSegment(null);
 				}
@@ -443,7 +430,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				const deltaX = e.clientX - lastMouseX;
 				const totalContentWidth = totalLength * nucleotideWidth + 40;
 				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
-				// Only set target, let animation handle the actual update
 				setTargetOffset(newOffset);
 				setLastMouseX(e.clientX);
 			}
@@ -459,11 +445,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				setClickedSegment(null);
 				return;
 			}
-			// If we're in potential drag but haven't started dragging, treat as click
 			if (potentialDrag.segment && !potentialDrag.hasStarted) {
-				// Reset potential drag state
 				setPotentialDrag({ segment: null, index: null, startX: 0, startY: 0, hasStarted: false });
-				// The click will be handled by the segment's onClick
 				return;
 			}
 
@@ -539,33 +522,34 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 		updateVisibleWidth();
 
-		const initialZoomLevel = calculateMinZoomLevel();
-		if (zoomLevel < initialZoomLevel) {
-			setZoomLevel(initialZoomLevel);
-			setTargetZoomLevel(initialZoomLevel);
-		}
+		const initialZoom = calculateFitZoomLevel();
+		setZoomLevel(initialZoom);
+		setTargetZoomLevel(initialZoom);
+		currentZoomRef.current = initialZoom;
+
+		setOffset(0);
+		setTargetOffset(0);
+		currentOffsetRef.current = 0;
 
 		container.addEventListener("wheel", handleWheel, { passive: false });
 
 		return () => {
 			container.removeEventListener("wheel", handleWheel);
 		};
-	}, [handleWheel, calculateMinZoomLevel, zoomLevel, updateVisibleWidth]);
+	}, [handleWheel, calculateFitZoomLevel, updateVisibleWidth]);
 
 	// handle window resize
 	useEffect(() => {
 		const handleResize = () => {
 			updateVisibleWidth();
-			const minZoomLevel = calculateMinZoomLevel();
-			if (zoomLevel < minZoomLevel) {
-				setZoomLevel(minZoomLevel);
-				setTargetZoomLevel(minZoomLevel);
-			}
+			const newZoom = calculateFitZoomLevel();
+			setZoomLevel(newZoom);
+			setTargetZoomLevel(newZoom);
 		};
 
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
-	}, [calculateMinZoomLevel, zoomLevel, updateVisibleWidth]);
+	}, [calculateFitZoomLevel, updateVisibleWidth]);
 
 	// calculate dynamic ruler interval based on zoom level
 	const calculateRulerInterval = (zoom: number): number => {

@@ -62,8 +62,9 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 		}
 		const rect = e.currentTarget.getBoundingClientRect();
 		const mouseX = e.clientX - rect.left;
-		const handleZoneStart = segmentPixelWidth;
-		if (mouseX > handleZoneStart) {
+		const handleZoneStart = segmentPixelWidth - 10;
+		const handleZoneEnd = segmentPixelWidth + SEGMENT_ARROW_WIDTH;
+		if (mouseX >= handleZoneStart && mouseX <= handleZoneEnd) {
 			setIsEdgeHovered(true);
 		} else {
 			setIsEdgeHovered(false);
@@ -82,7 +83,6 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				zIndex: isDragging ? 10 : isResizing ? 30 : isHighlighted ? 20 : 10,
 				cursor: isEdgeHovered && !isResizing ? "ew-resize" : isDragging ? "grabbing" : "grab",
 				filter: isDragging ? "grayscale(80%)" : shouldDim ? "grayscale(100%)" : "none",
-				// Remove all transitions - they conflict with JS animation
 			}}
 			onMouseMove={handleMouseMove}
 			onMouseEnter={() => {

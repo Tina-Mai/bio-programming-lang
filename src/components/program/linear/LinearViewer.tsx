@@ -806,7 +806,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 														width: `${originalWidth + SEGMENT_ARROW_WIDTH}px`,
 														height: "40px",
 														zIndex: 24,
-														opacity: 0.3,
+														opacity: 0.7,
 													}}
 												>
 													<svg width="100%" height="40" viewBox={`0 0 ${originalWidth + SEGMENT_ARROW_WIDTH} 40`} preserveAspectRatio="none" className="overflow-visible">

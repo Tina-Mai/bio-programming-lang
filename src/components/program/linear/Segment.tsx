@@ -81,7 +81,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
 				height: "40px",
 				zIndex: isDragging ? 10 : isResizing ? 30 : isHighlighted ? 20 : 10,
-				cursor: isEdgeHovered && !isResizing ? "ew-resize" : isDragging ? "grabbing" : "grab",
+				cursor: isResizing ? "ew-resize" : isEdgeHovered ? "ew-resize" : isDragging ? "grabbing" : "grab",
 				filter: isDragging ? "grayscale(80%)" : shouldDim ? "grayscale(100%)" : "none",
 			}}
 			onMouseMove={handleMouseMove}
@@ -131,7 +131,8 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				<div
 					className="absolute top-0 h-full z-30"
 					style={{
-						left: `${segmentPixelWidth - 2}px`,
+						left: `${segmentPixelWidth - 10}px`,
+						width: `${10 + SEGMENT_ARROW_WIDTH}px`,
 						filter: "drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))",
 					}}
 					onMouseDown={(e) => {
@@ -139,7 +140,14 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 						if (onResizeStart) onResizeStart(e);
 					}}
 				>
-					<SegmentEdge />
+					<div
+						className="absolute top-0 h-full"
+						style={{
+							left: "8px",
+						}}
+					>
+						<SegmentEdge />
+					</div>
 				</div>
 			)}
 		</div>

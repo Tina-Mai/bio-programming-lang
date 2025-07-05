@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Project } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { SupabaseProgram } from "@/lib/utils/program";
+import { SupabaseProgram, createProgram as dbCreateProgram, createProject } from "@/lib/utils";
 
 // define ProjectJSON based on what Supabase 'projects' table returns
 export interface ProjectJSON {
@@ -14,7 +14,7 @@ export interface ProjectJSON {
 	updated_at: string;
 }
 
-type Mode = "graph" | "code";
+type Mode = "visual" | "code";
 
 // convert ProjectJSON to Project
 const mapProjectJsonToProject = (p: ProjectJSON): Project => ({
@@ -44,7 +44,7 @@ interface GlobalContextType {
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
-	const [mode, setMode] = useState<Mode>("graph");
+	const [mode, setMode] = useState<Mode>("visual");
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [currentProject, setCurrentProject] = useState<Project | null>(null);
 	const supabase: SupabaseClient = createClient();
@@ -62,98 +62,21 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	}, [supabase]);
 
 	const _createProjectInDB = useCallback(async (): Promise<{ project: ProjectJSON; initialProgram: SupabaseProgram }> => {
-		const baseName = "New design";
-		let finalName = baseName;
-		let counter = 1;
-
-		const { data: existingProjects, error: fetchError } = await supabase.from("projects").select("name").like("name", `${baseName}%`);
-
-		if (fetchError) {
-			console.error("Error fetching existing project names:", fetchError);
-			throw fetchError;
-		}
-
-		if (existingProjects && existingProjects.length > 0) {
-			const existingNames = new Set(existingProjects.map((p: { name: string }) => p.name));
-			if (existingNames.has(baseName)) {
-				counter = 2;
-				while (existingNames.has(`${baseName} ${counter}`)) {
-					counter++;
-				}
-				finalName = `${baseName} ${counter}`;
-			}
-		}
-
-		// create the project
-		const { data: newProjectData, error: projectError } = await supabase.from("projects").insert({ name: finalName }).select().single();
-		if (projectError) throw projectError;
-		if (!newProjectData) throw new Error("Failed to create project, no data returned.");
-		const projectJson = newProjectData as ProjectJSON;
-
-		// create an initial default program
-		const now = new Date().toISOString();
-		const initialProgramPayload = {
-			project_id: projectJson.id,
-			created_at: now,
-		};
-		const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
-		if (programError) {
-			console.error("Failed to create initial program for new project. Full error object:", JSON.stringify(programError, null, 2));
-			// attempt to delete the just-created project if program creation fails
-			await supabase.from("projects").delete().eq("id", projectJson.id);
-			throw new Error(`Failed to create initial program: ${programError.message}`);
-		}
-		if (!newProgramData) throw new Error("Failed to create initial program, no data returned.");
-
-		return { project: projectJson, initialProgram: newProgramData as SupabaseProgram };
+		const result = await createProject(supabase);
+		return { project: result.project, initialProgram: result.program };
 	}, [supabase]);
 
 	const _deleteProjectFromDB = useCallback(
 		async (projectId: string): Promise<void> => {
-			console.log(`Deleting project data from DB for project: ${projectId}...`);
+			console.log(`Deleting project: ${projectId}...`);
 
-			// 1. fetch all program IDs for the project
-			const { data: programs, error: fetchProgramsError } = await supabase.from("programs").select("id").eq("project_id", projectId);
+			const { error } = await supabase.from("projects").delete().eq("id", projectId);
 
-			if (fetchProgramsError) {
-				console.error(`Error fetching programs for project ${projectId}: ${fetchProgramsError.message}`);
-				throw fetchProgramsError;
+			if (error) {
+				console.error(`Failed to delete project ${projectId}:`, error.message);
+				throw error;
 			}
 
-			const programIds = programs?.map((p) => p.id) || [];
-
-			if (programIds.length > 0) {
-				console.log(`Found ${programIds.length} programs to delete for project ${projectId}:`, programIds);
-
-				// 2. for each program, delete its associated data
-				// note: most associated data will be cascade deleted due to foreign key constraints
-				for (const programId of programIds) {
-					console.log(`Deleting data for program ${programId}...`);
-
-					// get constructs for this program (just to check for errors)
-					const { error: constructsError } = await supabase.from("constructs").select("id").eq("program_id", programId);
-
-					if (constructsError) {
-						console.warn(`Error fetching constructs for program ${programId}: ${constructsError.message}`);
-					}
-				}
-
-				// 3. delete all programs for the project (cascade will handle related data)
-				console.log(`Deleting programs for project ${projectId}...`);
-				const { error: deleteProgramsError } = await supabase.from("programs").delete().in("id", programIds);
-				if (deleteProgramsError) {
-					console.error(`Error deleting programs for project ${projectId}: ${deleteProgramsError.message}`);
-					throw deleteProgramsError;
-				}
-			}
-
-			// 4. finally, delete the main project entry
-			console.log(`Deleting project entry ${projectId}...`);
-			const { error: projectError } = await supabase.from("projects").delete().eq("id", projectId);
-			if (projectError) {
-				console.error(`Failed to delete project ${projectId} itself:`, projectError.message);
-				throw projectError;
-			}
 			console.log(`Project ${projectId} and its associated data deleted.`);
 		},
 		[supabase]
@@ -170,7 +93,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 			// 2. create new project entry
 			const newProjectName = `(Copy) ${originalProjectData.name}`;
-			const { data: newProjectResult, error: createProjectError } = await supabase.from("projects").insert({ name: newProjectName }).select("id, name, created_at, updated_at").single();
+			const { data: newProjectResult, error: createProjectError } = await supabase.from("projects").insert({ name: newProjectName }).select().single();
 			if (createProjectError) throw createProjectError;
 			if (!newProjectResult) throw new Error("Failed to create duplicated project entry.");
 			const newProjectId = newProjectResult.id;
@@ -203,11 +126,9 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 				const newProgramId = uuidv4();
 				newProgramIdForDuplication = newProgramId;
-				const now = new Date().toISOString();
 				const newProgramPayload = {
 					id: newProgramId,
 					project_id: newProjectId,
-					created_at: now,
 				};
 				const { error: createProgramError } = await supabase.from("programs").insert(newProgramPayload);
 				if (createProgramError) {
@@ -477,22 +398,15 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 			} else {
 				console.log(`No programs found in original project ${originalProjectId}. Creating a default initial program for duplicated project ${newProjectId}.`);
 				// create a default initial program for the duplicated project
-				const now = new Date().toISOString();
-				const initialProgramPayload = {
-					project_id: newProjectId,
-					created_at: now,
-				};
-				const { data: newProgramData, error: programError } = await supabase.from("programs").insert(initialProgramPayload).select().single();
-				if (programError) {
+				try {
+					const programResult = await dbCreateProgram(supabase, newProjectId);
+					newProgramIdForDuplication = programResult.program.id;
+					console.log(`Created default initial program ${newProgramIdForDuplication} for duplicated project ${newProjectId}.`);
+					console.log("Created default construct for duplicated program");
+				} catch (error) {
 					await supabase.from("projects").delete().eq("id", newProjectId);
-					throw new Error(`Failed to create initial program for duplicated project: ${programError.message}`);
+					throw new Error(`Failed to create initial program for duplicated project: ${error instanceof Error ? error.message : "Unknown error"}`);
 				}
-				if (!newProgramData) {
-					await supabase.from("projects").delete().eq("id", newProjectId);
-					throw new Error("Failed to create initial program for duplicated project, no data returned.");
-				}
-				newProgramIdForDuplication = (newProgramData as SupabaseProgram).id;
-				console.log(`Created default initial program ${newProgramIdForDuplication} for duplicated project ${newProjectId}.`);
 			}
 
 			return { duplicatedProject: duplicatedProjectJSON, newProgramId: newProgramIdForDuplication };

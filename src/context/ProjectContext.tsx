@@ -4,6 +4,7 @@ import { useGlobal } from "./GlobalContext";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ProgramProvider, useProgram } from "./ProgramContext";
+import { createProgram as dbCreateProgram } from "@/lib/utils/database";
 
 interface ProjectContextProps {
 	currentProgram: SupabaseProgram | null;
@@ -12,6 +13,7 @@ interface ProjectContextProps {
 	projectProgramsError: string | null;
 	projectPrograms: SupabaseProgram[];
 	refreshPrograms: () => void;
+	createProgram: () => Promise<SupabaseProgram>;
 }
 
 const ProjectContext = createContext<ProjectContextProps | undefined>(undefined);
@@ -118,6 +120,23 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		[projectPrograms]
 	);
 
+	const createProgram = useCallback(async (): Promise<SupabaseProgram> => {
+		if (!currentProject?.id) {
+			throw new Error("No current project to create program for");
+		}
+
+		try {
+			const result = await dbCreateProgram(supabase, currentProject.id);
+
+			await fetchProjectPrograms();
+
+			return result.program;
+		} catch (error) {
+			console.error("Error creating program:", error);
+			throw error;
+		}
+	}, [currentProject, supabase, fetchProjectPrograms]);
+
 	const value: ProjectContextProps = {
 		currentProgram,
 		setCurrentProgramById,
@@ -125,6 +144,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 		projectProgramsError,
 		projectPrograms,
 		refreshPrograms: fetchProjectPrograms,
+		createProgram,
 	};
 
 	return (

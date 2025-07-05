@@ -121,7 +121,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				}}
 			>
 				<span
-					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"}`}
+					className={`${isHighlighted ? "text-white backdrop-blur rounded-xs px-1 text-nowrap" : "truncate"} transition-all duration-300`}
 					style={{ backgroundColor: isHighlighted ? colors.highlight : "transparent" }}
 				>
 					{segment.label || "Segment"} <span className={`ml-1 font-mono font-normal ${isHighlighted ? "text-slate-100" : "text-slate-400"}`}>{segmentLength}</span>

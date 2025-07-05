@@ -14,6 +14,7 @@ import {
 	transformGeneratorWithSegments,
 } from "@/lib/utils/program";
 import { Construct, ConstraintInstance, GeneratorInstance, Segment } from "@/types";
+import { createConstruct as dbCreateConstruct } from "@/lib/utils/database";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -31,6 +32,7 @@ interface ProgramContextProps {
 	refreshProgramData: () => Promise<void>;
 	reorderSegments: (constructId: string, segmentIds: string[]) => Promise<void>;
 	updateSegmentLength: (segmentId: string, newLength: number) => Promise<void>;
+	createConstruct: () => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -112,11 +114,8 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 
 			// transform the data
 			const transformedConstructs = fetchedConstructs.map((construct) => transformConstructWithSegments(construct, segmentOrders));
-
 			const transformedConstraints = fetchedConstraints.map((constraint) => transformConstraintWithSegments(constraint, constraintLinks));
-
 			const transformedGenerators = fetchedGenerators.map((generator) => transformGeneratorWithSegments(generator, generatorLinks));
-
 			console.log("Transformed constructs:", transformedConstructs);
 			setConstructs(transformedConstructs);
 			setConstraints(transformedConstraints);
@@ -164,7 +163,6 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 					throw new Error(`Failed to reorder segments: ${error.message}`);
 				}
 			} catch (err) {
-				// Rollback on error
 				setConstructs(originalConstructs);
 				console.error("Error reordering segments:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to reorder segments";
@@ -179,7 +177,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		async (segmentId: string, newLength: number) => {
 			const originalConstructs = constructs;
 
-			// Optimistic update
+			// optimistic update
 			setConstructs((prevConstructs) =>
 				prevConstructs.map((c) => ({
 					...c,
@@ -194,7 +192,6 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 					throw new Error(`Failed to update segment length: ${error.message}`);
 				}
 			} catch (err) {
-				// Rollback on error
 				setConstructs(originalConstructs);
 				console.error("Error updating segment length:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to update segment length";
@@ -204,6 +201,23 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		},
 		[constructs, supabase]
 	);
+
+	const createConstruct = useCallback(async () => {
+		if (!currentProgram?.id) {
+			throw new Error("No current program to add construct to");
+		}
+
+		try {
+			const newConstruct = await dbCreateConstruct(supabase, currentProgram.id);
+			console.log("Successfully created new construct:", newConstruct.id);
+			await fetchProgramData();
+		} catch (err) {
+			console.error("Error creating construct:", err);
+			const errorMessage = err instanceof Error ? err.message : "Failed to create construct";
+			setError(errorMessage);
+			throw err;
+		}
+	}, [currentProgram, supabase, fetchProgramData]);
 
 	// fetch data when program changes
 	useEffect(() => {
@@ -219,6 +233,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		refreshProgramData: fetchProgramData,
 		reorderSegments,
 		updateSegmentLength,
+		createConstruct,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

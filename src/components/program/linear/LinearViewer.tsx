@@ -2,12 +2,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
+import { useProgram } from "@/context/ProgramContext";
 import ConstraintBox from "./Constraint";
 import GeneratorBox from "./Generator";
 import SegmentComponent from "./Segment";
 import NewButtons from "./NewButtons";
-import { useProgram } from "@/context/ProgramContext";
-import Portal from "../../global/Portal";
+import Portal from "@/components/global/Portal";
 
 interface LinearViewerProps {
 	segments: Segment[];
@@ -876,7 +876,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const segmentLength = segment.length;
 									const segmentLeft = 20 + segmentPosition * nucleotideWidth - offset;
 									const segmentWidth = segmentLength * nucleotideWidth;
-									// Add buffer zone to prevent segments from popping in/out
 									const buffer = 200;
 									return segmentLeft + segmentWidth >= -buffer && segmentLeft <= visibleWidth + buffer;
 								})
@@ -884,8 +883,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const originalIndex = segmentsState.findIndex((s) => s.id === segment.id);
 									const isDraggedSegment = draggedSegment?.id === segment.id;
 									const isCurrentResizingSegment = resizingSegment?.id === segment.id;
-
-									// Use the resizing segment's current length if this is the segment being resized
 									const displaySegment = isCurrentResizingSegment && resizingSegment ? resizingSegment : segment;
 
 									return (
@@ -907,7 +904,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											isAnySegmentResizing={isResizing}
 											onDragStart={(e) => {
 												e.stopPropagation();
-												// Set potential drag state instead of starting drag immediately
 												setPotentialDrag({
 													segment: segment,
 													index: originalIndex,

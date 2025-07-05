@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useGlobal } from "@/context/GlobalContext";
-// import { useProject, useProgram } from "@/context/ProjectContext";
 import { EditorView } from "@codemirror/view";
 import { Code, Folder, ParentChild, Information } from "@carbon/icons-react";
 import { Button } from "@/components/ui/button";
@@ -11,24 +10,22 @@ import ProjectTabs from "./ProjectTabs";
 
 const ProgramContents = () => {
 	const { mode, setMode, currentProject: globalCurrentProject } = useGlobal();
-	// const { currentProgram: programFromProject } = useProject();
-	// const { currentProgramGraphData } = useProgram();
-	const [showGraphEditor, setShowGraphEditor] = useState(mode === "graph");
+	const [showVisualEditor, setShowVisualEditor] = useState(mode === "visual");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
 	const editorRef = useRef<EditorView | null>(null);
 
 	useEffect(() => {
-		if (mode === "graph" && !showGraphEditor) {
+		if (mode === "visual" && !showVisualEditor) {
 			setTransitioning(true);
 			setShowCodeEditor(false);
 			setTimeout(() => {
-				setShowGraphEditor(true);
+				setShowVisualEditor(true);
 				setTransitioning(false);
 			}, 300);
 		} else if (mode === "code" && !showCodeEditor) {
 			setTransitioning(true);
-			setShowGraphEditor(false);
+			setShowVisualEditor(false);
 			setTimeout(() => {
 				setShowCodeEditor(true);
 				setTransitioning(false);
@@ -39,7 +36,7 @@ const ProgramContents = () => {
 				}, 50);
 			}, 300);
 		}
-	}, [mode, showGraphEditor, showCodeEditor]);
+	}, [mode, showVisualEditor, showCodeEditor]);
 
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
@@ -59,15 +56,15 @@ const ProgramContents = () => {
 
 			<div className="relative vertical h-full w-full">
 				<div className="relative h-full w-full overflow-hidden">
-					<Button size="sm" className="hidden z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "graph" ? "code" : "graph")} disabled={transitioning}>
-						{mode === "graph" ? (
+					<Button size="sm" className="hidden z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "visual" ? "code" : "visual")} disabled={transitioning}>
+						{mode === "visual" ? (
 							<div className="horizontal items-center gap-2">
 								<Code />
 								Show code
 							</div>
 						) : (
 							<div className="horizontal items-center gap-2">
-								<ParentChild /> Show graph
+								<ParentChild /> Show visual
 							</div>
 						)}
 					</Button>
@@ -76,12 +73,11 @@ const ProgramContents = () => {
 						<div
 							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 							${
-								showGraphEditor
+								showVisualEditor
 									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 							}`}
 						>
-							{/* <GraphEditor /> */}
 							<VisualEditor />
 						</div>
 

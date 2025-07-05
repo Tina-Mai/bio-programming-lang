@@ -1,11 +1,22 @@
 import LinearViewer from "@/components/program/linear/LinearViewer";
 import { ConstraintInstance, GeneratorInstance, Construct } from "@/types";
 import { Draggable } from "@carbon/icons-react";
-import ConstructPopover from "@/components/program/linear/ConstructPopover";
 import { useProgram } from "@/context/ProgramContext";
+import { Button } from "@/components/ui/button";
+import { AddLarge, WarningAlt } from "@carbon/icons-react";
+import ConstructPopover from "@/components/program/linear/ConstructPopover";
 
 const VisualEditor = () => {
-	const { constructs, constraints, generators, isLoading, error } = useProgram();
+	const { constructs, constraints, generators, isLoading, error, createConstruct } = useProgram();
+
+	const handleCreateConstruct = async () => {
+		try {
+			await createConstruct();
+		} catch (err) {
+			console.error("Failed to create construct:", err);
+			// Error handling is done in the createConstruct function
+		}
+	};
 
 	const ConstructInstance = ({
 		construct,
@@ -36,44 +47,38 @@ const VisualEditor = () => {
 		);
 	};
 
-	if (isLoading) {
-		return (
-			<div className="h-full w-full flex items-center justify-center">
-				<div className="text-slate-500">Loading program data...</div>
-			</div>
-		);
-	}
-
-	if (error) {
-		return (
-			<div className="h-full w-full flex items-center justify-center">
-				<div className="text-red-500">Error: {error}</div>
-			</div>
-		);
-	}
-
-	if (constructs.length === 0) {
-		return (
-			<div className="h-full w-full flex items-center justify-center">
-				<div className="text-slate-500">No constructs found in this program</div>
-			</div>
-		);
-	}
-
 	return (
 		<div className="h-full w-full">
-			<div className="vertical h-full w-full justify-center items-center">
-				{/* mt-[52px] is to offset the header at the top of Program.tsx */}
-				<div className="vertical w-full h-full justify-start overflow-y-auto mt-[52px] flex-1">
-					{constructs.map((construct) => {
-						const segmentIds = (construct.segments || []).map((s) => s.id);
-						const constructConstraints = constraints.filter((c) => c.segments.some((segId) => segmentIds.includes(segId)));
-						const constructGenerators = generators.filter((g) => g.segments.some((segId) => segmentIds.includes(segId)));
-
-						return <ConstructInstance key={construct.id} construct={construct} constructConstraints={constructConstraints} constructGenerators={constructGenerators} />;
-					})}
+			{isLoading ? (
+				<div className="h-full w-full flex items-center justify-center">
+					<div className="text-slate-500">Loading program data...</div>
 				</div>
-			</div>
+			) : error ? (
+				<div className="h-full w-full flex items-center justify-center gap-3">
+					<WarningAlt size={20} className="text-rose-500" />
+					<div className="text-rose-500">Error: {error}</div>
+				</div>
+			) : constructs.length === 0 ? (
+				<div className="vertical h-full w-full items-center justify-center gap-3">
+					<div className="text-slate-500">No constructs in this program</div>
+					<Button variant="outline" className="group gap-2" onClick={handleCreateConstruct}>
+						<AddLarge size={16} className="text-slate-500/70 group-hover:text-slate-500 transition-colors duration-200" /> Start new construct
+					</Button>
+				</div>
+			) : (
+				//mt-[52px] is to offset the header at the top of Program.tsx
+				<div className="vertical h-full w-full justify-center items-center mt-[52px]">
+					<div className="vertical w-full h-full justify-start overflow-y-auto flex-1">
+						{constructs.map((construct) => {
+							const segmentIds = (construct.segments || []).map((s) => s.id);
+							const constructConstraints = constraints.filter((c) => c.segments.some((segId) => segmentIds.includes(segId)));
+							const constructGenerators = generators.filter((g) => g.segments.some((segId) => segmentIds.includes(segId)));
+
+							return <ConstructInstance key={construct.id} construct={construct} constructConstraints={constructConstraints} constructGenerators={constructGenerators} />;
+						})}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

@@ -177,36 +177,17 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 
 	const updateSegmentLength = useCallback(
 		async (segmentId: string, newLength: number) => {
-			// Don't allow segments with length less than 1
-			if (newLength < 1) {
-				console.error("Segment length must be at least 1");
-				return;
-			}
-
-			// Optimistically update the local state
 			const originalConstructs = constructs;
 
+			// Optimistic update
 			setConstructs((prevConstructs) =>
-				prevConstructs.map((construct) => {
-					if (construct.segments) {
-						const updatedSegments = construct.segments.map((segment) => {
-							if (segment.id === segmentId) {
-								return { ...segment, length: newLength };
-							}
-							return segment;
-						});
-
-						// Check if any segment was updated
-						if (updatedSegments !== construct.segments) {
-							return { ...construct, segments: updatedSegments };
-						}
-					}
-					return construct;
-				})
+				prevConstructs.map((c) => ({
+					...c,
+					segments: c.segments ? c.segments.map((s) => (s.id === segmentId ? { ...s, length: newLength } : s)) : [],
+				}))
 			);
 
 			try {
-				// Update in database
 				const { error } = await supabase.from("segments").update({ length: newLength }).eq("id", segmentId);
 
 				if (error) {

@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsAdjust, Chip } from "@carbon/icons-react";
-import SegmentSymbol from "./SegmentSymbol";
+import SegmentSymbol from "@/components/program/linear/segment/SegmentSymbol";
 
 const NewButton = ({ children }: { children: React.ReactNode }) => {
 	return (

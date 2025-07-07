@@ -2,10 +2,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
-import ConstraintBox from "./Constraint";
-import GeneratorBox from "./Generator";
-import SegmentComponent from "./Segment";
-import NewButtons from "./NewButtons";
+import ConstraintBox from "@/components/program/linear/Constraint";
+import GeneratorBox from "@/components/program/linear/Generator";
+import SegmentComponent from "@/components/program/linear/segment/Segment";
+import NewButtons from "@/components/program/linear/NewButtons";
 import Portal from "@/components/global/Portal";
 
 interface LinearViewerProps {

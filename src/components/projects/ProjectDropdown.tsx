@@ -29,15 +29,15 @@ const ProjectDropdown = ({ projectId }: { projectId: string }) => {
 	return (
 		<DropdownMenu open={open} onOpenChange={setOpen}>
 			<DropdownMenuTrigger onClick={handleClick}>
-				<OverflowMenuHorizontal size={16} className="shrink-0 hover:text-foreground text-slate-500 invisible group-hover:visible" />
+				<OverflowMenuHorizontal className="shrink-0 hover:text-foreground text-slate-500 invisible group-hover:visible" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent onClick={handleClick}>
 				<DropdownMenuItem onClick={handleDuplicate}>
-					<Copy size={16} />
+					<Copy />
 					Duplicate
 				</DropdownMenuItem>
-				<DropdownMenuItem onClick={handleDelete}>
-					<TrashCan size={16} />
+				<DropdownMenuItem onClick={handleDelete} variant="destructive">
+					<TrashCan />
 					Delete
 				</DropdownMenuItem>
 			</DropdownMenuContent>

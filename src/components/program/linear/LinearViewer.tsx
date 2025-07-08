@@ -18,6 +18,10 @@ interface LinearViewerProps {
 const INITIAL_RULER_MIN_LENGTH = 100; // min starting ruler length
 const RULER_PADDING = 10; // extra ruler spacing at end of segment
 const DRAG_THRESHOLD = 5; // pixels to move before drag starts
+const SEGMENT_HEIGHT = 40; // height of segment
+const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and segments
+const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
+const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
 const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength } = useProgram();
@@ -607,9 +611,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		currentPosition += segment.length;
 	});
 
-	// get constraints and generators for highlighted segment
-	const highlightedSegment = isDragging || isResizing ? null : clickedSegment || hoveredSegment;
-
 	return (
 		<div className="w-full h-full">
 			<div
@@ -707,59 +708,168 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				<div className="flex flex-col justify-center flex-1 pt-8">
 					{/* Constraints */}
 					<div className="relative h-40 w-full">
-						{segmentsState.map((segment) => {
-							// only show if segment is hovered or clicked
-							if (highlightedSegment?.id !== segment.id) return null;
+						{(() => {
+							// Group constraints by key to avoid duplicates
+							const constraintGroups = new Map<
+								string,
+								{
+									constraint: Constraint;
+									segments: string[];
+									instance: ConstraintInstance;
+								}
+							>();
 
-							// find all constraints that apply to this segment
-							const segmentConstraints = constraints
-								.filter((constraint) => constraint.segments.includes(segment.id) && constraint.key)
-								.map((constraint) => {
+							constraints.forEach((constraint) => {
+								if (!constraint.key) return;
+
+								const existing = constraintGroups.get(constraint.key);
+								if (existing) {
+									// Add segments from this constraint to the existing group
+									constraint.segments.forEach((segId) => {
+										if (!existing.segments.includes(segId)) {
+											existing.segments.push(segId);
+										}
+									});
+								} else {
 									const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
-									return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
+									if (constraintDef) {
+										constraintGroups.set(constraint.key, {
+											constraint: constraintDef,
+											segments: [...constraint.segments],
+											instance: constraint,
+										});
+									}
+								}
+							});
+
+							// Calculate positions for constraint boxes
+							const constraintArray = Array.from(constraintGroups.values());
+							if (constraintArray.length === 0) return null;
+
+							// Position each constraint box based on its first segment
+							const constraintPositions = new Map<string, number>();
+							let previousEndX = -Infinity;
+
+							constraintArray.forEach((group) => {
+								// Find the leftmost segment position
+								let minSegmentPosition = Infinity;
+								group.segments.forEach((segId) => {
+									const segment = segmentsState.find((s) => s.id === segId);
+									if (segment) {
+										const position = segmentPositions.get(segment.id) || 0;
+										minSegmentPosition = Math.min(minSegmentPosition, position);
+									}
 								});
-							if (segmentConstraints.length === 0) return null;
-							const segmentPosition = segmentPositions.get(segment.id) || 0;
-							const segmentLength = segment.length;
-							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
-							// skip if outside visible area
-							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
-
-							// calculate total width of constraint boxes
-							const constraintBoxWidth = 180;
-							const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8;
-							const halfWidth = totalWidth / 2;
-
-							// calculate adjusted position to keep boxes within container
-							let adjustedLeft = segmentCenter;
-							const padding = 16;
-							if (segmentCenter - halfWidth < padding) {
-								adjustedLeft = halfWidth + padding;
-							} else if (segmentCenter + halfWidth > visibleWidth - padding) {
-								adjustedLeft = visibleWidth - halfWidth - padding;
-							}
+								if (minSegmentPosition !== Infinity) {
+									// Calculate the x position for this constraint box
+									const idealX = 20 + minSegmentPosition * nucleotideWidth - offset;
+									// Ensure boxes don't overlap
+									const actualX = Math.max(idealX, previousEndX + CONSTRAINT_BOX_GAP);
+									constraintPositions.set(group.constraint.key, actualX);
+									previousEndX = actualX + CONSTRAINT_BOX_WIDTH;
+								}
+							});
 
 							return (
-								<div key={`segment-${segment.id}-constraints`}>
+								<>
 									{/* Constraint boxes */}
-									<div
-										className="absolute flex flex-row gap-2 items-end justify-center"
+									{constraintArray.map((group) => {
+										const boxX = constraintPositions.get(group.constraint.key);
+										if (boxX === undefined) return null;
+
+										return (
+											<div
+												key={`constraint-${group.constraint.key}`}
+												className="absolute"
+												style={{
+													left: `${boxX}px`,
+													bottom: `${CONSTRAINT_BOX_DISTANCE}px`,
+												}}
+											>
+												<ConstraintBox constraint={group.constraint} />
+											</div>
+										);
+									})}
+
+									{/* Connecting lines for all constraints */}
+									<svg
+										className="absolute pointer-events-none z-20"
 										style={{
-											left: `${adjustedLeft}px`,
-											bottom: "75px", // config: how high up the constraint boxes are
-											transform: "translateX(-50%)",
+											left: 0,
+											top: 0,
+											width: "100%",
+											height: "100%",
+											overflow: "visible",
 										}}
 									>
-										{segmentConstraints.map((constraint, idx) => (
-											<div key={`constraint-${idx}`} className="relative">
-												<ConstraintBox constraint={constraint} />
-											</div>
-										))}
-									</div>
-								</div>
+										{constraintArray.map((group) => {
+											const boxX = constraintPositions.get(group.constraint.key);
+											if (boxX === undefined) return null;
+
+											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2;
+											const startY = CONSTRAINT_BOX_DISTANCE;
+
+											return group.segments.map((segmentId: string) => {
+												const segment = segmentsState.find((s) => s.id === segmentId);
+												if (!segment) return null;
+
+												const segmentPosition = segmentPositions.get(segment.id) || 0;
+												const segmentLength = segment.length;
+												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
+
+												// Skip if segment is far outside visible area
+												if (segmentCenter < -200 || segmentCenter > visibleWidth + 200) return null;
+
+												const endX = segmentCenter;
+												const endY = CONSTRAINT_BOX_DISTANCE + CONSTRAINT_BOX_DISTANCE;
+
+												// Create straight lines with right angles
+												const midY = startY + (endY - startY) / 2;
+
+												return (
+													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
+														{/* Vertical line from constraint box */}
+														<line
+															x1={boxCenterX}
+															y1={startY}
+															x2={boxCenterX}
+															y2={midY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+														{/* Horizontal line */}
+														<line
+															x1={boxCenterX}
+															y1={midY}
+															x2={endX}
+															y2={midY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+														{/* Vertical line to segment */}
+														<line
+															x1={endX}
+															y1={midY}
+															x2={endX}
+															y2={endY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													</g>
+												);
+											});
+										})}
+									</svg>
+								</>
 							);
-						})}
+						})()}
 					</div>
 
 					{/* Segments */}
@@ -905,231 +1015,173 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 										/>
 									);
 								})}
-
-							{/* Constraint connecting lines */}
-							{highlightedSegment &&
-								segmentsState.includes(highlightedSegment) &&
-								(() => {
-									const segmentConstraints = constraints
-										.filter((constraint) => constraint.segments.includes(highlightedSegment.id) && constraint.key)
-										.map((constraint) => {
-											const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
-											return constraintDef || { key: constraint.key || "", name: constraint.label || constraint.key || "Unknown" };
-										});
-									if (segmentConstraints.length === 0) return null;
-
-									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
-									const segmentLength = highlightedSegment.length;
-									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
-
-									const constraintBoxWidth = 200;
-									const totalWidth = segmentConstraints.length * constraintBoxWidth + (segmentConstraints.length - 1) * 8;
-									const halfWidth = totalWidth / 2;
-
-									let adjustedLeft = segmentCenter;
-									const padding = 16;
-									if (segmentCenter - halfWidth < padding) {
-										adjustedLeft = halfWidth + padding;
-									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
-										adjustedLeft = visibleWidth - halfWidth - padding;
-									}
-
-									return (
-										<svg
-											className="absolute pointer-events-none z-20"
-											style={{
-												left: 0,
-												top: "-148px",
-												width: "100%",
-												height: "148px",
-												overflow: "visible",
-											}}
-										>
-											{segmentConstraints.map((constraint, idx, arr) => {
-												const boxOffset = (idx - (arr.length - 1) / 2) * (constraintBoxWidth + 8);
-												const boxCenterX = adjustedLeft + boxOffset;
-												const startX = boxCenterX;
-												const startY = 72; // config: where the constraint line starts
-												const endX = segmentCenter;
-												const endY = 150;
-												const isOffset = Math.abs(startX - endX) > 10;
-
-												if (isOffset) {
-													const controlY = (startY + endY) / 2;
-													return (
-														<path
-															key={`constraint-curve-${idx}`}
-															d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-															fill="none"
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												} else {
-													return (
-														<line
-															key={`constraint-line-${idx}`}
-															x1={startX}
-															y1={startY}
-															x2={endX}
-															y2={endY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												}
-											})}
-										</svg>
-									);
-								})()}
-
-							{/* Generator connecting lines */}
-							{highlightedSegment &&
-								segmentsState.includes(highlightedSegment) &&
-								(() => {
-									const segmentGenerators = generators
-										.filter((generator) => generator.segments.includes(highlightedSegment.id) && generator.key)
-										.map((generator) => {
-											const generatorDef = generatorOptions.find((g: GeneratorType) => g.key === generator.key);
-											return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
-										});
-									if (segmentGenerators.length === 0) return null;
-
-									const segmentPosition = segmentPositions.get(highlightedSegment.id) || 0;
-									const segmentLength = highlightedSegment.length;
-									const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
-
-									// config: generator box positions
-									const generatorBoxWidth = 180;
-									const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
-									const halfWidth = totalWidth / 2;
-
-									let adjustedLeft = segmentCenter;
-									const padding = 16;
-									if (segmentCenter - halfWidth < padding) {
-										adjustedLeft = halfWidth + padding;
-									} else if (segmentCenter + halfWidth > visibleWidth - padding) {
-										adjustedLeft = visibleWidth - halfWidth - padding;
-									}
-
-									return (
-										<svg
-											className="absolute pointer-events-none z-20"
-											style={{
-												left: 0,
-												top: "38px",
-												width: "100%",
-												height: "120px",
-												overflow: "visible",
-											}}
-										>
-											{segmentGenerators.map((generator, idx, arr) => {
-												const boxOffset = (idx - (arr.length - 1) / 2) * (generatorBoxWidth + 8);
-												const boxCenterX = adjustedLeft + boxOffset;
-
-												const startX = boxCenterX;
-												const startY = 27;
-												const endX = segmentCenter;
-												const endY = 0;
-												const isOffset = Math.abs(startX - endX) > 10;
-
-												if (isOffset) {
-													const controlY = (startY + endY) / 2;
-													return (
-														<path
-															key={`generator-curve-${idx}`}
-															d={`M ${startX} ${startY} 
-															C ${startX} ${controlY}, 
-															${endX} ${controlY}, 
-															${endX} ${endY}`}
-															fill="none"
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												} else {
-													return (
-														<line
-															key={`generator-line-${idx}`}
-															x1={startX}
-															y1={startY}
-															x2={endX}
-															y2={endY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-													);
-												}
-											})}
-										</svg>
-									);
-								})()}
 						</div>
 					)}
 
 					{/* Generators */}
 					<div className="relative h-40 w-full">
-						{segmentsState.map((segment) => {
-							if (highlightedSegment?.id !== segment.id) return null;
+						{(() => {
+							// Group generators by key to avoid duplicates
+							const generatorGroups = new Map<
+								string,
+								{
+									generator: GeneratorType;
+									segments: string[];
+									instance: GeneratorInstance;
+								}
+							>();
 
-							// find all generators that apply to this segment
-							const segmentGenerators = generators
-								.filter((generator) => generator.segments.includes(segment.id) && generator.key)
-								.map((generator) => {
+							generators.forEach((generator) => {
+								if (!generator.key) return;
+
+								const existing = generatorGroups.get(generator.key);
+								if (existing) {
+									// Add segments from this generator to the existing group
+									generator.segments.forEach((segId) => {
+										if (!existing.segments.includes(segId)) {
+											existing.segments.push(segId);
+										}
+									});
+								} else {
 									const generatorDef = generatorOptions.find((g: GeneratorType) => g.key === generator.key);
-									return generatorDef || { key: generator.key || "", name: generator.label || generator.key || "Unknown" };
+									if (generatorDef) {
+										generatorGroups.set(generator.key, {
+											generator: generatorDef,
+											segments: [...generator.segments],
+											instance: generator,
+										});
+									}
+								}
+							});
+
+							// Calculate positions for generator boxes
+							const generatorArray = Array.from(generatorGroups.values());
+							if (generatorArray.length === 0) return null;
+
+							// Position each generator box based on its first segment
+							const generatorPositions = new Map<string, number>();
+							let previousEndX = -Infinity;
+
+							generatorArray.forEach((group) => {
+								// Find the leftmost segment position
+								let minSegmentPosition = Infinity;
+								group.segments.forEach((segId) => {
+									const segment = segmentsState.find((s) => s.id === segId);
+									if (segment) {
+										const position = segmentPositions.get(segment.id) || 0;
+										minSegmentPosition = Math.min(minSegmentPosition, position);
+									}
 								});
-							if (segmentGenerators.length === 0) return null;
-							const segmentPosition = segmentPositions.get(segment.id) || 0;
-							const segmentLength = segment.length;
-							const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
-							if (segmentCenter < -100 || segmentCenter > visibleWidth + 100) return null;
 
-							// calculate total width of generator boxes
-							const generatorBoxWidth = 200;
-							const totalWidth = segmentGenerators.length * generatorBoxWidth + (segmentGenerators.length - 1) * 8;
-							const halfWidth = totalWidth / 2;
-
-							// calculate adjusted position to keep boxes within container
-							let adjustedLeft = segmentCenter;
-							const padding = 16;
-							if (segmentCenter - halfWidth < padding) {
-								adjustedLeft = halfWidth + padding;
-							} else if (segmentCenter + halfWidth > visibleWidth - padding) {
-								adjustedLeft = visibleWidth - halfWidth - padding;
-							}
+								if (minSegmentPosition !== Infinity) {
+									// Calculate the x position for this generator box
+									const idealX = 20 + minSegmentPosition * nucleotideWidth - offset;
+									// Ensure boxes don't overlap
+									const actualX = Math.max(idealX, previousEndX + CONSTRAINT_BOX_GAP);
+									generatorPositions.set(group.generator.key, actualX);
+									previousEndX = actualX + CONSTRAINT_BOX_WIDTH;
+								}
+							});
 
 							return (
-								<div key={`segment-${segment.id}-generators`}>
+								<>
 									{/* Generator boxes */}
-									<div
-										className="absolute flex flex-row gap-2 items-start justify-center"
+									{generatorArray.map((group) => {
+										const boxX = generatorPositions.get(group.generator.key);
+										if (boxX === undefined) return null;
+
+										return (
+											<div
+												key={`generator-${group.generator.key}`}
+												className="absolute"
+												style={{
+													left: `${boxX}px`,
+													top: "80px",
+												}}
+											>
+												<GeneratorBox generator={group.generator} />
+											</div>
+										);
+									})}
+
+									{/* Connecting lines for all generators */}
+									<svg
+										className="absolute pointer-events-none z-20"
 										style={{
-											left: `${adjustedLeft}px`,
-											top: "16px",
-											transform: "translateX(-50%)",
+											left: 0,
+											top: "-38px",
+											width: "100%",
+											height: "100px",
+											overflow: "visible",
 										}}
 									>
-										{segmentGenerators.map((generator, idx) => (
-											<div key={`generator-${idx}`} className="relative">
-												<GeneratorBox generator={generator} />
-											</div>
-										))}
-									</div>
-								</div>
+										{generatorArray.map((group) => {
+											const boxX = generatorPositions.get(group.generator.key);
+											if (boxX === undefined) return null;
+
+											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2;
+											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT;
+
+											return group.segments.map((segmentId: string) => {
+												const segment = segmentsState.find((s) => s.id === segmentId);
+												if (!segment) return null;
+
+												const segmentPosition = segmentPositions.get(segment.id) || 0;
+												const segmentLength = segment.length;
+												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
+
+												// Skip if segment is far outside visible area
+												if (segmentCenter < -200 || segmentCenter > visibleWidth + 200) return null;
+
+												const endX = segmentCenter;
+												const endY = SEGMENT_HEIGHT - 10;
+
+												// Create straight lines with right angles
+												const midY = startY - (startY - endY) / 2;
+
+												return (
+													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>
+														{/* Vertical line from generator box */}
+														<line
+															x1={boxCenterX}
+															y1={startY}
+															x2={boxCenterX}
+															y2={midY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+														{/* Horizontal line */}
+														<line
+															x1={boxCenterX}
+															y1={midY}
+															x2={endX}
+															y2={midY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+														{/* Vertical line to segment */}
+														<line
+															x1={endX}
+															y1={midY}
+															x2={endX}
+															y2={endY}
+															stroke="oklch(70.4% 0.04 256.788)"
+															strokeWidth="1.5"
+															strokeDasharray="3, 3"
+															className="stroke-dash-anim"
+														/>
+													</g>
+												);
+											});
+										})}
+									</svg>
+								</>
 							);
-						})}
+						})()}
 					</div>
 				</div>
 			</div>

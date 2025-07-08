@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
+import { Segment, ConstraintInstance, GeneratorInstance, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
 import { ViewerProvider, useViewer } from "@/context/ViewerContext";
 import ConstraintBox from "@/components/program/linear/Constraint";
@@ -24,11 +24,36 @@ const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and
 const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
 const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
-const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
+// Note: constraints and generators are used by ViewerProvider in the parent component
+const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength } = useProgram();
-	const { hoveredSegment, setHoveredSegment, hoveredConstraintKey, setHoveredConstraintKey, hoveredGeneratorKey, setHoveredGeneratorKey, hasAnyHover, isSegmentHighlighted, shouldDimElement } =
-		useViewer();
-	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
+	const {
+		hoveredSegment,
+		setHoveredSegment,
+		hoveredConstraintKey,
+		setHoveredConstraintKey,
+		hoveredGeneratorKey,
+		setHoveredGeneratorKey,
+		clickedSegment,
+		setClickedSegment,
+		draggedSegment,
+		setDraggedSegment,
+		draggedSegmentIndex,
+		setDraggedSegmentIndex,
+		isDragging,
+		setIsDragging,
+		resizingSegment,
+		setResizingSegment,
+		isResizing,
+		setIsResizing,
+		hasAnyHover,
+		isAnySegmentDragging,
+		isAnySegmentResizing,
+		isSegmentHighlighted,
+		shouldDimElement,
+		constraintGroups,
+		generatorGroups,
+	} = useViewer();
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
 	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
@@ -49,17 +74,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constra
 		currentOffsetRef.current = offset;
 	}, []);
 
-	// drag and drop state
-	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
-	const [draggedSegmentIndex, setDraggedSegmentIndex] = useState<number | null>(null);
+	// drag and drop state - local state only
 	const [dropPreviewIndex, setDropPreviewIndex] = useState<number | null>(null);
 	const [visualDropIndex, setVisualDropIndex] = useState<number | null>(null);
-	const [isDragging, setIsDragging] = useState<boolean>(false);
 	const [dragMousePosition, setDragMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-
-	// resize state
-	const [isResizing, setIsResizing] = useState<boolean>(false);
-	const [resizingSegment, setResizingSegment] = useState<Segment | null>(null);
 
 	// potential drag state - for distinguishing clicks from drags
 	const [potentialDrag, setPotentialDrag] = useState<{
@@ -711,40 +729,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constra
 					{/* Constraints */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							// Group constraints by key to avoid duplicates
-							const constraintGroups = new Map<
-								string,
-								{
-									constraint: Constraint;
-									segments: string[];
-									instance: ConstraintInstance;
-								}
-							>();
-
-							constraints.forEach((constraint) => {
-								if (!constraint.key) return;
-
-								const existing = constraintGroups.get(constraint.key);
-								if (existing) {
-									// Add segments from this constraint to the existing group
-									constraint.segments.forEach((segId) => {
-										if (!existing.segments.includes(segId)) {
-											existing.segments.push(segId);
-										}
-									});
-								} else {
-									const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
-									if (constraintDef) {
-										constraintGroups.set(constraint.key, {
-											constraint: constraintDef,
-											segments: [...constraint.segments],
-											instance: constraint,
-										});
-									}
-								}
-							});
-
-							// Calculate positions for constraint boxes
+							// Use constraint groups from context
 							const constraintArray = Array.from(constraintGroups.values());
 							if (constraintArray.length === 0) return null;
 
@@ -1024,9 +1009,9 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constra
 											offset={offset}
 											position={displaySegmentPositions.get(segment.id) || 0}
 											isDragging={isDraggedSegment}
-											isAnySegmentDragging={isDragging}
+											isAnySegmentDragging={isAnySegmentDragging}
 											isResizing={isCurrentResizingSegment}
-											isAnySegmentResizing={isResizing}
+											isAnySegmentResizing={isAnySegmentResizing}
 											isHighlightedByBox={isHighlightedByBox}
 											hasBoxHover={hasBoxHover}
 											onDragStart={(e) => {
@@ -1055,40 +1040,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constra
 					{/* Generators */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							// Group generators by key to avoid duplicates
-							const generatorGroups = new Map<
-								string,
-								{
-									generator: GeneratorType;
-									segments: string[];
-									instance: GeneratorInstance;
-								}
-							>();
-
-							generators.forEach((generator) => {
-								if (!generator.key) return;
-
-								const existing = generatorGroups.get(generator.key);
-								if (existing) {
-									// Add segments from this generator to the existing group
-									generator.segments.forEach((segId) => {
-										if (!existing.segments.includes(segId)) {
-											existing.segments.push(segId);
-										}
-									});
-								} else {
-									const generatorDef = generatorOptions.find((g: GeneratorType) => g.key === generator.key);
-									if (generatorDef) {
-										generatorGroups.set(generator.key, {
-											generator: generatorDef,
-											segments: [...generator.segments],
-											instance: generator,
-										});
-									}
-								}
-							});
-
-							// Calculate positions for generator boxes
+							// Use generator groups from context
 							const generatorArray = Array.from(generatorGroups.values());
 							if (generatorArray.length === 0) return null;
 
@@ -1278,7 +1230,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constra
 							offset={0}
 							position={0}
 							isDragging={false}
-							isAnySegmentDragging={isDragging}
+							isAnySegmentDragging={isAnySegmentDragging}
 							baseLeftOffset={0}
 						/>
 					</div>

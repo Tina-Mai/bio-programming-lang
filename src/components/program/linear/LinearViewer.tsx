@@ -37,6 +37,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 	const animationFrameRef = useRef<number | null>(null);
+	const [hoveredConstraintKey, setHoveredConstraintKey] = useState<string | null>(null);
+	const [hoveredGeneratorKey, setHoveredGeneratorKey] = useState<string | null>(null);
 
 	// refs for animation values to avoid dependency issues
 	const currentZoomRef = useRef<number>(1);
@@ -587,6 +589,23 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		}
 	}
 
+	// calculate which segments should be highlighted based on hovered constraint/generator
+	const highlightedSegmentIds = new Set<string>();
+	if (hoveredConstraintKey) {
+		constraints.forEach((constraint) => {
+			if (constraint.key === hoveredConstraintKey) {
+				constraint.segments.forEach((segId) => highlightedSegmentIds.add(segId));
+			}
+		});
+	}
+	if (hoveredGeneratorKey) {
+		generators.forEach((generator) => {
+			if (generator.key === hoveredGeneratorKey) {
+				generator.segments.forEach((segId) => highlightedSegmentIds.add(segId));
+			}
+		});
+	}
+
 	// calculate segment positions - segments are connected in order
 	const segmentPositions = new Map<string, number>();
 	let currentPosition = 0;
@@ -781,14 +800,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 										const boxX = constraintPositions.get(group.constraint.key);
 										if (boxX === undefined) return null;
 
+										const isBoxHovered = hoveredConstraintKey === group.constraint.key;
+										const hasAnyBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+
 										return (
 											<div
 												key={`constraint-${group.constraint.key}`}
-												className="absolute"
+												className="absolute transition-opacity duration-200"
 												style={{
 													left: `${boxX - offset}px`,
 													bottom: `${CONSTRAINT_BOX_DISTANCE}px`,
+													opacity: hasAnyBoxHover && !isBoxHovered ? 0.4 : 1,
 												}}
+												onMouseEnter={() => setHoveredConstraintKey(group.constraint.key)}
+												onMouseLeave={() => setHoveredConstraintKey(null)}
 											>
 												<ConstraintBox constraint={group.constraint} />
 											</div>
@@ -865,9 +890,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 													`;
 												}
 
+												const isHovered = hoveredConstraintKey === group.constraint.key;
+												const hasAnyHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+
 												return (
 													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
-														<path d={pathData} fill="none" stroke="oklch(70.4% 0.04 256.788)" strokeWidth="1.5" strokeDasharray="3, 3" className="stroke-dash-anim" />
+														<path
+															d={pathData}
+															fill="none"
+															stroke={isHovered ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															strokeWidth={isHovered ? "2" : "1.5"}
+															strokeDasharray={isHovered ? "none" : "3, 3"}
+															className={isHovered ? "" : "stroke-dash-anim"}
+															opacity={hasAnyHover && !isHovered ? 0.3 : 1}
+														/>
 													</g>
 												);
 											});
@@ -984,6 +1020,9 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const isCurrentResizingSegment = resizingSegment?.id === segment.id;
 									const displaySegment = isCurrentResizingSegment && resizingSegment ? resizingSegment : segment;
 
+									const isHighlightedByBox = highlightedSegmentIds.has(segment.id);
+									const hasBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+
 									return (
 										<SegmentComponent
 											key={`segment-${segment.id}`}
@@ -1001,6 +1040,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											isAnySegmentDragging={isDragging}
 											isResizing={isCurrentResizingSegment}
 											isAnySegmentResizing={isResizing}
+											isHighlightedByBox={isHighlightedByBox}
+											hasBoxHover={hasBoxHover}
 											onDragStart={(e) => {
 												e.stopPropagation();
 												setPotentialDrag({
@@ -1099,14 +1140,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 										const boxX = generatorPositions.get(group.generator.key);
 										if (boxX === undefined) return null;
 
+										const isBoxHovered = hoveredGeneratorKey === group.generator.key;
+										const hasAnyBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+
 										return (
 											<div
 												key={`generator-${group.generator.key}`}
-												className="absolute"
+												className="absolute transition-opacity duration-200"
 												style={{
 													left: `${boxX - offset}px`,
 													top: "80px",
+													opacity: hasAnyBoxHover && !isBoxHovered ? 0.4 : 1,
 												}}
+												onMouseEnter={() => setHoveredGeneratorKey(group.generator.key)}
+												onMouseLeave={() => setHoveredGeneratorKey(null)}
 											>
 												<GeneratorBox generator={group.generator} />
 											</div>
@@ -1184,9 +1231,20 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 													`;
 												}
 
+												const isHovered = hoveredGeneratorKey === group.generator.key;
+												const hasAnyHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+
 												return (
 													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>
-														<path d={pathData} fill="none" stroke="oklch(70.4% 0.04 256.788)" strokeWidth="1.5" strokeDasharray="3, 3" className="stroke-dash-anim" />
+														<path
+															d={pathData}
+															fill="none"
+															stroke={isHovered ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															strokeWidth={isHovered ? "2" : "1.5"}
+															strokeDasharray={isHovered ? "none" : "3, 3"}
+															className={isHovered ? "" : "stroke-dash-anim"}
+															opacity={hasAnyHover && !isHovered ? 0.3 : 1}
+														/>
 													</g>
 												);
 											});

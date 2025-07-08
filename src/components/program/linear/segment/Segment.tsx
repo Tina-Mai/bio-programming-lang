@@ -19,6 +19,8 @@ interface SegmentComponentProps {
 	isAnySegmentDragging?: boolean;
 	isResizing?: boolean;
 	isAnySegmentResizing?: boolean;
+	isHighlightedByBox?: boolean;
+	hasBoxHover?: boolean;
 	onDragStart?: (e: React.MouseEvent) => void;
 	onResizeStart?: (e: React.MouseEvent) => void;
 	baseLeftOffset?: number;
@@ -39,6 +41,8 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	isAnySegmentDragging = false,
 	isResizing = false,
 	isAnySegmentResizing = false,
+	isHighlightedByBox = false,
+	hasBoxHover = false,
 	onDragStart,
 	onResizeStart,
 	baseLeftOffset = 20,
@@ -52,8 +56,10 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	const colors = getSegmentColors(segment);
 	const isHovered = !isAnySegmentDragging && !isAnySegmentResizing && hoveredSegment === segment;
 	const isClicked = !isAnySegmentDragging && !isAnySegmentResizing && clickedSegment === segment;
-	const isHighlighted = !isAnySegmentDragging && (isResizing || (!isAnySegmentResizing && (isClicked || (isHovered && !clickedSegment))));
-	const shouldDim = !isAnySegmentDragging && ((isAnySegmentResizing && !isResizing) || (!isAnySegmentResizing && (clickedSegment || hoveredSegment) && !isHighlighted));
+	const isHighlighted = !isAnySegmentDragging && (isHighlightedByBox || isResizing || (!isAnySegmentResizing && (isClicked || (isHovered && !clickedSegment))));
+	const shouldDim =
+		!isAnySegmentDragging &&
+		((hasBoxHover && !isHighlightedByBox) || (isAnySegmentResizing && !isResizing) || (!isAnySegmentResizing && !hasBoxHover && (clickedSegment || hoveredSegment) && !isHighlighted));
 	const polygonPoints = `0,2 ${segmentPixelWidth},2 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH},20 ${segmentPixelWidth},38 0,38 ${SEGMENT_ARROW_WIDTH},20`;
 
 	const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

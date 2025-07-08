@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Segment, getSegmentColors, calculateSegmentPixelWidth, SEGMENT_ARROW_WIDTH } from "@/types";
+import { useViewer } from "@/context/ViewerContext";
 import SegmentEdge from "@/components/program/linear/segment/SegmentEdge";
 import SegmentMenu from "@/components/program/linear/segment/SegmentMenu";
 
@@ -41,13 +42,25 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	isAnySegmentDragging = false,
 	isResizing = false,
 	isAnySegmentResizing = false,
-	isHighlightedByBox = false,
-	hasBoxHover = false,
+	isHighlightedByBox: isHighlightedByBoxProp = false,
+	hasBoxHover: hasBoxHoverProp = false,
 	onDragStart,
 	onResizeStart,
 	baseLeftOffset = 20,
 }) => {
 	const [isEdgeHovered, setIsEdgeHovered] = useState(false);
+
+	// Try to get context, if not available (e.g., in drag preview), use props
+	let isHighlightedByBox = isHighlightedByBoxProp;
+	let hasBoxHover = hasBoxHoverProp;
+
+	try {
+		const viewer = useViewer();
+		isHighlightedByBox = viewer.isSegmentHighlighted(segment.id);
+		hasBoxHover = viewer.hasAnyHover;
+	} catch {
+		// Context not available, use props
+	}
 
 	const nucleotideWidth = baseWidth * zoomLevel;
 	const segmentLength = segment.length;

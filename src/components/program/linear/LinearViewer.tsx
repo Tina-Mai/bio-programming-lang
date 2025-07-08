@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Segment, ConstraintInstance, GeneratorInstance, constraintOptions, generatorOptions, Constraint, Generator as GeneratorType, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
+import { ViewerProvider, useViewer } from "@/context/ViewerContext";
 import ConstraintBox from "@/components/program/linear/Constraint";
 import GeneratorBox from "@/components/program/linear/Generator";
 import SegmentComponent from "@/components/program/linear/segment/Segment";
@@ -23,9 +24,10 @@ const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and
 const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
 const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
-const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
+const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constraints = [], generators = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength } = useProgram();
-	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
+	const { hoveredSegment, setHoveredSegment, hoveredConstraintKey, setHoveredConstraintKey, hoveredGeneratorKey, setHoveredGeneratorKey, hasAnyHover, isSegmentHighlighted, shouldDimElement } =
+		useViewer();
 	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -37,8 +39,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
 	const animationFrameRef = useRef<number | null>(null);
-	const [hoveredConstraintKey, setHoveredConstraintKey] = useState<string | null>(null);
-	const [hoveredGeneratorKey, setHoveredGeneratorKey] = useState<string | null>(null);
 
 	// refs for animation values to avoid dependency issues
 	const currentZoomRef = useRef<number>(1);
@@ -589,23 +589,6 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 		}
 	}
 
-	// calculate which segments should be highlighted based on hovered constraint/generator
-	const highlightedSegmentIds = new Set<string>();
-	if (hoveredConstraintKey) {
-		constraints.forEach((constraint) => {
-			if (constraint.key === hoveredConstraintKey) {
-				constraint.segments.forEach((segId) => highlightedSegmentIds.add(segId));
-			}
-		});
-	}
-	if (hoveredGeneratorKey) {
-		generators.forEach((generator) => {
-			if (generator.key === hoveredGeneratorKey) {
-				generator.segments.forEach((segId) => highlightedSegmentIds.add(segId));
-			}
-		});
-	}
-
 	// calculate segment positions - segments are connected in order
 	const segmentPositions = new Map<string, number>();
 	let currentPosition = 0;
@@ -800,8 +783,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 										const boxX = constraintPositions.get(group.constraint.key);
 										if (boxX === undefined) return null;
 
-										const isBoxHovered = hoveredConstraintKey === group.constraint.key;
-										const hasAnyBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+										const shouldDim = shouldDimElement("constraint", group.constraint.key);
 
 										return (
 											<div
@@ -810,7 +792,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												style={{
 													left: `${boxX - offset}px`,
 													bottom: `${CONSTRAINT_BOX_DISTANCE}px`,
-													opacity: hasAnyBoxHover && !isBoxHovered ? 0.4 : 1,
+													opacity: shouldDim ? 0.4 : 1,
 												}}
 												onMouseEnter={() => setHoveredConstraintKey(group.constraint.key)}
 												onMouseLeave={() => setHoveredConstraintKey(null)}
@@ -890,19 +872,24 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 													`;
 												}
 
-												const isHovered = hoveredConstraintKey === group.constraint.key;
-												const hasAnyHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+												// Line is highlighted if:
+												// 1. The constraint box is hovered (highlights all its lines)
+												// 2. OR the specific segment this line connects to is hovered
+												const isConstraintHovered = hoveredConstraintKey === group.constraint.key;
+												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
+												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered;
+												const shouldDimLine = hasAnyHover && !isLineHighlighted;
 
 												return (
 													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
 														<path
 															d={pathData}
 															fill="none"
-															stroke={isHovered ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
-															strokeWidth={isHovered ? "2" : "1.5"}
-															strokeDasharray={isHovered ? "none" : "3, 3"}
-															className={isHovered ? "" : "stroke-dash-anim"}
-															opacity={hasAnyHover && !isHovered ? 0.3 : 1}
+															stroke={isLineHighlighted ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															strokeWidth={isLineHighlighted ? "2" : "1.5"}
+															strokeDasharray={isLineHighlighted ? "none" : "3, 3"}
+															className={isLineHighlighted ? "" : "stroke-dash-anim"}
+															opacity={shouldDimLine ? 0.3 : 1}
 														/>
 													</g>
 												);
@@ -1020,8 +1007,8 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 									const isCurrentResizingSegment = resizingSegment?.id === segment.id;
 									const displaySegment = isCurrentResizingSegment && resizingSegment ? resizingSegment : segment;
 
-									const isHighlightedByBox = highlightedSegmentIds.has(segment.id);
-									const hasBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+									const isHighlightedByBox = isSegmentHighlighted(segment.id);
+									const hasBoxHover = hasAnyHover;
 
 									return (
 										<SegmentComponent
@@ -1140,8 +1127,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 										const boxX = generatorPositions.get(group.generator.key);
 										if (boxX === undefined) return null;
 
-										const isBoxHovered = hoveredGeneratorKey === group.generator.key;
-										const hasAnyBoxHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+										const shouldDim = shouldDimElement("generator", group.generator.key);
 
 										return (
 											<div
@@ -1150,7 +1136,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												style={{
 													left: `${boxX - offset}px`,
 													top: "80px",
-													opacity: hasAnyBoxHover && !isBoxHovered ? 0.4 : 1,
+													opacity: shouldDim ? 0.4 : 1,
 												}}
 												onMouseEnter={() => setHoveredGeneratorKey(group.generator.key)}
 												onMouseLeave={() => setHoveredGeneratorKey(null)}
@@ -1231,19 +1217,24 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 													`;
 												}
 
-												const isHovered = hoveredGeneratorKey === group.generator.key;
-												const hasAnyHover = hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+												// Line is highlighted if:
+												// 1. The generator box is hovered (highlights all its lines)
+												// 2. OR the specific segment this line connects to is hovered
+												const isGeneratorHovered = hoveredGeneratorKey === group.generator.key;
+												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
+												const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered;
+												const shouldDimLine = hasAnyHover && !isLineHighlighted;
 
 												return (
 													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>
 														<path
 															d={pathData}
 															fill="none"
-															stroke={isHovered ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
-															strokeWidth={isHovered ? "2" : "1.5"}
-															strokeDasharray={isHovered ? "none" : "3, 3"}
-															className={isHovered ? "" : "stroke-dash-anim"}
-															opacity={hasAnyHover && !isHovered ? 0.3 : 1}
+															stroke={isLineHighlighted ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															strokeWidth={isLineHighlighted ? "2" : "1.5"}
+															strokeDasharray={isLineHighlighted ? "none" : "3, 3"}
+															className={isLineHighlighted ? "" : "stroke-dash-anim"}
+															opacity={shouldDimLine ? 0.3 : 1}
 														/>
 													</g>
 												);
@@ -1294,6 +1285,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 				</Portal>
 			)}
 		</div>
+	);
+};
+
+const LinearViewer: React.FC<LinearViewerProps> = (props) => {
+	return (
+		<ViewerProvider constraints={props.constraints} generators={props.generators}>
+			<LinearViewerInner {...props} />
+		</ViewerProvider>
 	);
 };
 

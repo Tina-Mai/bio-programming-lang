@@ -763,11 +763,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 								if (minSegmentPosition !== Infinity) {
 									// Calculate the x position for this constraint box
-									const idealX = 20 + minSegmentPosition * nucleotideWidth - offset;
-									// Ensure boxes don't overlap
-									const actualX = Math.max(idealX, previousEndX + CONSTRAINT_BOX_GAP);
+									// Note: We store the position without offset, and apply offset when rendering
+									const idealX = 20 + minSegmentPosition * nucleotideWidth;
+									// Ensure boxes don't overlap (check in screen space)
+									const screenIdealX = idealX - offset;
+									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+									const actualX = actualScreenX + offset; // Convert back to absolute position
 									constraintPositions.set(group.constraint.key, actualX);
-									previousEndX = actualX + CONSTRAINT_BOX_WIDTH;
+									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 								}
 							});
 
@@ -783,7 +786,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												key={`constraint-${group.constraint.key}`}
 												className="absolute"
 												style={{
-													left: `${boxX}px`,
+													left: `${boxX - offset}px`,
 													bottom: `${CONSTRAINT_BOX_DISTANCE}px`,
 												}}
 											>
@@ -807,7 +810,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											const boxX = constraintPositions.get(group.constraint.key);
 											if (boxX === undefined) return null;
 
-											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2;
+											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
 											const startY = CONSTRAINT_BOX_DISTANCE;
 
 											return group.segments.map((segmentId: string) => {
@@ -818,50 +821,53 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												const segmentLength = segment.length;
 												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
-												// Skip if segment is far outside visible area
-												if (segmentCenter < -200 || segmentCenter > visibleWidth + 200) return null;
+												// More lenient visibility check - show line if either box or segment is visible
+												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
+												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
+												const isBoxVisible = boxRightEdge >= 0 && boxLeftEdge <= visibleWidth;
+												const isSegmentVisible = segmentCenter + 100 >= 0 && segmentCenter - 100 <= visibleWidth;
+
+												if (!isBoxVisible && !isSegmentVisible) return null;
 
 												const endX = segmentCenter;
 												const endY = CONSTRAINT_BOX_DISTANCE + CONSTRAINT_BOX_DISTANCE;
 
-												// Create straight lines with right angles
-												const midY = startY + (endY - startY) / 2;
+												// Calculate midY with minimum vertical distance to prevent entanglement
+												const minVerticalDistance = 30; // Minimum distance between horizontal line and boxes/segments
+												const baseMidY = startY + (endY - startY) / 2;
+												const midY = Math.max(startY + minVerticalDistance, Math.min(endY - minVerticalDistance, baseMidY));
+
+												const cornerRadius = 15; // radius for rounded line edges
+
+												// Determine direction and handle overlapping cases
+												const horizontalDistance = Math.abs(endX - boxCenterX);
+												const minHorizontalDistance = 40; // Minimum horizontal distance to prevent loops
+
+												let pathData: string;
+
+												if (horizontalDistance < minHorizontalDistance) {
+													// When box and segment are too close horizontally, draw a simple vertical line
+													pathData = `
+														M ${boxCenterX} ${startY}
+														V ${endY}
+													`;
+												} else {
+													// Normal case with rounded corners
+													const direction = endX > boxCenterX ? 1 : -1;
+
+													pathData = `
+														M ${boxCenterX} ${startY}
+														V ${midY - cornerRadius}
+														Q ${boxCenterX} ${midY} ${boxCenterX + direction * cornerRadius} ${midY}
+														H ${endX - direction * cornerRadius}
+														Q ${endX} ${midY} ${endX} ${midY + cornerRadius}
+														V ${endY}
+													`;
+												}
 
 												return (
 													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
-														{/* Vertical line from constraint box */}
-														<line
-															x1={boxCenterX}
-															y1={startY}
-															x2={boxCenterX}
-															y2={midY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-														{/* Horizontal line */}
-														<line
-															x1={boxCenterX}
-															y1={midY}
-															x2={endX}
-															y2={midY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-														{/* Vertical line to segment */}
-														<line
-															x1={endX}
-															y1={midY}
-															x2={endX}
-															y2={endY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
+														<path d={pathData} fill="none" stroke="oklch(70.4% 0.04 256.788)" strokeWidth="1.5" strokeDasharray="3, 3" className="stroke-dash-anim" />
 													</g>
 												);
 											});
@@ -1075,11 +1081,14 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 
 								if (minSegmentPosition !== Infinity) {
 									// Calculate the x position for this generator box
-									const idealX = 20 + minSegmentPosition * nucleotideWidth - offset;
-									// Ensure boxes don't overlap
-									const actualX = Math.max(idealX, previousEndX + CONSTRAINT_BOX_GAP);
+									// Note: We store the position without offset, and apply offset when rendering
+									const idealX = 20 + minSegmentPosition * nucleotideWidth;
+									// Ensure boxes don't overlap (check in screen space)
+									const screenIdealX = idealX - offset;
+									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+									const actualX = actualScreenX + offset; // Convert back to absolute position
 									generatorPositions.set(group.generator.key, actualX);
-									previousEndX = actualX + CONSTRAINT_BOX_WIDTH;
+									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 								}
 							});
 
@@ -1095,7 +1104,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												key={`generator-${group.generator.key}`}
 												className="absolute"
 												style={{
-													left: `${boxX}px`,
+													left: `${boxX - offset}px`,
 													top: "80px",
 												}}
 											>
@@ -1119,7 +1128,7 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 											const boxX = generatorPositions.get(group.generator.key);
 											if (boxX === undefined) return null;
 
-											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2;
+											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
 											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT;
 
 											return group.segments.map((segmentId: string) => {
@@ -1130,50 +1139,54 @@ const LinearViewer: React.FC<LinearViewerProps> = ({ segments = [], constraints 
 												const segmentLength = segment.length;
 												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
 
-												// Skip if segment is far outside visible area
-												if (segmentCenter < -200 || segmentCenter > visibleWidth + 200) return null;
+												// More lenient visibility check - show line if either box or segment is visible
+												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
+												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
+												const isBoxVisible = boxRightEdge >= 0 && boxLeftEdge <= visibleWidth;
+												const isSegmentVisible = segmentCenter + 100 >= 0 && segmentCenter - 100 <= visibleWidth;
+
+												if (!isBoxVisible && !isSegmentVisible) return null;
 
 												const endX = segmentCenter;
 												const endY = SEGMENT_HEIGHT - 10;
 
-												// Create straight lines with right angles
-												const midY = startY - (startY - endY) / 2;
+												// Calculate midY with minimum vertical distance to prevent entanglement
+												const minVerticalDistance = 30; // Minimum distance between horizontal line and boxes/segments
+												const baseMidY = startY - (startY - endY) / 2;
+												const midY = Math.min(startY - minVerticalDistance, Math.max(endY + minVerticalDistance, baseMidY));
+
+												const cornerRadius = 15; // radius for rounded line edges
+
+												// Determine direction and handle overlapping cases
+												const horizontalDistance = Math.abs(endX - boxCenterX);
+												const minHorizontalDistance = 40; // Minimum horizontal distance to prevent loops
+
+												let pathData: string;
+
+												if (horizontalDistance < minHorizontalDistance) {
+													// When box and segment are too close horizontally, draw a simple vertical line
+													pathData = `
+														M ${boxCenterX} ${startY}
+														V ${endY}
+													`;
+												} else {
+													// Normal case with rounded corners
+													const direction = endX > boxCenterX ? 1 : -1;
+
+													// Build path with rounded corners (generator lines go upward)
+													pathData = `
+														M ${boxCenterX} ${startY}
+														V ${midY + cornerRadius}
+														Q ${boxCenterX} ${midY} ${boxCenterX + direction * cornerRadius} ${midY}
+														H ${endX - direction * cornerRadius}
+														Q ${endX} ${midY} ${endX} ${midY - cornerRadius}
+														V ${endY}
+													`;
+												}
 
 												return (
 													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>
-														{/* Vertical line from generator box */}
-														<line
-															x1={boxCenterX}
-															y1={startY}
-															x2={boxCenterX}
-															y2={midY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-														{/* Horizontal line */}
-														<line
-															x1={boxCenterX}
-															y1={midY}
-															x2={endX}
-															y2={midY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
-														{/* Vertical line to segment */}
-														<line
-															x1={endX}
-															y1={midY}
-															x2={endX}
-															y2={endY}
-															stroke="oklch(70.4% 0.04 256.788)"
-															strokeWidth="1.5"
-															strokeDasharray="3, 3"
-															className="stroke-dash-anim"
-														/>
+														<path d={pathData} fill="none" stroke="oklch(70.4% 0.04 256.788)" strokeWidth="1.5" strokeDasharray="3, 3" className="stroke-dash-anim" />
 													</g>
 												);
 											});

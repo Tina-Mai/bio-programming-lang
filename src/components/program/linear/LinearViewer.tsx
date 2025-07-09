@@ -8,12 +8,6 @@ import GeneratorBox from "@/components/program/linear/Generator";
 import SegmentComponent from "@/components/program/linear/segment/Segment";
 import NewButtons from "@/components/program/linear/NewButtons";
 import Portal from "@/components/global/Portal";
-import { linkVertical } from "d3-shape";
-
-interface LinkData {
-	source: [number, number];
-	target: [number, number];
-}
 
 interface LinearViewerProps {
 	segments: Segment[];
@@ -30,30 +24,26 @@ const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and
 const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
 const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
-// Create a vertical link generator from d3-shape
-const linkGenerator = linkVertical<LinkData, [number, number]>()
-	.source((d) => d.source)
-	.target((d) => d.target)
-	.x((d) => d[0])
-	.y((d) => d[1]);
+const generateConnectionPath = (source: [number, number], target: [number, number]): string => {
+	const [x0, y0] = source;
+	const [x1, y1] = target;
+	const y_c = (y0 + y1) / 2;
+	return `M${x0},${y0}C${x0},${y_c} ${x1},${y_c} ${x1},${y1}`;
+};
 
-// Calculate visibility for elements with more lenient bounds
 const isElementVisible = (leftEdge: number, rightEdge: number, viewportWidth: number) => {
-	const buffer = 200; // Generous buffer to prevent lines from disappearing
+	const buffer = 200; // TODO: buffer to prevent lines from disappearing, but we shouldn't use this
 	return rightEdge >= -buffer && leftEdge <= viewportWidth + buffer;
 };
 
-// Helper function to calculate absolute positions consistently
 const calculateAbsoluteX = (position: number, width: number, nucleotideWidth: number) => {
 	return 20 + position * nucleotideWidth + (width * nucleotideWidth) / 2;
 };
 
-// Helper function to calculate screen position from absolute position
 const toScreenX = (absoluteX: number, offset: number) => {
 	return absoluteX - offset;
 };
 
-// Note: constraints and generators are used by ViewerProvider in the parent component
 const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength, deleteSegment } = useProgram();
 	const {
@@ -88,23 +78,20 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 	} = useViewer();
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
-	const [targetZoomLevel, setTargetZoomLevel] = useState<number>(1);
 	const [offset, setOffset] = useState<number>(0);
-	const [targetOffset, setTargetOffset] = useState<number>(0);
 	const [isHovering, setIsHovering] = useState<boolean>(false);
 	const [isPanning, setIsPanning] = useState<boolean>(false);
 	const [lastMouseX, setLastMouseX] = useState<number>(0);
 	const [visibleWidth, setVisibleWidth] = useState<number>(0);
-	const animationFrameRef = useRef<number | null>(null);
 
-	// refs for animation values to avoid dependency issues
 	const currentZoomRef = useRef<number>(1);
 	const currentOffsetRef = useRef<number>(0);
 
+	// ensure refs are initialized correctly when the component mounts
 	useEffect(() => {
 		currentZoomRef.current = zoomLevel;
 		currentOffsetRef.current = offset;
-	}, []);
+	}, [zoomLevel, offset]);
 
 	// drag and drop state - local state only
 	const [dropPreviewIndex, setDropPreviewIndex] = useState<number | null>(null);
@@ -159,48 +146,6 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		return Math.max(0.1, availableWidth / (totalLength * baseWidth));
 	}, [totalLength, baseWidth]);
 
-	// animate zoom level and offset
-	useEffect(() => {
-		let isAnimating = true;
-
-		const animate = () => {
-			if (!isAnimating) return;
-
-			const zoomDiff = targetZoomLevel - currentZoomRef.current;
-			const offsetDiff = targetOffset - currentOffsetRef.current;
-
-			if (Math.abs(zoomDiff) < 0.001 && Math.abs(offsetDiff) < 0.1) {
-				currentZoomRef.current = targetZoomLevel;
-				currentOffsetRef.current = targetOffset;
-				setZoomLevel(targetZoomLevel);
-				setOffset(targetOffset);
-				return;
-			}
-
-			const easingFactor = 0.25;
-			currentZoomRef.current += zoomDiff * easingFactor;
-			currentOffsetRef.current += offsetDiff * easingFactor;
-
-			setZoomLevel(currentZoomRef.current);
-			setOffset(currentOffsetRef.current);
-
-			animationFrameRef.current = requestAnimationFrame(animate);
-		};
-
-		if (animationFrameRef.current) {
-			cancelAnimationFrame(animationFrameRef.current);
-		}
-
-		animate();
-
-		return () => {
-			isAnimating = false;
-			if (animationFrameRef.current) {
-				cancelAnimationFrame(animationFrameRef.current);
-			}
-		};
-	}, [targetZoomLevel, targetOffset]);
-
 	// handle scrolling and zooming
 	const handleWheel = useCallback(
 		(e: WheelEvent) => {
@@ -212,33 +157,31 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 				const scrollAmount = e.deltaX || e.deltaY;
 				const currentNucleotideWidth = baseWidth * currentZoomRef.current;
 				const totalContentWidth = totalLength * currentNucleotideWidth + 40;
-				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current + scrollAmount));
-				setTargetOffset(newOffset);
+				setOffset((current) => Math.max(0, Math.min(totalContentWidth - visibleWidth, current + scrollAmount)));
 				return;
 			}
 
 			const minZoomLevel = calculateFitZoomLevel();
 			const direction = e.deltaY < 0 ? 1 : -1;
 			const zoomFactor = 0.1;
-			const currentZoom = currentZoomRef.current;
-			const newZoomLevel = Math.max(minZoomLevel, Math.min(10, currentZoom + direction * zoomFactor));
+			const newZoomLevel = Math.max(minZoomLevel, Math.min(10, currentZoomRef.current + direction * zoomFactor));
 
-			if (Math.abs(newZoomLevel - currentZoom) < 0.001) return;
+			if (Math.abs(newZoomLevel - currentZoomRef.current) < 0.001) return;
 
 			const rect = containerRef.current?.getBoundingClientRect();
 			if (!rect) return;
 
 			const cursorXRelativeToViewport = e.clientX - rect.left;
 			const cursorXRelativeToContent = cursorXRelativeToViewport + currentOffsetRef.current;
-			const currentNucleotideWidth = baseWidth * currentZoom;
+			const currentNucleotideWidth = baseWidth * currentZoomRef.current;
 			const totalCurrentContentWidth = totalLength * currentNucleotideWidth + 40;
-			const cursorRatio = cursorXRelativeToContent / totalCurrentContentWidth;
+
+			const cursorRatio = totalCurrentContentWidth > 0 ? cursorXRelativeToContent / totalCurrentContentWidth : 0;
 			const newContentWidth = totalLength * baseWidth * newZoomLevel + 40;
 			const newOffset = cursorRatio * newContentWidth - cursorXRelativeToViewport;
-			const clampedNewOffset = Math.max(0, Math.min(newContentWidth - visibleWidth, newOffset));
 
-			setTargetZoomLevel(newZoomLevel);
-			setTargetOffset(clampedNewOffset);
+			setZoomLevel(newZoomLevel);
+			setOffset(Math.max(0, Math.min(newContentWidth - visibleWidth, newOffset)));
 		},
 		[isHovering, totalLength, baseWidth, visibleWidth, calculateFitZoomLevel]
 	);
@@ -325,8 +268,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		if (isPanning) {
 			const deltaX = e.clientX - lastMouseX;
 			const totalContentWidth = totalLength * nucleotideWidth + 40;
-			const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
-			setTargetOffset(newOffset);
+			setOffset((current) => Math.max(0, Math.min(totalContentWidth - visibleWidth, current - deltaX)));
 			setLastMouseX(e.clientX);
 			return;
 		}
@@ -487,8 +429,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 			if (isPanning) {
 				const deltaX = e.clientX - lastMouseX;
 				const totalContentWidth = totalLength * nucleotideWidth + 40;
-				const newOffset = Math.max(0, Math.min(totalContentWidth - visibleWidth, currentOffsetRef.current - deltaX));
-				setTargetOffset(newOffset);
+				setOffset((current) => Math.max(0, Math.min(totalContentWidth - visibleWidth, current - deltaX)));
 				setLastMouseX(e.clientX);
 			}
 		};
@@ -556,6 +497,9 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		isResizing,
 		resizingSegment,
 		updateSegmentLength,
+		zoomLevel,
+		setZoomLevel,
+		setOffset,
 	]);
 
 	// click outside the component to clear clicked segment
@@ -582,12 +526,8 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 
 		const initialZoom = calculateFitZoomLevel();
 		setZoomLevel(initialZoom);
-		setTargetZoomLevel(initialZoom);
-		currentZoomRef.current = initialZoom;
 
 		setOffset(0);
-		setTargetOffset(0);
-		currentOffsetRef.current = 0;
 
 		container.addEventListener("wheel", handleWheel, { passive: false });
 
@@ -600,9 +540,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 	useEffect(() => {
 		const handleResize = () => {
 			updateVisibleWidth();
-			const newZoom = calculateFitZoomLevel();
-			setZoomLevel(newZoom);
-			setTargetZoomLevel(newZoom);
+			setZoomLevel(calculateFitZoomLevel());
 		};
 
 		window.addEventListener("resize", handleResize);
@@ -763,16 +701,15 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 					{/* Constraints */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							// Use constraint groups from context
 							const constraintArray = Array.from(constraintGroups.values());
 							if (constraintArray.length === 0) return null;
 
-							// Position each constraint box based on its first segment
+							// position each constraint box based on its first segment
 							const constraintPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
 							constraintArray.forEach((group) => {
-								// Special case: if constraint applies to only one segment, center it above that segment
+								// if constraint applies to only one segment, center it above that segment
 								if (group.segments.length === 1) {
 									const segId = group.segments[0];
 									const segment = segmentsState.find((s) => s.id === segId);
@@ -787,7 +724,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
 									}
 								} else {
-									// Multiple segments: use leftmost position as before
+									// multiple segments: use leftmost position as before
 									let minSegmentPosition = Infinity;
 									group.segments.forEach((segId) => {
 										const segment = segmentsState.find((s) => s.id === segId);
@@ -798,13 +735,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 									});
 
 									if (minSegmentPosition !== Infinity) {
-										// Calculate the x position for this constraint box
-										// Note: We store the position without offset, and apply offset when rendering
 										const idealX = 20 + minSegmentPosition * nucleotideWidth;
-										// Ensure boxes don't overlap (check in screen space)
 										const screenIdealX = idealX - offset;
 										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-										const actualX = actualScreenX + offset; // Convert back to absolute position
+										const actualX = actualScreenX + offset;
 										constraintPositions.set(group.constraint.key, actualX);
 										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 									}
@@ -859,31 +793,18 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											return group.segments.map((segmentId: string) => {
 												const segment = segmentsState.find((s) => s.id === segmentId);
 												if (!segment) return null;
-
 												const segmentPosition = segmentPositions.get(segment.id) || 0;
 												const segmentLength = segment.length;
-
-												// Calculate absolute positions first
 												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
 												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
-
-												// More lenient visibility check - show line if either box or segment is visible
 												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
 												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
 												const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
 												const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
-
 												if (!isBoxVisible && !isSegmentVisible) return null;
-
 												const endX = segmentCenterScreen;
-												const endY = CONSTRAINT_BOX_DISTANCE * 2; // Target segment top
-
-												// Generate smooth connection path with d3-shape
-												const pathData = linkGenerator({ source: [boxCenterX, startY], target: [endX, endY] }) || "";
-
-												// Line is highlighted if:
-												// 1. The constraint box is hovered (highlights all its lines)
-												// 2. OR the specific segment this line connects to is hovered
+												const endY = CONSTRAINT_BOX_DISTANCE * 2;
+												const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
 												const isConstraintHovered = hoveredConstraintKey === group.constraint.key;
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
 												const isConstraintClicked = clickedConstraintKey === group.constraint.key;
@@ -899,7 +820,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
 															strokeWidth={isLineHighlighted ? "2" : "1.5"}
 															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
-															className={`transition-all duration-300 ${isLineHighlighted ? "" : "stroke-dash-anim"}`}
+															className={isLineHighlighted ? "" : "stroke-dash-anim"}
 															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
 														/>
 													</g>
@@ -1068,31 +989,28 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 					{/* Generators */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							// Use generator groups from context
 							const generatorArray = Array.from(generatorGroups.values());
 							if (generatorArray.length === 0) return null;
 
-							// Position each generator box based on its first segment
+							// position each generator box based on its first segment
 							const generatorPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
 							generatorArray.forEach((group) => {
-								// Special case: if generator applies to only one segment, center it below that segment
+								// if generator applies to only one segment, center it below that segment
 								if (group.segments.length === 1) {
 									const segId = group.segments[0];
 									const segment = segmentsState.find((s) => s.id === segId);
 									if (segment) {
 										const position = segmentPositions.get(segment.id) || 0;
 										const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
-										// Center the box below the segment
 										const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
 										generatorPositions.set(group.generator.key, idealX);
-										// Update previousEndX for next generator positioning
 										const screenX = idealX - offset;
 										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
 									}
 								} else {
-									// Multiple segments: use leftmost position as before
+									// multiple segments: use leftmost position as before
 									let minSegmentPosition = Infinity;
 									group.segments.forEach((segId) => {
 										const segment = segmentsState.find((s) => s.id === segId);
@@ -1103,13 +1021,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 									});
 
 									if (minSegmentPosition !== Infinity) {
-										// Calculate the x position for this generator box
-										// Note: We store the position without offset, and apply offset when rendering
 										const idealX = 20 + minSegmentPosition * nucleotideWidth;
-										// Ensure boxes don't overlap (check in screen space)
 										const screenIdealX = idealX - offset;
 										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-										const actualX = actualScreenX + offset; // Convert back to absolute position
+										const actualX = actualScreenX + offset;
 										generatorPositions.set(group.generator.key, actualX);
 										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 									}
@@ -1164,31 +1079,18 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											return group.segments.map((segmentId: string) => {
 												const segment = segmentsState.find((s) => s.id === segmentId);
 												if (!segment) return null;
-
 												const segmentPosition = segmentPositions.get(segment.id) || 0;
 												const segmentLength = segment.length;
-
-												// Calculate absolute positions first
 												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
 												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
-
-												// More lenient visibility check - show line if either box or segment is visible
 												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
 												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
 												const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
 												const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
-
 												if (!isBoxVisible && !isSegmentVisible) return null;
-
 												const endX = segmentCenterScreen;
-												const endY = SEGMENT_HEIGHT - 10; // Target segment bottom
-
-												// Generate smooth connection path with d3-shape
-												const pathData = linkGenerator({ source: [boxCenterX, startY], target: [endX, endY] }) || "";
-
-												// Line is highlighted if:
-												// 1. The generator box is hovered (highlights all its lines)
-												// 2. OR the specific segment this line connects to is hovered
+												const endY = SEGMENT_HEIGHT - 10;
+												const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
 												const isGeneratorHovered = hoveredGeneratorKey === group.generator.key;
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
 												const isGeneratorClicked = clickedGeneratorKey === group.generator.key;
@@ -1204,7 +1106,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
 															strokeWidth={isLineHighlighted ? "2" : "1.5"}
 															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
-															className={`transition-all duration-300 ${isLineHighlighted ? "" : "stroke-dash-anim"}`}
+															className={isLineHighlighted ? "" : "stroke-dash-anim"}
 															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
 														/>
 													</g>

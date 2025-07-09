@@ -14,7 +14,7 @@ import {
 	transformGeneratorWithSegments,
 } from "@/lib/utils/program";
 import { Construct, ConstraintInstance, GeneratorInstance, Segment } from "@/types";
-import { createConstruct as dbCreateConstruct } from "@/lib/utils/database";
+import { createConstruct as dbCreateConstruct, createSegment as dbCreateSegment, deleteSegment as dbDeleteSegment } from "@/lib/utils/database";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -33,6 +33,8 @@ interface ProgramContextProps {
 	reorderSegments: (constructId: string, segmentIds: string[]) => Promise<void>;
 	updateSegmentLength: (segmentId: string, newLength: number) => Promise<void>;
 	createConstruct: () => Promise<void>;
+	createSegment: (constructId: string) => Promise<void>;
+	deleteSegment: (segmentId: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -219,6 +221,42 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		}
 	}, [currentProgram, supabase, fetchProgramData]);
 
+	const createSegment = useCallback(
+		async (constructId: string) => {
+			if (!currentProgram?.id) {
+				throw new Error("No current program to add segment to");
+			}
+
+			try {
+				await dbCreateSegment(supabase, constructId);
+				console.log("Successfully created new segment for construct:", constructId);
+				await fetchProgramData();
+			} catch (err) {
+				console.error("Error creating segment:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to create segment";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[currentProgram, supabase, fetchProgramData]
+	);
+
+	const deleteSegment = useCallback(
+		async (segmentId: string) => {
+			try {
+				await dbDeleteSegment(supabase, segmentId);
+				console.log("Successfully deleted segment:", segmentId);
+				await fetchProgramData();
+			} catch (err) {
+				console.error("Error deleting segment:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to delete segment";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[supabase, fetchProgramData]
+	);
+
 	// fetch data when program changes
 	useEffect(() => {
 		fetchProgramData();
@@ -234,6 +272,8 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		reorderSegments,
 		updateSegmentLength,
 		createConstruct,
+		createSegment,
+		deleteSegment,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

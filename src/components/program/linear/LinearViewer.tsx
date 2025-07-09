@@ -26,7 +26,7 @@ const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
 // Note: constraints and generators are used by ViewerProvider in the parent component
 const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constructId }) => {
-	const { reorderSegments, updateSegmentLength } = useProgram();
+	const { reorderSegments, updateSegmentLength, deleteSegment } = useProgram();
 	const {
 		hoveredSegment,
 		setHoveredSegment,
@@ -1039,6 +1039,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												setClickedSegment(segment);
 												setHoveredSegment(null);
 											}}
+											onDelete={() => deleteSegment(segment.id)}
 										/>
 									);
 								})}

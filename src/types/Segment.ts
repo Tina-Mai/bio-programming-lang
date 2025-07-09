@@ -1,8 +1,9 @@
 // a Segment is a part/subset of a Construct
 export interface Segment {
 	id: string;
+	label: string;
 	length: number;
-	label?: string;
+	sequence?: string;
 	type?: string;
 	created_at: string;
 	updated_at?: string;

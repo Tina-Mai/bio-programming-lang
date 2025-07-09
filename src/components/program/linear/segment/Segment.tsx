@@ -25,6 +25,7 @@ interface SegmentComponentProps {
 	onDragStart?: (e: React.MouseEvent) => void;
 	onResizeStart?: (e: React.MouseEvent) => void;
 	baseLeftOffset?: number;
+	onDelete?: () => void;
 }
 
 const SegmentComponent: React.FC<SegmentComponentProps> = ({
@@ -47,6 +48,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	onDragStart,
 	onResizeStart,
 	baseLeftOffset = 20,
+	onDelete,
 }) => {
 	const [isEdgeHovered, setIsEdgeHovered] = useState(false);
 
@@ -97,8 +99,9 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	};
 
 	const handleDelete = () => {
-		console.log("Delete segment:", segment);
-		// TODO: Implement delete functionality
+		if (onDelete) {
+			onDelete();
+		}
 	};
 
 	return (

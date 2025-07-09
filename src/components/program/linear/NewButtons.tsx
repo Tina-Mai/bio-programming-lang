@@ -3,16 +3,26 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsAdjust, Chip } from "@carbon/icons-react";
 import SegmentSymbol from "@/components/program/linear/segment/SegmentSymbol";
+import { useProgram } from "@/context/ProgramContext";
 
-const NewButton = ({ children }: { children: React.ReactNode }) => {
-	return (
-		<Button className="group px-2 items-center justify-center gap-2 bg-slate-100/80" variant="outline" size="icon-sm">
-			{children}
-		</Button>
-	);
+const NewButton = (props: React.ComponentProps<typeof Button>) => {
+	return <Button className="group px-2 items-center justify-center gap-2 bg-slate-100/80" variant="outline" size="icon-sm" {...props} />;
 };
 
 const NewButtons = () => {
+	const { constructs, createSegment } = useProgram();
+
+	const handleNewSegment = async () => {
+		if (constructs && constructs.length > 0) {
+			const firstConstructId = constructs[0].id;
+			try {
+				await createSegment(firstConstructId);
+			} catch (error) {
+				console.error("Failed to create new segment", error);
+			}
+		}
+	};
+
 	return (
 		<div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-50">
 			<NewButton>
@@ -23,7 +33,7 @@ const NewButtons = () => {
 				<Chip className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
 				New Generator
 			</NewButton>
-			<NewButton>
+			<NewButton onClick={handleNewSegment} disabled={!constructs || constructs.length === 0}>
 				<SegmentSymbol width={18} height={12} className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
 				New Segment
 			</NewButton>

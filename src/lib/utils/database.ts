@@ -121,6 +121,45 @@ export async function createConstruct(supabase: SupabaseClient, programId: strin
 	return constructData;
 }
 
+export async function createSegment(supabase: SupabaseClient, constructId: string): Promise<{ id: string }> {
+	const { data: maxOrderData, error: maxOrderError } = await supabase
+		.from("construct_segment_order")
+		.select("order_idx")
+		.eq("construct_id", constructId)
+		.order("order_idx", { ascending: false })
+		.limit(1)
+		.single();
+
+	if (maxOrderError && maxOrderError.code !== "PGRST116") {
+		throw new Error(`Failed to get max order index for construct: ${maxOrderError.message}`);
+	}
+
+	const newOrderIdx = (maxOrderData?.order_idx ?? -1) + 1;
+
+	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100 }).select("id").single();
+
+	if (segmentError) {
+		throw new Error(`Failed to create segment: ${segmentError.message}`);
+	}
+
+	if (!segmentData) {
+		throw new Error("Failed to create segment, no data returned");
+	}
+
+	const { error: linkError } = await supabase.from("construct_segment_order").insert({
+		construct_id: constructId,
+		segment_id: segmentData.id,
+		order_idx: newOrderIdx,
+	});
+
+	if (linkError) {
+		await supabase.from("segments").delete().eq("id", segmentData.id);
+		throw new Error(`Failed to link segment to construct: ${linkError.message}`);
+	}
+
+	return segmentData;
+}
+
 export async function deleteProject(supabase: SupabaseClient, projectId: string): Promise<void> {
 	const { error } = await supabase.from("projects").delete().eq("id", projectId);
 
@@ -142,5 +181,13 @@ export async function deleteConstruct(supabase: SupabaseClient, constructId: str
 
 	if (error) {
 		throw new Error(`Failed to delete construct: ${error.message}`);
+	}
+}
+
+export async function deleteSegment(supabase: SupabaseClient, segmentId: string): Promise<void> {
+	const { error } = await supabase.from("segments").delete().eq("id", segmentId);
+
+	if (error) {
+		throw new Error(`Failed to delete segment: ${error.message}`);
 	}
 }

@@ -14,6 +14,11 @@ const DEFAULT_GC_CONTENT_CONFIG = {
 	max_gc: 90,
 };
 
+const DEFAULT_COMPLEXITY_CONFIG = {
+	min_complexity: 0.0,
+	max_complexity: 1.0,
+};
+
 const DEFAULT_UNIFORM_MUTATION_CONFIG = {
 	mutation_rate: 0.01,
 	batch_size: 1,
@@ -68,6 +73,8 @@ export function parseProgram(constructs: Construct[], constraints: ConstraintIns
 		// Add config based on constraint key
 		if (constraint.key === "gc-content") {
 			config = DEFAULT_GC_CONTENT_CONFIG;
+		} else if (constraint.key === "complexity") {
+			config = DEFAULT_COMPLEXITY_CONFIG;
 		}
 		// Add more constraint types here as needed
 

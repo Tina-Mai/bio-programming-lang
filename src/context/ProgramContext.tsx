@@ -35,6 +35,8 @@ interface ProgramContextProps {
 	createConstruct: () => Promise<void>;
 	createSegment: (constructId: string) => Promise<void>;
 	deleteSegment: (segmentId: string) => Promise<void>;
+	updateConstraintKey: (constraintId: string, newKey: string) => Promise<void>;
+	updateGeneratorKey: (generatorId: string, newKey: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -132,6 +134,64 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			setIsLoading(false);
 		}
 	}, [currentProgram, supabase]);
+
+	const updateConstraintKey = useCallback(
+		async (constraintId: string, newKey: string) => {
+			const originalConstraints = constraints;
+
+			// Optimistic update
+			setConstraints((prevConstraints) => prevConstraints.map((c) => (c.id === constraintId ? { ...c, key: newKey } : c)));
+
+			try {
+				const response = await fetch(`/api/constraints/${constraintId}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ key: newKey }),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || "Failed to update constraint key");
+				}
+			} catch (err) {
+				setConstraints(originalConstraints);
+				console.error("Error updating constraint key:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to update constraint key";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[constraints]
+	);
+
+	const updateGeneratorKey = useCallback(
+		async (generatorId: string, newKey: string) => {
+			const originalGenerators = generators;
+
+			// Optimistic update
+			setGenerators((prevGenerators) => prevGenerators.map((g) => (g.id === generatorId ? { ...g, key: newKey } : g)));
+
+			try {
+				const response = await fetch(`/api/generators/${generatorId}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ key: newKey }),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || "Failed to update generator key");
+				}
+			} catch (err) {
+				setGenerators(originalGenerators);
+				console.error("Error updating generator key:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to update generator key";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[generators]
+	);
 
 	const reorderSegments = useCallback(
 		async (constructId: string, segmentIds: string[]) => {
@@ -291,6 +351,8 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		createConstruct,
 		createSegment,
 		deleteSegment,
+		updateConstraintKey,
+		updateGeneratorKey,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

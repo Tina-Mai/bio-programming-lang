@@ -354,6 +354,30 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		setIsHovering(true);
 	};
 
+	// calculate segment positions - segments are connected in order
+	const segmentPositions = new Map<string, number>();
+	let currentPosition = 0;
+
+	// calculate positions for original segments (for ghost rendering)
+	segments.forEach((segment) => {
+		segmentPositions.set(segment.id, currentPosition);
+		currentPosition += segment.length;
+	});
+
+	// calculate positions considering drag preview
+	const displaySegmentPositions = new Map<string, number>();
+	const displaySegments = [...segments];
+	if (isDragging && draggedSegmentIndex !== null && dropPreviewIndex !== null && draggedSegmentIndex !== dropPreviewIndex) {
+		const [removed] = displaySegments.splice(draggedSegmentIndex, 1);
+		displaySegments.splice(dropPreviewIndex, 0, removed);
+	}
+
+	currentPosition = 0;
+	displaySegments.forEach((segment) => {
+		displaySegmentPositions.set(segment.id, currentPosition);
+		currentPosition += segment.length;
+	});
+
 	// global mouse events for dragging outside container
 	useEffect(() => {
 		const handleGlobalMouseMove = (e: MouseEvent) => {
@@ -493,13 +517,17 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		constructId,
 		reorderSegments,
 		potentialDrag,
-		DRAG_THRESHOLD,
 		isResizing,
 		resizingSegment,
 		updateSegmentLength,
-		zoomLevel,
-		setZoomLevel,
-		setOffset,
+		segmentPositions,
+		setClickedSegment,
+		setDraggedSegment,
+		setDraggedSegmentIndex,
+		setHoveredSegment,
+		setIsDragging,
+		setIsResizing,
+		setResizingSegment,
 	]);
 
 	// click outside the component to clear clicked segment
@@ -515,7 +543,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
-	}, []);
+	}, [setClickedSegment, setHoveredSegment]);
 
 	// set up event listeners and initial measurements
 	useEffect(() => {
@@ -578,30 +606,6 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 			rulerMarks.push(bp);
 		}
 	}
-
-	// calculate segment positions - segments are connected in order
-	const segmentPositions = new Map<string, number>();
-	let currentPosition = 0;
-
-	// calculate positions for original segments (for ghost rendering)
-	segments.forEach((segment) => {
-		segmentPositions.set(segment.id, currentPosition);
-		currentPosition += segment.length;
-	});
-
-	// calculate positions considering drag preview
-	const displaySegmentPositions = new Map<string, number>();
-	const displaySegments = [...segments];
-	if (isDragging && draggedSegmentIndex !== null && dropPreviewIndex !== null && draggedSegmentIndex !== dropPreviewIndex) {
-		const [removed] = displaySegments.splice(draggedSegmentIndex, 1);
-		displaySegments.splice(dropPreviewIndex, 0, removed);
-	}
-
-	currentPosition = 0;
-	displaySegments.forEach((segment) => {
-		displaySegmentPositions.set(segment.id, currentPosition);
-		currentPosition += segment.length;
-	});
 
 	return (
 		<div className="w-full h-full">
@@ -767,7 +771,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												onMouseEnter={() => setHoveredConstraintKey(group.constraint.key)}
 												onMouseLeave={() => setHoveredConstraintKey(null)}
 											>
-												<ConstraintBox constraint={group.constraint} />
+												<ConstraintBox constraint={group.instance} />
 											</div>
 										);
 									})}
@@ -1053,7 +1057,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												onMouseEnter={() => setHoveredGeneratorKey(group.generator.key)}
 												onMouseLeave={() => setHoveredGeneratorKey(null)}
 											>
-												<GeneratorBox generator={group.generator} />
+												<GeneratorBox generator={group.instance} />
 											</div>
 										);
 									})}

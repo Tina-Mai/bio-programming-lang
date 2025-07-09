@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ProjectJSON } from "@/context/GlobalContext";
 import { SupabaseProgram } from "./program";
+import { Segment } from "@/types";
 
 export async function createProject(
 	supabase: SupabaseClient,
@@ -121,7 +122,7 @@ export async function createConstruct(supabase: SupabaseClient, programId: strin
 	return constructData;
 }
 
-export async function createSegment(supabase: SupabaseClient, constructId: string): Promise<{ id: string }> {
+export async function createSegment(supabase: SupabaseClient, constructId: string): Promise<Segment> {
 	const { data: maxOrderData, error: maxOrderError } = await supabase
 		.from("construct_segment_order")
 		.select("order_idx")
@@ -136,7 +137,7 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 
 	const newOrderIdx = (maxOrderData?.order_idx ?? -1) + 1;
 
-	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100 }).select("id").single();
+	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100 }).select("*").single();
 
 	if (segmentError) {
 		throw new Error(`Failed to create segment: ${segmentError.message}`);

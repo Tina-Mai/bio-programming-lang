@@ -228,9 +228,19 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			}
 
 			try {
-				await dbCreateSegment(supabase, constructId);
+				const newSegment = await dbCreateSegment(supabase, constructId);
 				console.log("Successfully created new segment for construct:", constructId);
-				await fetchProgramData();
+				setConstructs((prevConstructs) =>
+					prevConstructs.map((c) => {
+						if (c.id === constructId) {
+							return {
+								...c,
+								segments: c.segments ? [...c.segments, newSegment] : [newSegment],
+							};
+						}
+						return c;
+					})
+				);
 			} catch (err) {
 				console.error("Error creating segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to create segment";
@@ -238,23 +248,30 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				throw err;
 			}
 		},
-		[currentProgram, supabase, fetchProgramData]
+		[currentProgram, supabase]
 	);
 
 	const deleteSegment = useCallback(
 		async (segmentId: string) => {
+			const originalConstructs = constructs;
+			setConstructs((prevConstructs) =>
+				prevConstructs.map((c) => ({
+					...c,
+					segments: c.segments ? c.segments.filter((s) => s.id !== segmentId) : [],
+				}))
+			);
 			try {
 				await dbDeleteSegment(supabase, segmentId);
 				console.log("Successfully deleted segment:", segmentId);
-				await fetchProgramData();
 			} catch (err) {
+				setConstructs(originalConstructs);
 				console.error("Error deleting segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to delete segment";
 				setError(errorMessage);
 				throw err;
 			}
 		},
-		[supabase, fetchProgramData]
+		[supabase, constructs]
 	);
 
 	// fetch data when program changes

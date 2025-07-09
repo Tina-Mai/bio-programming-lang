@@ -8,6 +8,12 @@ import GeneratorBox from "@/components/program/linear/Generator";
 import SegmentComponent from "@/components/program/linear/segment/Segment";
 import NewButtons from "@/components/program/linear/NewButtons";
 import Portal from "@/components/global/Portal";
+import { linkVertical } from "d3-shape";
+
+interface LinkData {
+	source: [number, number];
+	target: [number, number];
+}
 
 interface LinearViewerProps {
 	segments: Segment[];
@@ -24,27 +30,12 @@ const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and
 const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
 const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
-// Helper function to generate a smooth S-curve connection path.
-const generateConnectionPath = (boxCenterX: number, boxY: number, segmentCenterX: number, segmentY: number) => {
-	const horizontalDistance = Math.abs(segmentCenterX - boxCenterX);
-
-	// For very small horizontal distances, use a straight line
-	if (horizontalDistance < 1) {
-		return `M ${boxCenterX} ${boxY} L ${segmentCenterX} ${segmentY}`;
-	}
-
-	// A factor to control the "S" shape. A value of 0.5 creates a symmetrical curve.
-	const curveFactor = 0.5;
-	const verticalDistance = segmentY - boxY;
-
-	// The first control point is positioned vertically from the start point.
-	// The second control point is positioned vertically from the end point.
-	// This creates a smooth vertical ease-in-out effect.
-	const controlY1 = boxY + verticalDistance * curveFactor;
-	const controlY2 = segmentY - verticalDistance * curveFactor;
-
-	return `M ${boxCenterX} ${boxY} C ${boxCenterX} ${controlY1}, ${segmentCenterX} ${controlY2}, ${segmentCenterX} ${segmentY}`;
-};
+// Create a vertical link generator from d3-shape
+const linkGenerator = linkVertical<LinkData, [number, number]>()
+	.source((d) => d.source)
+	.target((d) => d.target)
+	.x((d) => d[0])
+	.y((d) => d[1]);
 
 // Calculate visibility for elements with more lenient bounds
 const isElementVisible = (leftEdge: number, rightEdge: number, viewportWidth: number) => {
@@ -887,8 +878,8 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												const endX = segmentCenterScreen;
 												const endY = CONSTRAINT_BOX_DISTANCE * 2; // Target segment top
 
-												// Generate smooth connection path
-												const pathData = generateConnectionPath(boxCenterX, startY, endX, endY);
+												// Generate smooth connection path with d3-shape
+												const pathData = linkGenerator({ source: [boxCenterX, startY], target: [endX, endY] }) || "";
 
 												// Line is highlighted if:
 												// 1. The constraint box is hovered (highlights all its lines)
@@ -1192,8 +1183,8 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												const endX = segmentCenterScreen;
 												const endY = SEGMENT_HEIGHT - 10; // Target segment bottom
 
-												// Generate smooth connection path
-												const pathData = generateConnectionPath(boxCenterX, startY, endX, endY);
+												// Generate smooth connection path with d3-shape
+												const pathData = linkGenerator({ source: [boxCenterX, startY], target: [endX, endY] }) || "";
 
 												// Line is highlighted if:
 												// 1. The generator box is hovered (highlights all its lines)

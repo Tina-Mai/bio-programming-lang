@@ -273,11 +273,11 @@
 
 @layer utilities {
 	.stroke-dash-anim {
-		animation: stroke-dash-animation 1s linear infinite;
+		animation: stroke-dash-animation 2s linear infinite;
 	}
 	@keyframes stroke-dash-animation {
 		from {
-			stroke-dashoffset: 6;
+			stroke-dashoffset: 8;
 		}
 		to {
 			stroke-dashoffset: 0;

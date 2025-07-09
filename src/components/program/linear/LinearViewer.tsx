@@ -24,6 +24,44 @@ const CONSTRAINT_BOX_DISTANCE = 80; // distance b/w constraint/generator box and
 const CONSTRAINT_BOX_WIDTH = 180; // width of constraint/generator box
 const CONSTRAINT_BOX_GAP = 24; // gap b/w constraint/generator boxes
 
+// Helper function to generate a smooth S-curve connection path.
+const generateConnectionPath = (boxCenterX: number, boxY: number, segmentCenterX: number, segmentY: number) => {
+	const horizontalDistance = Math.abs(segmentCenterX - boxCenterX);
+
+	// For very small horizontal distances, use a straight line
+	if (horizontalDistance < 1) {
+		return `M ${boxCenterX} ${boxY} L ${segmentCenterX} ${segmentY}`;
+	}
+
+	// A factor to control the "S" shape. A value of 0.5 creates a symmetrical curve.
+	const curveFactor = 0.5;
+	const verticalDistance = segmentY - boxY;
+
+	// The first control point is positioned vertically from the start point.
+	// The second control point is positioned vertically from the end point.
+	// This creates a smooth vertical ease-in-out effect.
+	const controlY1 = boxY + verticalDistance * curveFactor;
+	const controlY2 = segmentY - verticalDistance * curveFactor;
+
+	return `M ${boxCenterX} ${boxY} C ${boxCenterX} ${controlY1}, ${segmentCenterX} ${controlY2}, ${segmentCenterX} ${segmentY}`;
+};
+
+// Calculate visibility for elements with more lenient bounds
+const isElementVisible = (leftEdge: number, rightEdge: number, viewportWidth: number) => {
+	const buffer = 200; // Generous buffer to prevent lines from disappearing
+	return rightEdge >= -buffer && leftEdge <= viewportWidth + buffer;
+};
+
+// Helper function to calculate absolute positions consistently
+const calculateAbsoluteX = (position: number, width: number, nucleotideWidth: number) => {
+	return 20 + position * nucleotideWidth + (width * nucleotideWidth) / 2;
+};
+
+// Helper function to calculate screen position from absolute position
+const toScreenX = (absoluteX: number, offset: number) => {
+	return absoluteX - offset;
+};
+
 // Note: constraints and generators are used by ViewerProvider in the parent component
 const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength, deleteSegment } = useProgram();
@@ -743,26 +781,42 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							let previousEndX = -Infinity;
 
 							constraintArray.forEach((group) => {
-								// Find the leftmost segment position
-								let minSegmentPosition = Infinity;
-								group.segments.forEach((segId) => {
+								// Special case: if constraint applies to only one segment, center it above that segment
+								if (group.segments.length === 1) {
+									const segId = group.segments[0];
 									const segment = segmentsState.find((s) => s.id === segId);
 									if (segment) {
 										const position = segmentPositions.get(segment.id) || 0;
-										minSegmentPosition = Math.min(minSegmentPosition, position);
+										const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
+										// Center the box above the segment
+										const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
+										constraintPositions.set(group.constraint.key, idealX);
+										// Update previousEndX for next constraint positioning
+										const screenX = idealX - offset;
+										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
 									}
-								});
+								} else {
+									// Multiple segments: use leftmost position as before
+									let minSegmentPosition = Infinity;
+									group.segments.forEach((segId) => {
+										const segment = segmentsState.find((s) => s.id === segId);
+										if (segment) {
+											const position = segmentPositions.get(segment.id) || 0;
+											minSegmentPosition = Math.min(minSegmentPosition, position);
+										}
+									});
 
-								if (minSegmentPosition !== Infinity) {
-									// Calculate the x position for this constraint box
-									// Note: We store the position without offset, and apply offset when rendering
-									const idealX = 20 + minSegmentPosition * nucleotideWidth;
-									// Ensure boxes don't overlap (check in screen space)
-									const screenIdealX = idealX - offset;
-									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-									const actualX = actualScreenX + offset; // Convert back to absolute position
-									constraintPositions.set(group.constraint.key, actualX);
-									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
+									if (minSegmentPosition !== Infinity) {
+										// Calculate the x position for this constraint box
+										// Note: We store the position without offset, and apply offset when rendering
+										const idealX = 20 + minSegmentPosition * nucleotideWidth;
+										// Ensure boxes don't overlap (check in screen space)
+										const screenIdealX = idealX - offset;
+										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+										const actualX = actualScreenX + offset; // Convert back to absolute position
+										constraintPositions.set(group.constraint.key, actualX);
+										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
+									}
 								}
 							});
 
@@ -817,51 +871,24 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 
 												const segmentPosition = segmentPositions.get(segment.id) || 0;
 												const segmentLength = segment.length;
-												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
+
+												// Calculate absolute positions first
+												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
+												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
 
 												// More lenient visibility check - show line if either box or segment is visible
 												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
 												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
-												const isBoxVisible = boxRightEdge >= 0 && boxLeftEdge <= visibleWidth;
-												const isSegmentVisible = segmentCenter + 100 >= 0 && segmentCenter - 100 <= visibleWidth;
+												const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
+												const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
 
 												if (!isBoxVisible && !isSegmentVisible) return null;
 
-												const endX = segmentCenter;
-												const endY = CONSTRAINT_BOX_DISTANCE + CONSTRAINT_BOX_DISTANCE;
+												const endX = segmentCenterScreen;
+												const endY = CONSTRAINT_BOX_DISTANCE * 2; // Target segment top
 
-												// Calculate midY with minimum vertical distance to prevent entanglement
-												const minVerticalDistance = 30; // Minimum distance between horizontal line and boxes/segments
-												const baseMidY = startY + (endY - startY) / 2;
-												const midY = Math.max(startY + minVerticalDistance, Math.min(endY - minVerticalDistance, baseMidY));
-
-												const cornerRadius = 15; // radius for rounded line edges
-
-												// Determine direction and handle overlapping cases
-												const horizontalDistance = Math.abs(endX - boxCenterX);
-												const minHorizontalDistance = 40; // Minimum horizontal distance to prevent loops
-
-												let pathData: string;
-
-												if (horizontalDistance < minHorizontalDistance) {
-													// When box and segment are too close horizontally, draw a simple vertical line
-													pathData = `
-														M ${boxCenterX} ${startY}
-														V ${endY}
-													`;
-												} else {
-													// Normal case with rounded corners
-													const direction = endX > boxCenterX ? 1 : -1;
-
-													pathData = `
-														M ${boxCenterX} ${startY}
-														V ${midY - cornerRadius}
-														Q ${boxCenterX} ${midY} ${boxCenterX + direction * cornerRadius} ${midY}
-														H ${endX - direction * cornerRadius}
-														Q ${endX} ${midY} ${endX} ${midY + cornerRadius}
-														V ${endY}
-													`;
-												}
+												// Generate smooth connection path
+												const pathData = generateConnectionPath(boxCenterX, startY, endX, endY);
 
 												// Line is highlighted if:
 												// 1. The constraint box is hovered (highlights all its lines)
@@ -878,11 +905,11 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 														<path
 															d={pathData}
 															fill="none"
-															stroke={isLineHighlighted ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
 															strokeWidth={isLineHighlighted ? "2" : "1.5"}
-															strokeDasharray={isLineHighlighted ? "none" : "3, 3"}
-															className={isLineHighlighted ? "" : "stroke-dash-anim"}
-															opacity={shouldDimLine ? 0.3 : 1}
+															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
+															className={`transition-all duration-300 ${isLineHighlighted ? "" : "stroke-dash-anim"}`}
+															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
 														/>
 													</g>
 												);
@@ -920,6 +947,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 														left: `${left}px`,
 														width: `${originalWidth + SEGMENT_ARROW_WIDTH}px`,
 														height: "40px",
+
 														zIndex: 24,
 														opacity: 0.7,
 													}}
@@ -980,7 +1008,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 									}}
 								>
 									<svg width={SEGMENT_ARROW_WIDTH} height="40" viewBox={`0 0 ${SEGMENT_ARROW_WIDTH} 40`} className="overflow-visible">
-										<polyline points={`0,2 ${SEGMENT_ARROW_WIDTH},20 0,38`} fill="none" stroke="#3b82f6" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+										<polyline points={`0,2 ${SEGMENT_ARROW_WIDTH},20 0,38`} fill="none" stroke="#3b82f6" strokeWidth="5" />
 									</svg>
 								</div>
 							)}
@@ -1058,26 +1086,42 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							let previousEndX = -Infinity;
 
 							generatorArray.forEach((group) => {
-								// Find the leftmost segment position
-								let minSegmentPosition = Infinity;
-								group.segments.forEach((segId) => {
+								// Special case: if generator applies to only one segment, center it below that segment
+								if (group.segments.length === 1) {
+									const segId = group.segments[0];
 									const segment = segmentsState.find((s) => s.id === segId);
 									if (segment) {
 										const position = segmentPositions.get(segment.id) || 0;
-										minSegmentPosition = Math.min(minSegmentPosition, position);
+										const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
+										// Center the box below the segment
+										const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
+										generatorPositions.set(group.generator.key, idealX);
+										// Update previousEndX for next generator positioning
+										const screenX = idealX - offset;
+										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
 									}
-								});
+								} else {
+									// Multiple segments: use leftmost position as before
+									let minSegmentPosition = Infinity;
+									group.segments.forEach((segId) => {
+										const segment = segmentsState.find((s) => s.id === segId);
+										if (segment) {
+											const position = segmentPositions.get(segment.id) || 0;
+											minSegmentPosition = Math.min(minSegmentPosition, position);
+										}
+									});
 
-								if (minSegmentPosition !== Infinity) {
-									// Calculate the x position for this generator box
-									// Note: We store the position without offset, and apply offset when rendering
-									const idealX = 20 + minSegmentPosition * nucleotideWidth;
-									// Ensure boxes don't overlap (check in screen space)
-									const screenIdealX = idealX - offset;
-									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-									const actualX = actualScreenX + offset; // Convert back to absolute position
-									generatorPositions.set(group.generator.key, actualX);
-									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
+									if (minSegmentPosition !== Infinity) {
+										// Calculate the x position for this generator box
+										// Note: We store the position without offset, and apply offset when rendering
+										const idealX = 20 + minSegmentPosition * nucleotideWidth;
+										// Ensure boxes don't overlap (check in screen space)
+										const screenIdealX = idealX - offset;
+										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+										const actualX = actualScreenX + offset; // Convert back to absolute position
+										generatorPositions.set(group.generator.key, actualX);
+										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
+									}
 								}
 							});
 
@@ -1124,7 +1168,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											if (boxX === undefined) return null;
 
 											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
-											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT - 1;
+											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT - 2;
 
 											return group.segments.map((segmentId: string) => {
 												const segment = segmentsState.find((s) => s.id === segmentId);
@@ -1132,52 +1176,24 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 
 												const segmentPosition = segmentPositions.get(segment.id) || 0;
 												const segmentLength = segment.length;
-												const segmentCenter = 20 + segmentPosition * nucleotideWidth + (segmentLength * nucleotideWidth) / 2 - offset;
+
+												// Calculate absolute positions first
+												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
+												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
 
 												// More lenient visibility check - show line if either box or segment is visible
 												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
 												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
-												const isBoxVisible = boxRightEdge >= 0 && boxLeftEdge <= visibleWidth;
-												const isSegmentVisible = segmentCenter + 100 >= 0 && segmentCenter - 100 <= visibleWidth;
+												const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
+												const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
 
 												if (!isBoxVisible && !isSegmentVisible) return null;
 
-												const endX = segmentCenter;
-												const endY = SEGMENT_HEIGHT - 11;
+												const endX = segmentCenterScreen;
+												const endY = SEGMENT_HEIGHT - 10; // Target segment bottom
 
-												// Calculate midY with minimum vertical distance to prevent entanglement
-												const minVerticalDistance = 30; // Minimum distance between horizontal line and boxes/segments
-												const baseMidY = startY - (startY - endY) / 2;
-												const midY = Math.min(startY - minVerticalDistance, Math.max(endY + minVerticalDistance, baseMidY));
-
-												const cornerRadius = 15; // radius for rounded line edges
-
-												// Determine direction and handle overlapping cases
-												const horizontalDistance = Math.abs(endX - boxCenterX);
-												const minHorizontalDistance = 40; // Minimum horizontal distance to prevent loops
-
-												let pathData: string;
-
-												if (horizontalDistance < minHorizontalDistance) {
-													// When box and segment are too close horizontally, draw a simple vertical line
-													pathData = `
-														M ${boxCenterX} ${startY}
-														V ${endY}
-													`;
-												} else {
-													// Normal case with rounded corners
-													const direction = endX > boxCenterX ? 1 : -1;
-
-													// Build path with rounded corners (generator lines go upward)
-													pathData = `
-														M ${boxCenterX} ${startY}
-														V ${midY + cornerRadius}
-														Q ${boxCenterX} ${midY} ${boxCenterX + direction * cornerRadius} ${midY}
-														H ${endX - direction * cornerRadius}
-														Q ${endX} ${midY} ${endX} ${midY - cornerRadius}
-														V ${endY}
-													`;
-												}
+												// Generate smooth connection path
+												const pathData = generateConnectionPath(boxCenterX, startY, endX, endY);
 
 												// Line is highlighted if:
 												// 1. The generator box is hovered (highlights all its lines)
@@ -1194,11 +1210,11 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 														<path
 															d={pathData}
 															fill="none"
-															stroke={isLineHighlighted ? "#909EB0" : "oklch(70.4% 0.04 256.788)"}
+															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
 															strokeWidth={isLineHighlighted ? "2" : "1.5"}
-															strokeDasharray={isLineHighlighted ? "none" : "3, 3"}
-															className={isLineHighlighted ? "" : "stroke-dash-anim"}
-															opacity={shouldDimLine ? 0.3 : 1}
+															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
+															className={`transition-all duration-300 ${isLineHighlighted ? "" : "stroke-dash-anim"}`}
+															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
 														/>
 													</g>
 												);

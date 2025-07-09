@@ -36,6 +36,8 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		setHoveredGeneratorKey,
 		clickedSegment,
 		setClickedSegment,
+		clickedConstraintKey,
+		clickedGeneratorKey,
 		draggedSegment,
 		setDraggedSegment,
 		draggedSegmentIndex,
@@ -47,6 +49,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		isResizing,
 		setIsResizing,
 		hasAnyHover,
+		hasAnyClick,
 		isAnySegmentDragging,
 		isAnySegmentResizing,
 		isSegmentHighlighted,
@@ -215,9 +218,11 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 	const handleMouseDown = (e: React.MouseEvent) => {
 		const target = e.target as HTMLElement;
 		const isClickingSegment = target.closest("[data-segment-component]") !== null;
+		const isClickingConstraint = target.closest("[data-constraint-box]") !== null;
+		const isClickingGenerator = target.closest("[data-generator-box]") !== null;
 
-		if (!isClickingSegment) {
-			setClickedSegment(null);
+		if (!isClickingSegment && !isClickingConstraint && !isClickingGenerator) {
+			setClickedSegment(null); // this will clear all selections
 			setHoveredSegment(null);
 		}
 
@@ -773,6 +778,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 										return (
 											<div
 												key={`constraint-${group.constraint.key}`}
+												data-constraint-box
 												className="absolute transition-opacity duration-200"
 												style={{
 													left: `${boxX - offset}px`,
@@ -862,8 +868,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												// 2. OR the specific segment this line connects to is hovered
 												const isConstraintHovered = hoveredConstraintKey === group.constraint.key;
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
-												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered;
-												const shouldDimLine = hasAnyHover && !isLineHighlighted;
+												const isConstraintClicked = clickedConstraintKey === group.constraint.key;
+												const isSegmentClicked = clickedSegment?.id === segmentId;
+												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered || isConstraintClicked || isSegmentClicked;
+												const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
 
 												return (
 													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
@@ -1084,6 +1092,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 										return (
 											<div
 												key={`generator-${group.generator.key}`}
+												data-generator-box
 												className="absolute transition-opacity duration-200"
 												style={{
 													left: `${boxX - offset}px`,
@@ -1114,7 +1123,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											if (boxX === undefined) return null;
 
 											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
-											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT;
+											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT - 1;
 
 											return group.segments.map((segmentId: string) => {
 												const segment = segmentsState.find((s) => s.id === segmentId);
@@ -1133,7 +1142,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												if (!isBoxVisible && !isSegmentVisible) return null;
 
 												const endX = segmentCenter;
-												const endY = SEGMENT_HEIGHT - 10;
+												const endY = SEGMENT_HEIGHT - 11;
 
 												// Calculate midY with minimum vertical distance to prevent entanglement
 												const minVerticalDistance = 30; // Minimum distance between horizontal line and boxes/segments
@@ -1174,8 +1183,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												// 2. OR the specific segment this line connects to is hovered
 												const isGeneratorHovered = hoveredGeneratorKey === group.generator.key;
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
-												const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered;
-												const shouldDimLine = hasAnyHover && !isLineHighlighted;
+												const isGeneratorClicked = clickedGeneratorKey === group.generator.key;
+												const isSegmentClicked = clickedSegment?.id === segmentId;
+												const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered || isGeneratorClicked || isSegmentClicked;
+												const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
 
 												return (
 													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>

@@ -14,6 +14,10 @@ interface ViewerContextType {
 	// Click states
 	clickedSegment: Segment | null;
 	setClickedSegment: (segment: Segment | null) => void;
+	clickedConstraintKey: string | null;
+	setClickedConstraintKey: (key: string | null) => void;
+	clickedGeneratorKey: string | null;
+	setClickedGeneratorKey: (key: string | null) => void;
 
 	// Drag states
 	draggedSegment: Segment | null;
@@ -34,6 +38,7 @@ interface ViewerContextType {
 	highlightedConstraintKeys: Set<string>;
 	highlightedGeneratorKeys: Set<string>;
 	hasAnyHover: boolean;
+	hasAnyClick: boolean;
 	isAnySegmentDragging: boolean;
 	isAnySegmentResizing: boolean;
 
@@ -77,7 +82,9 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	const [hoveredGeneratorKey, setHoveredGeneratorKey] = useState<string | null>(null);
 
 	// Click states
-	const [clickedSegment, setClickedSegment] = useState<Segment | null>(null);
+	const [clickedSegment, setClickedSegmentState] = useState<Segment | null>(null);
+	const [clickedConstraintKey, setClickedConstraintKeyState] = useState<string | null>(null);
+	const [clickedGeneratorKey, setClickedGeneratorKeyState] = useState<string | null>(null);
 
 	// Drag states
 	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
@@ -87,6 +94,24 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	// Resize states
 	const [resizingSegment, setResizingSegment] = useState<Segment | null>(null);
 	const [isResizing, setIsResizing] = useState<boolean>(false);
+
+	const setClickedSegment = (segment: Segment | null) => {
+		setClickedSegmentState(segment);
+		setClickedConstraintKeyState(null);
+		setClickedGeneratorKeyState(null);
+	};
+
+	const setClickedConstraintKey = (key: string | null) => {
+		setClickedSegmentState(null);
+		setClickedConstraintKeyState(key);
+		setClickedGeneratorKeyState(null);
+	};
+
+	const setClickedGeneratorKey = (key: string | null) => {
+		setClickedSegmentState(null);
+		setClickedConstraintKeyState(null);
+		setClickedGeneratorKeyState(key);
+	};
 
 	// Group constraints and generators by key to avoid duplicates
 	const constraintGroups = useMemo(() => {
@@ -165,6 +190,41 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		const constraintKeys = new Set<string>();
 		const generatorKeys = new Set<string>();
 
+		// Clicked segment
+		if (clickedSegment) {
+			segmentIds.add(clickedSegment.id);
+			constraints.forEach((constraint) => {
+				if (constraint.key && constraint.segments.includes(clickedSegment.id)) {
+					constraintKeys.add(constraint.key);
+				}
+			});
+			generators.forEach((generator) => {
+				if (generator.key && generator.segments.includes(clickedSegment.id)) {
+					generatorKeys.add(generator.key);
+				}
+			});
+		}
+
+		// Clicked constraint
+		if (clickedConstraintKey) {
+			constraintKeys.add(clickedConstraintKey);
+			constraints.forEach((constraint) => {
+				if (constraint.key === clickedConstraintKey) {
+					constraint.segments.forEach((segId) => segmentIds.add(segId));
+				}
+			});
+		}
+
+		// Clicked generator
+		if (clickedGeneratorKey) {
+			generatorKeys.add(clickedGeneratorKey);
+			generators.forEach((generator) => {
+				if (generator.key === clickedGeneratorKey) {
+					generator.segments.forEach((segId) => segmentIds.add(segId));
+				}
+			});
+		}
+
 		// If a constraint is hovered, highlight its segments
 		if (hoveredConstraintKey) {
 			constraintKeys.add(hoveredConstraintKey);
@@ -205,9 +265,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		}
 
 		return { highlightedSegmentIds: segmentIds, highlightedConstraintKeys: constraintKeys, highlightedGeneratorKeys: generatorKeys };
-	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, constraints, generators]);
+	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, generators]);
 
 	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
+	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;
 	const isAnySegmentDragging = isDragging;
 	const isAnySegmentResizing = isResizing;
 
@@ -216,7 +277,7 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	const isGeneratorHighlighted = (generatorKey: string) => highlightedGeneratorKeys.has(generatorKey);
 
 	const shouldDimElement = (type: "segment" | "constraint" | "generator", id: string) => {
-		if (!hasAnyHover) return false;
+		if (!hasAnyHover && !hasAnyClick) return false;
 
 		switch (type) {
 			case "segment":
@@ -242,6 +303,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// Click states
 		clickedSegment,
 		setClickedSegment,
+		clickedConstraintKey,
+		setClickedConstraintKey,
+		clickedGeneratorKey,
+		setClickedGeneratorKey,
 
 		// Drag states
 		draggedSegment,
@@ -262,6 +327,7 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		highlightedConstraintKeys,
 		highlightedGeneratorKeys,
 		hasAnyHover,
+		hasAnyClick,
 		isAnySegmentDragging,
 		isAnySegmentResizing,
 

@@ -53,11 +53,13 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	// Try to get context, if not available (e.g., in drag preview), use props
 	let isHighlightedByBox = isHighlightedByBoxProp;
 	let hasBoxHover = hasBoxHoverProp;
+	let hasAnyClick = false;
 
 	try {
 		const viewer = useViewer();
 		isHighlightedByBox = viewer.isSegmentHighlighted(segment.id);
 		hasBoxHover = viewer.hasAnyHover;
+		hasAnyClick = viewer.hasAnyClick;
 	} catch {
 		// Context not available, use props
 	}
@@ -70,9 +72,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	const isHovered = !isAnySegmentDragging && !isAnySegmentResizing && hoveredSegment === segment;
 	const isClicked = !isAnySegmentDragging && !isAnySegmentResizing && clickedSegment === segment;
 	const isHighlighted = !isAnySegmentDragging && (isHighlightedByBox || isResizing || (!isAnySegmentResizing && (isClicked || (isHovered && !clickedSegment))));
-	const shouldDim =
-		!isAnySegmentDragging &&
-		((hasBoxHover && !isHighlightedByBox) || (isAnySegmentResizing && !isResizing) || (!isAnySegmentResizing && !hasBoxHover && (clickedSegment || hoveredSegment) && !isHighlighted));
+	const shouldDim = !isAnySegmentDragging && !isResizing && (hasBoxHover || hasAnyClick) && !isHighlighted;
 	const polygonPoints = `0,2 ${segmentPixelWidth},2 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH},20 ${segmentPixelWidth},38 0,38 ${SEGMENT_ARROW_WIDTH},20`;
 
 	const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -130,7 +130,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				onClick={(e) => {
 					if (!isAnySegmentDragging && !isAnySegmentResizing) {
 						e.stopPropagation();
-						setClickedSegment(segment);
+						setClickedSegment(isClicked ? null : segment);
 						setHoveredSegment(null);
 					}
 				}}

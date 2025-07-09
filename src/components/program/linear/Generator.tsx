@@ -4,17 +4,25 @@ import { Generator as GeneratorType, generatorOptions } from "@/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useViewer } from "@/context/ViewerContext";
 
 interface GeneratorBoxProps {
 	generator: GeneratorType;
 }
 
 const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
+	const { clickedGeneratorKey, setClickedGeneratorKey } = useViewer();
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredGenerators = generatorOptions.filter((g) => g.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+	const isClicked = clickedGeneratorKey === generator.key;
 
 	return (
-		<div className="w-[180px] bg-system-blue/30 border border-slate-300 rounded-md text-xs backdrop-blur-sm">
+		<div
+			className={`w-[180px] bg-system-blue/30 border rounded-md text-xs backdrop-blur-sm transition-all duration-200 ${
+				isClicked ? "border-slate-500/70 border-2" : "border-slate-300 hover:border-slate-400/70"
+			}`}
+			onClick={() => setClickedGeneratorKey(isClicked ? null : generator.key)}
+		>
 			<div className="horizontal bg-system-slate/65 text-slate-500 px-3 py-2 items-center font-mono border-b border-slate-300 gap-2 capitalize rounded-t-md">
 				<Chip className="text-zinc-500/70" size={16} />
 				Generator
@@ -27,7 +35,7 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
 						}
 					}}
 				>
-					<DropdownMenuTrigger className="w-full">
+					<DropdownMenuTrigger className="w-full" onClick={(e) => e.stopPropagation()}>
 						<Button size="sm" variant="outline" className="w-full bg-system-slate/50 hover:bg-system-slate/50 hover:border-slate-400/75">
 							<div className="horizontal w-full justify-between items-center gap-1 text-slate-900">
 								<div className="text-xs">{generator.name}</div>
@@ -53,7 +61,8 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
 						{filteredGenerators.map((g) => (
 							<DropdownMenuItem
 								key={g.name}
-								onClick={() => {
+								onClick={(e) => {
+									e.stopPropagation();
 									// No functionality needed as per requirements
 								}}
 							>

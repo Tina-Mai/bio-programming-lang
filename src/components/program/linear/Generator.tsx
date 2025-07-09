@@ -39,7 +39,7 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
 						}
 					}}
 				>
-					<DropdownMenuTrigger className="w-full" onClick={(e) => e.stopPropagation()}>
+					<DropdownMenuTrigger asChild className="w-full" onClick={(e) => e.stopPropagation()}>
 						<Button size="sm" variant="outline" className="w-full bg-system-slate/50 hover:bg-system-slate/50 hover:border-slate-400/75">
 							<div className="horizontal w-full justify-between items-center gap-1 text-slate-900">
 								<div className="truncate text-xs">{currentGenerator.name}</div>

@@ -1,0 +1,77 @@
+{
+	"name": "untitled_program",
+	"description": "Generated from program at 2025-07-09T22:15:42.396Z",
+	"version": "1.0",
+	"optimization": {
+		"method": "mcmc",
+		"steps": 100,
+		"track_step_size": 1,
+		"temperature": 2
+	},
+	"constructs": [
+		{
+			"id": "ad58aa1f-2ffb-48e1-a0b2-e1826660f21e",
+			"type": "dna",
+			"segments": [
+				{
+					"id": "fb64f99d-2c3f-47e8-b5a2-78414d9e7b5e"
+				},
+				{
+					"id": "96637741-9ab7-42d7-8bb3-815cee75e9c3"
+				},
+				{
+					"id": "eda635f9-a944-4038-82bd-76924bf246f0"
+				}
+			]
+		}
+	],
+	"constraints": [
+		{
+			"id": "d9d0d8d8-eb57-4c8a-af99-8f568f970db4",
+			"key": "gc-content",
+			"config": {
+				"min_gc": 80,
+				"max_gc": 90
+			},
+			"targets": ["fb64f99d-2c3f-47e8-b5a2-78414d9e7b5e", "96637741-9ab7-42d7-8bb3-815cee75e9c3", "eda635f9-a944-4038-82bd-76924bf246f0"]
+		},
+		{
+			"id": "6667d4b4-1486-4ff1-bf48-070ebe1c963a",
+			"key": "complexity",
+			"config": {},
+			"targets": ["96637741-9ab7-42d7-8bb3-815cee75e9c3"]
+		}
+	],
+	"generators": [
+		{
+			"id": "bb119af1-8919-4e00-a869-c9868c5f07f2",
+			"key": "uniform-mutation",
+			"config": {
+				"mutation_rate": 0.01,
+				"batch_size": 1,
+				"sequence_length": 15
+			},
+			"targets": ["fb64f99d-2c3f-47e8-b5a2-78414d9e7b5e"]
+		},
+		{
+			"id": "bb119af1-8919-4e00-a869-c9868c5f07f2_1",
+			"key": "uniform-mutation",
+			"config": {
+				"mutation_rate": 0.01,
+				"batch_size": 1,
+				"sequence_length": 40
+			},
+			"targets": ["96637741-9ab7-42d7-8bb3-815cee75e9c3"]
+		},
+		{
+			"id": "bb119af1-8919-4e00-a869-c9868c5f07f2_2",
+			"key": "uniform-mutation",
+			"config": {
+				"mutation_rate": 0.01,
+				"batch_size": 1,
+				"sequence_length": 25
+			},
+			"targets": ["eda635f9-a944-4038-82bd-76924bf246f0"]
+		}
+	]
+}

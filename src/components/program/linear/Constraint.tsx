@@ -41,7 +41,7 @@ const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
 						}
 					}}
 				>
-					<DropdownMenuTrigger className="w-full" onClick={(e) => e.stopPropagation()}>
+					<DropdownMenuTrigger asChild className="w-full" onClick={(e) => e.stopPropagation()}>
 						<Button size="sm" variant="outline" className="w-full bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70">
 							<div className="horizontal w-full justify-between items-center gap-1 text-slate-900">
 								<div className="truncate text-xs">{currentConstraint.name}</div>

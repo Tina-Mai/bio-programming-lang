@@ -22,7 +22,7 @@ const CompileButton = () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(parsedProgram),
+				body: JSON.stringify({ gpl_data: parsedProgram }),
 			});
 
 			if (!response.ok) {

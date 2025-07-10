@@ -1,14 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { PlayFilledAlt } from "@carbon/icons-react";
 import { useProgram } from "@/context/ProjectContext";
+import { useGlobal } from "@/context/GlobalContext";
 import { parseProgram } from "@/lib/utils/parser";
 
 const CompileButton = () => {
 	const { constructs, constraints, generators } = useProgram();
+	const { currentProject } = useGlobal();
 
 	const handleClick = async () => {
 		try {
-			const parsedProgram = parseProgram(constructs, constraints, generators);
+			const projectName = currentProject?.name || "untitled";
+			const parsedProgram = parseProgram(constructs, constraints, generators, projectName);
+
+			// Log the parsed program JSON
+			console.log("——— PARSED PROGRAM ———\n", JSON.stringify(parsedProgram, null, 2));
 
 			// send the parsed program to the FastAPI endpoint
 			const response = await fetch("http://localhost:8000/generate", {
@@ -16,9 +22,7 @@ const CompileButton = () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({
-					gpl_data: parsedProgram,
-				}),
+				body: JSON.stringify(parsedProgram),
 			});
 
 			if (!response.ok) {

@@ -56,7 +56,7 @@ interface ParsedProgram {
 	generators: ParsedGenerator[];
 }
 
-export function parseProgram(constructs: Construct[], constraints: ConstraintInstance[], generators: GeneratorInstance[], programName?: string): ParsedProgram {
+export function parseProgram(constructs: Construct[], constraints: ConstraintInstance[], generators: GeneratorInstance[], programName: string): ParsedProgram {
 	// Parse constructs
 	const parsedConstructs: ParsedConstruct[] = constructs.map((construct) => ({
 		id: construct.id,
@@ -124,8 +124,8 @@ export function parseProgram(constructs: Construct[], constraints: ConstraintIns
 	});
 
 	return {
-		name: programName || "untitled_program",
-		description: `Generated from program at ${new Date().toISOString()}`,
+		name: programName,
+		description: "",
 		version: DEFAULT_VERSION,
 		optimization: DEFAULT_OPTIMIZATION,
 		constructs: parsedConstructs,

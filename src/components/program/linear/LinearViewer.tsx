@@ -712,41 +712,34 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							const constraintPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
-							constraintArray.forEach((group) => {
-								// if constraint applies to only one segment, center it above that segment
-								if (group.segments.length === 1) {
-									const segId = group.segments[0];
-									const segment = segmentsState.find((s) => s.id === segId);
-									if (segment) {
-										const position = segmentPositions.get(segment.id) || 0;
-										const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
-										// Center the box above the segment
-										const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
-										constraintPositions.set(group.constraint.key, idealX);
-										// Update previousEndX for next constraint positioning
-										const screenX = idealX - offset;
-										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
-									}
-								} else {
-									// multiple segments: use leftmost position as before
-									let minSegmentPosition = Infinity;
-									group.segments.forEach((segId) => {
-										const segment = segmentsState.find((s) => s.id === segId);
-										if (segment) {
-											const position = segmentPositions.get(segment.id) || 0;
-											minSegmentPosition = Math.min(minSegmentPosition, position);
-										}
-									});
+							constraintArray.sort((a, b) => {
+								const posA = a.segments.map((id) => segmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+								const posB = b.segments.map((id) => segmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+								return posA - posB;
+							});
 
-									if (minSegmentPosition !== Infinity) {
-										const idealX = 20 + minSegmentPosition * nucleotideWidth;
-										const screenIdealX = idealX - offset;
-										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-										const actualX = actualScreenX + offset;
-										constraintPositions.set(group.constraint.key, actualX);
-										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
-									}
-								}
+							constraintArray.forEach((group) => {
+								const segmentsInGroup = group.segments
+									.map((segId) => segmentsState.find((s) => s.id === segId))
+									.filter((s): s is Segment => !!s)
+									.sort((a, b) => (segmentPositions.get(a.id) || 0) - (segmentPositions.get(b.id) || 0));
+
+								if (segmentsInGroup.length === 0) return;
+
+								const firstSegment = segmentsInGroup[0];
+								const position = segmentPositions.get(firstSegment.id) || 0;
+								const segmentCenterAbs = calculateAbsoluteX(position, firstSegment.length, nucleotideWidth);
+								const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
+
+								const screenIdealX = idealX - offset;
+								const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+
+								let actualX = actualScreenX + offset;
+								const totalContentWidth = totalLength * nucleotideWidth;
+								actualX = Math.max(20, Math.min(actualX, 20 + totalContentWidth - CONSTRAINT_BOX_WIDTH));
+
+								constraintPositions.set(group.constraint.key, actualX);
+								previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 							});
 
 							return (
@@ -1026,7 +1019,12 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 									// Prevent overlap
 									const screenIdealX = idealX - offset;
 									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-									const actualX = actualScreenX + offset;
+
+									let actualX = actualScreenX + offset;
+
+									// Clamp to avoid overflow
+									const totalContentWidth = totalLength * nucleotideWidth;
+									actualX = Math.max(20, Math.min(actualX, 20 + totalContentWidth - CONSTRAINT_BOX_WIDTH));
 
 									generatorPositions.set(app.uniqueKey, actualX);
 									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;

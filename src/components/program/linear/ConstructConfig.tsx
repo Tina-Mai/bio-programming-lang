@@ -21,7 +21,7 @@ const ConstructConfig = () => {
 					<div className="grid gap-2">
 						<div className="grid grid-cols-3 items-center gap-4">
 							<Label htmlFor="maxWidth">Sequence Type</Label>
-							<Select>
+							<Select defaultValue="dna">
 								<SelectTrigger className="flex w-full col-span-2 h-8">
 									<SelectValue placeholder="Select a type" />
 								</SelectTrigger>
@@ -37,14 +37,14 @@ const ConstructConfig = () => {
 						</div>
 						<div className="grid grid-cols-3 items-center gap-4">
 							<Label htmlFor="maxWidth">Global Generator</Label>
-							<Select>
+							<Select defaultValue="sequential">
 								<SelectTrigger className="flex w-full col-span-2 h-8">
 									<SelectValue placeholder="Select a generator" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectGroup>
 										<SelectLabel>Generators</SelectLabel>
-										<SelectItem value="beam">Sequential</SelectItem>
+										<SelectItem value="sequential">Sequential</SelectItem>
 										<SelectItem value="mcmc">MCMC</SelectItem>
 									</SelectGroup>
 								</SelectContent>

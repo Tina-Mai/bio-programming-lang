@@ -107,6 +107,10 @@ const ProgramContents = () => {
 								<div className="flex horizontal items-center gap-1.5">
 									<Dna className="size-5" strokeWidth={1.3} />
 									<div className="text-slate-500 font-medium">Sequence Output</div>
+									<span className="relative flex size-2.5 items-center justify-center mx-0.5">
+										<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+										<span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+									</span>
 									{!showSequence && <span className="text-xs text-slate-400">(Click to expand)</span>}
 								</div>
 								{showSequence ? (

@@ -993,60 +993,58 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 					{/* Generators */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							const generatorArray = Array.from(generatorGroups.values());
-							if (generatorArray.length === 0) return null;
+							const allGeneratorApplications = Array.from(generatorGroups.values()).flatMap((group) =>
+								group.segments.map((segmentId) => ({
+									...group,
+									segmentId,
+									uniqueKey: `${group.generator.key}-${segmentId}`,
+								}))
+							);
 
-							// position each generator box based on its first segment
+							if (allGeneratorApplications.length === 0) return null;
+
+							// Sort by segment start position to handle overlaps correctly
+							allGeneratorApplications.sort((a, b) => {
+								const posA = segmentPositions.get(a.segmentId) || 0;
+								const posB = segmentPositions.get(b.segmentId) || 0;
+								return posA - posB;
+							});
+
+							// position each generator box based on its segment, preventing overlap
 							const generatorPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
-							generatorArray.forEach((group) => {
-								// if generator applies to only one segment, center it below that segment
-								if (group.segments.length === 1) {
-									const segId = group.segments[0];
-									const segment = segmentsState.find((s) => s.id === segId);
-									if (segment) {
-										const position = segmentPositions.get(segment.id) || 0;
-										const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
-										const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
-										generatorPositions.set(group.generator.key, idealX);
-										const screenX = idealX - offset;
-										previousEndX = screenX + CONSTRAINT_BOX_WIDTH;
-									}
-								} else {
-									// multiple segments: use leftmost position as before
-									let minSegmentPosition = Infinity;
-									group.segments.forEach((segId) => {
-										const segment = segmentsState.find((s) => s.id === segId);
-										if (segment) {
-											const position = segmentPositions.get(segment.id) || 0;
-											minSegmentPosition = Math.min(minSegmentPosition, position);
-										}
-									});
+							allGeneratorApplications.forEach((app) => {
+								const segment = segmentsState.find((s) => s.id === app.segmentId);
+								if (segment) {
+									const position = segmentPositions.get(segment.id) || 0;
+									const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
 
-									if (minSegmentPosition !== Infinity) {
-										const idealX = 20 + minSegmentPosition * nucleotideWidth;
-										const screenIdealX = idealX - offset;
-										const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
-										const actualX = actualScreenX + offset;
-										generatorPositions.set(group.generator.key, actualX);
-										previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
-									}
+									// Center the box under the segment
+									const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
+
+									// Prevent overlap
+									const screenIdealX = idealX - offset;
+									const actualScreenX = Math.max(screenIdealX, previousEndX + CONSTRAINT_BOX_GAP);
+									const actualX = actualScreenX + offset;
+
+									generatorPositions.set(app.uniqueKey, actualX);
+									previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 								}
 							});
 
 							return (
 								<>
 									{/* Generator boxes */}
-									{generatorArray.map((group) => {
-										const boxX = generatorPositions.get(group.generator.key);
+									{allGeneratorApplications.map((app) => {
+										const boxX = generatorPositions.get(app.uniqueKey);
 										if (boxX === undefined) return null;
 
-										const shouldDim = shouldDimElement("generator", group.generator.key);
+										const shouldDim = shouldDimElement("generator", app.generator.key);
 
 										return (
 											<div
-												key={`generator-${group.generator.key}`}
+												key={`generator-${app.uniqueKey}`}
 												data-generator-box
 												className="absolute transition-opacity duration-200"
 												style={{
@@ -1054,10 +1052,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 													top: "80px",
 													opacity: shouldDim ? 0.4 : 1,
 												}}
-												onMouseEnter={() => setHoveredGeneratorKey(group.generator.key)}
+												onMouseEnter={() => setHoveredGeneratorKey(app.generator.key)}
 												onMouseLeave={() => setHoveredGeneratorKey(null)}
 											>
-												<GeneratorBox generator={group.instance} />
+												<GeneratorBox generator={app.instance} />
 											</div>
 										);
 									})}
@@ -1073,49 +1071,47 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											overflow: "visible",
 										}}
 									>
-										{generatorArray.map((group) => {
-											const boxX = generatorPositions.get(group.generator.key);
+										{allGeneratorApplications.map((app) => {
+											const boxX = generatorPositions.get(app.uniqueKey);
 											if (boxX === undefined) return null;
 
 											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
 											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT - 2;
 
-											return group.segments.map((segmentId: string) => {
-												const segment = segmentsState.find((s) => s.id === segmentId);
-												if (!segment) return null;
-												const segmentPosition = segmentPositions.get(segment.id) || 0;
-												const segmentLength = segment.length;
-												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
-												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
-												const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
-												const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
-												const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
-												const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
-												if (!isBoxVisible && !isSegmentVisible) return null;
-												const endX = segmentCenterScreen;
-												const endY = SEGMENT_HEIGHT - 10;
-												const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
-												const isGeneratorHovered = hoveredGeneratorKey === group.generator.key;
-												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
-												const isGeneratorClicked = clickedGeneratorKey === group.generator.key;
-												const isSegmentClicked = clickedSegment?.id === segmentId;
-												const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered || isGeneratorClicked || isSegmentClicked;
-												const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
+											const segment = segmentsState.find((s) => s.id === app.segmentId);
+											if (!segment) return null;
+											const segmentPosition = segmentPositions.get(segment.id) || 0;
+											const segmentLength = segment.length;
+											const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
+											const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
+											const boxLeftEdge = boxCenterX - CONSTRAINT_BOX_WIDTH / 2;
+											const boxRightEdge = boxCenterX + CONSTRAINT_BOX_WIDTH / 2;
+											const isBoxVisible = isElementVisible(boxLeftEdge, boxRightEdge, visibleWidth);
+											const isSegmentVisible = isElementVisible(segmentCenterScreen - 100, segmentCenterScreen + 100, visibleWidth);
+											if (!isBoxVisible && !isSegmentVisible) return null;
+											const endX = segmentCenterScreen;
+											const endY = SEGMENT_HEIGHT - 10;
+											const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
+											const isGeneratorHovered = hoveredGeneratorKey === app.generator.key;
+											const isThisSegmentHovered = hoveredSegment?.id === app.segmentId;
+											const isGeneratorClicked = clickedGeneratorKey === app.generator.key;
+											const isSegmentClicked = clickedSegment?.id === app.segmentId;
+											const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered || isGeneratorClicked || isSegmentClicked;
+											const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
 
-												return (
-													<g key={`generator-${group.generator.key}-segment-${segmentId}`}>
-														<path
-															d={pathData}
-															fill="none"
-															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
-															strokeWidth={isLineHighlighted ? "2" : "1.5"}
-															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
-															className={isLineHighlighted ? "" : "stroke-dash-anim"}
-															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
-														/>
-													</g>
-												);
-											});
+											return (
+												<g key={`generator-${app.uniqueKey}-segment-${app.segmentId}`}>
+													<path
+														d={pathData}
+														fill="none"
+														stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
+														strokeWidth={isLineHighlighted ? "2" : "1.5"}
+														strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
+														className={isLineHighlighted ? "" : "stroke-dash-anim"}
+														opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
+													/>
+												</g>
+											);
 										})}
 									</svg>
 								</>

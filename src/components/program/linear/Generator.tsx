@@ -9,11 +9,12 @@ import { useProgram } from "@/context/ProgramContext";
 
 interface GeneratorBoxProps {
 	generator: GeneratorInstance;
+	segmentId: string;
 }
 
-const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
+const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator, segmentId }) => {
 	const { clickedGeneratorKey, setClickedGeneratorKey } = useViewer();
-	const { updateGeneratorKey } = useProgram();
+	const { updateGeneratorForSegment } = useProgram();
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredGenerators = generatorOptions.filter((g) => g.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 	const isClicked = clickedGeneratorKey === generator.key;
@@ -67,8 +68,8 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ generator }) => {
 								key={g.name}
 								onClick={(e) => {
 									e.stopPropagation();
-									if (generator.id && g.key) {
-										updateGeneratorKey(generator.id, g.key).catch(console.error);
+									if (segmentId && g.key) {
+										updateGeneratorForSegment(segmentId, g.key).catch(console.error);
 									}
 								}}
 							>

@@ -1055,7 +1055,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												onMouseEnter={() => setHoveredGeneratorKey(app.generator.key)}
 												onMouseLeave={() => setHoveredGeneratorKey(null)}
 											>
-												<GeneratorBox generator={app.instance} />
+												<GeneratorBox generator={app.instance} segmentId={app.segmentId} />
 											</div>
 										);
 									})}

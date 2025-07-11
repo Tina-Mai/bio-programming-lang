@@ -36,7 +36,7 @@ interface ProgramContextProps {
 	createSegment: (constructId: string) => Promise<void>;
 	deleteSegment: (segmentId: string) => Promise<void>;
 	updateConstraintKey: (constraintId: string, newKey: string) => Promise<void>;
-	updateGeneratorKey: (generatorId: string, newKey: string) => Promise<void>;
+	updateGeneratorForSegment: (segmentId: string, newKey: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -164,33 +164,78 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		[constraints]
 	);
 
-	const updateGeneratorKey = useCallback(
-		async (generatorId: string, newKey: string) => {
+	const updateGeneratorForSegment = useCallback(
+		async (segmentId: string, newKey: string) => {
+			if (!currentProgram?.id) {
+				throw new Error("Cannot update generator without a program");
+			}
+
 			const originalGenerators = generators;
+			const oldGenerator = originalGenerators.find((g) => g.segments.includes(segmentId));
+			if (!oldGenerator) {
+				console.error(`Could not find a generator instance for segment ${segmentId}`);
+				return;
+			}
 
 			// Optimistic update
-			setGenerators((prevGenerators) => prevGenerators.map((g) => (g.id === generatorId ? { ...g, key: newKey } : g)));
-
-			try {
-				const response = await fetch(`/api/generators/${generatorId}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ key: newKey }),
+			const newTempId = `temp-${Date.now()}`;
+			setGenerators((prev) => {
+				const updatedGenerators = prev.map((g) => {
+					if (g.id === oldGenerator.id) {
+						// Remove segment from old generator
+						return { ...g, segments: g.segments.filter((s) => s !== segmentId) };
+					}
+					return g;
 				});
 
-				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.error || "Failed to update generator key");
+				// Add new generator optimistically
+				updatedGenerators.push({
+					id: newTempId,
+					program_id: currentProgram.id,
+					key: newKey,
+					label: newKey,
+					created_at: new Date().toISOString(),
+					segments: [segmentId],
+				});
+				return updatedGenerators;
+			});
+
+			try {
+				// 1. Create a new generator instance
+				const { data: newGenerator, error: createError } = await supabase.from("generators").insert({ program_id: currentProgram.id, key: newKey, label: newKey }).select().single();
+
+				if (createError) throw new Error(`Failed to create new generator: ${createError.message}`);
+
+				// 2. Remove the link from the old generator to this segment
+				const { error: deleteLinkError } = await supabase.from("generator_segment_links").delete().match({ generator_id: oldGenerator.id, segment_id: segmentId });
+
+				if (deleteLinkError) throw new Error(`Failed to unlink old generator: ${deleteLinkError.message}`);
+
+				// 3. Link the new generator to the segment
+				const { error: createLinkError } = await supabase.from("generator_segment_links").insert({ generator_id: newGenerator.id, segment_id: segmentId });
+
+				if (createLinkError) throw new Error(`Failed to link new generator: ${createLinkError.message}`);
+
+				// 4. If the old generator has no more segments, delete it
+				const { data: remainingLinks, error: checkError } = await supabase.from("generator_segment_links").select("segment_id").eq("generator_id", oldGenerator.id);
+
+				if (checkError) {
+					console.warn(`Could not check for orphaned generator: ${checkError.message}`);
+				} else if (remainingLinks && remainingLinks.length === 0) {
+					const { error: deleteGenError } = await supabase.from("generators").delete().eq("id", oldGenerator.id);
+					if (deleteGenError) console.warn(`Failed to delete orphaned generator: ${deleteGenError.message}`);
 				}
+
+				await fetchProgramData();
 			} catch (err) {
 				setGenerators(originalGenerators);
-				console.error("Error updating generator key:", err);
-				const errorMessage = err instanceof Error ? err.message : "Failed to update generator key";
+				console.error("Error updating generator for segment:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to update generator for segment";
 				setError(errorMessage);
 				throw err;
 			}
 		},
-		[generators]
+		[generators, currentProgram, supabase, fetchProgramData]
 	);
 
 	const reorderSegments = useCallback(
@@ -352,7 +397,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		createSegment,
 		deleteSegment,
 		updateConstraintKey,
-		updateGeneratorKey,
+		updateGeneratorForSegment,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

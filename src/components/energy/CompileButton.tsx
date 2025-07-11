@@ -6,9 +6,13 @@ import { parseProgram } from "@/lib/utils/parser";
 
 const CompileButton = () => {
 	const { constructs, constraints, generators } = useProgram();
-	const { currentProject } = useGlobal();
+	const { currentProject, setProjectOutput } = useGlobal();
 
 	const handleClick = async () => {
+		if (!currentProject) {
+			console.error("No project selected");
+			return;
+		}
 		try {
 			const projectName = currentProject?.name || "untitled";
 			const parsedProgram = parseProgram(constructs, constraints, generators, projectName);
@@ -33,6 +37,11 @@ const CompileButton = () => {
 
 			const data = await response.json();
 			console.log("✅ Program compiled successfully:", data);
+
+			if (data.final_sequences && Array.isArray(data.final_sequences)) {
+				const concatenatedSequence = data.final_sequences.join("");
+				setProjectOutput(currentProject.id, concatenatedSequence);
+			}
 		} catch (error) {
 			console.error("❌ Error compiling program:", error);
 		}

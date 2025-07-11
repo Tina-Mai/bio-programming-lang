@@ -2,17 +2,20 @@ import React, { useEffect, useState, useRef } from "react";
 import { useGlobal } from "@/context/GlobalContext";
 import { EditorView } from "@codemirror/view";
 import { Code, Folder, ParentChild, Information } from "@carbon/icons-react";
+import { Dna, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CompileButton from "@/components/energy/CompileButton";
 import VisualEditor from "@/components/program/VisualEditor";
 import CodeEditor from "@/components/program/CodeEditor";
-import ProjectTabs from "./ProjectTabs";
+import ProjectTabs from "@/components/program/ProjectTabs";
+import SequenceViewer from "@/components/program/sequence/SequenceViewer";
 
 const ProgramContents = () => {
-	const { mode, setMode, currentProject: globalCurrentProject } = useGlobal();
+	const { mode, setMode, currentProject: globalCurrentProject, projectOutputs } = useGlobal();
 	const [showVisualEditor, setShowVisualEditor] = useState(mode === "visual");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
+	const [showSequence, setShowSequence] = useState(false);
 	const editorRef = useRef<EditorView | null>(null);
 
 	useEffect(() => {
@@ -37,6 +40,8 @@ const ProgramContents = () => {
 			}, 300);
 		}
 	}, [mode, showVisualEditor, showCodeEditor]);
+
+	const outputSequence = globalCurrentProject ? projectOutputs[globalCurrentProject.id] : null;
 
 	return (
 		<div className="relative vertical h-full w-full border border-slate-300 bg-white/80 rounded-sm overflow-hidden">
@@ -93,6 +98,40 @@ const ProgramContents = () => {
 						</div>
 					</div>
 				</div>
+				{outputSequence && (
+					<div className={`relative vertical border-t border-slate-300 py-3 ${showSequence ? "h-36" : "h-min"} cursor-pointer`} onClick={() => setShowSequence(!showSequence)}>
+						{showSequence ? (
+							<SequenceViewer sequence={outputSequence} showSequence={showSequence} setShowSequence={setShowSequence} />
+						) : (
+							<div className="horizontal items-center justify-between text-slate-400 text-sm px-5">
+								<div className="flex horizontal items-center gap-1.5">
+									<Dna className="size-5" strokeWidth={1.3} />
+									<div className="text-slate-500 font-medium">Sequence Output</div>
+									{!showSequence && <span className="text-xs text-slate-400">(Click to expand)</span>}
+								</div>
+								{showSequence ? (
+									<ChevronDown
+										size={20}
+										className="hover:text-slate-700 cursor-pointer"
+										onClick={(e: React.MouseEvent) => {
+											e.stopPropagation();
+											setShowSequence(!showSequence);
+										}}
+									/>
+								) : (
+									<ChevronUp
+										size={20}
+										className="hover:text-slate-700 cursor-pointer"
+										onClick={(e: React.MouseEvent) => {
+											e.stopPropagation();
+											setShowSequence(!showSequence);
+										}}
+									/>
+								)}
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	);

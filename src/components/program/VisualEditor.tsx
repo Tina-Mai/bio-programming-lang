@@ -14,7 +14,6 @@ const VisualEditor = () => {
 			await createConstruct();
 		} catch (err) {
 			console.error("Failed to create construct:", err);
-			// Error handling is done in the createConstruct function
 		}
 	};
 

@@ -39,6 +39,8 @@ interface GlobalContextType {
 	createNewProject: () => Promise<void>;
 	deleteProject: (projectId: string) => Promise<void>;
 	duplicateProject: (projectId: string) => Promise<void>;
+	projectOutputs: Record<string, string>;
+	setProjectOutput: (projectId: string, output: string) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -47,6 +49,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 	const [mode, setMode] = useState<Mode>("visual");
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [currentProject, setCurrentProject] = useState<Project | null>(null);
+	const [projectOutputs, setProjectOutputs] = useState<Record<string, string>>({});
 	const supabase: SupabaseClient = createClient();
 
 	// --- Internal Helper Functions ---
@@ -460,6 +463,13 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 		}
 	}, [_fetchProjectsFromDB, currentProject, setCurrentProject]);
 
+	const setProjectOutput = useCallback((projectId: string, output: string) => {
+		setProjectOutputs((prevOutputs) => ({
+			...prevOutputs,
+			[projectId]: output,
+		}));
+	}, []);
+
 	const createNewProject = useCallback(async () => {
 		console.log("Creating new project and initial program...");
 		try {
@@ -487,6 +497,9 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
 				if (remainingProjects.length > 0) {
 					if (currentProject?.id === projectId) {
+						const newOutputs = { ...projectOutputs };
+						delete newOutputs[projectId];
+						setProjectOutputs(newOutputs);
 						nextCurrentProject = remainingProjects[0];
 					} else {
 						nextCurrentProject = currentProject;
@@ -503,7 +516,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				console.error("Error deleting project:", err);
 			}
 		},
-		[_deleteProjectFromDB, projects, currentProject, setProjects, setCurrentProject]
+		[_deleteProjectFromDB, projects, currentProject, projectOutputs, setProjects, setCurrentProject]
 	);
 
 	const duplicateProject = useCallback(
@@ -541,6 +554,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 				createNewProject,
 				deleteProject,
 				duplicateProject,
+				projectOutputs,
+				setProjectOutput,
 			}}
 		>
 			{children}

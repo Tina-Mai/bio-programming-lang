@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import CompileButton from "@/components/energy/CompileButton";
 import VisualEditor from "@/components/program/VisualEditor";
 import CodeEditor from "@/components/program/CodeEditor";
-import ProjectTabs from "@/components/program/ProjectTabs";
+import ProgramTabs from "@/components/program/ProgramTabs";
 import SequenceViewer from "@/components/program/sequence/SequenceViewer";
+import StructureViewer from "@/components/program/structure/StructureViewer";
 
 const ProgramContents = () => {
 	const { mode, setMode, currentProject: globalCurrentProject, projectOutputs } = useGlobal();
+	const [activeTab, setActiveTab] = useState("program");
 	const [showVisualEditor, setShowVisualEditor] = useState(mode === "visual");
 	const [showCodeEditor, setShowCodeEditor] = useState(mode === "code");
 	const [transitioning, setTransitioning] = useState(false);
@@ -53,7 +55,7 @@ const ProgramContents = () => {
 						<div className="text-slate-500 font-medium">{globalCurrentProject!.name}</div>
 					</div>
 					<div className="horizontal items-center gap-5">
-						<ProjectTabs />
+						<ProgramTabs onValueChange={setActiveTab} defaultValue="program" />
 						<CompileButton />
 					</div>
 				</div>
@@ -61,42 +63,51 @@ const ProgramContents = () => {
 
 			<div className="relative vertical h-full w-full">
 				<div className="relative h-full w-full overflow-hidden">
-					<Button size="sm" className="hidden z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "visual" ? "code" : "visual")} disabled={transitioning}>
-						{mode === "visual" ? (
-							<div className="horizontal items-center gap-2">
-								<Code />
-								Show code
-							</div>
-						) : (
-							<div className="horizontal items-center gap-2">
-								<ParentChild /> Show visual
-							</div>
-						)}
-					</Button>
-
-					<div className="relative h-full w-full">
-						<div
-							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+					{activeTab === "program" ? (
+						<>
+							<Button size="sm" className="hidden z-50 absolute mt-12 top-3 right-3 w-min" onClick={() => setMode(mode === "visual" ? "code" : "visual")} disabled={transitioning}>
+								{mode === "visual" ? (
+									<div className="horizontal items-center gap-2">
+										<Code />
+										Show code
+									</div>
+								) : (
+									<div className="horizontal items-center gap-2">
+										<ParentChild /> Show visual
+									</div>
+								)}
+							</Button>
+							<div className="relative h-full w-full">
+								<div
+									className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 							${
 								showVisualEditor
 									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 							}`}
-						>
-							<VisualEditor />
-						</div>
+								>
+									<VisualEditor />
+								</div>
 
-						<div
-							className={`absolute overflow-y-auto inset-0 mt-12 pb-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
+								<div
+									className={`absolute overflow-y-auto inset-0 mt-12 pb-12 h-full w-full transition-all duration-300 ease-in-out origin-top-left
 							${
 								showCodeEditor
 									? "scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 									: "scale-0 opacity-0 pointer-events-none [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]"
 							}`}
+								>
+									<CodeEditor editorRef={editorRef} />
+								</div>
+							</div>
+						</>
+					) : (
+						<div
+							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]`}
 						>
-							<CodeEditor editorRef={editorRef} />
+							<StructureViewer animate />
 						</div>
-					</div>
+					)}
 				</div>
 				{outputSequence && (
 					<div className={`relative vertical border-t border-slate-300 py-3 ${showSequence ? "h-36" : "h-min"} cursor-pointer`} onClick={() => setShowSequence(!showSequence)}>

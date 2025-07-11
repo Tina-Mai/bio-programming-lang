@@ -231,7 +231,7 @@ const StructureViewer = memo(({ url = "/6pd5.pdb", format = "pdb", animate = fal
 
 	return (
 		<div className="vertical h-full w-full mx-auto justify-start" onClick={handleContainerClick}>
-			<div className="relative w-full h-full overflow-hidden bg-surface rounded border border-border-secondary">
+			<div className="relative w-full h-full overflow-hidden bg-surface rounded border-none">
 				<div ref={containerRef} className="absolute inset-0 bg-surface mol-viewer-container" />
 
 				{animate && (

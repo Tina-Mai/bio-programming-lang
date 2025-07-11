@@ -21,12 +21,7 @@ export interface GeneratorInstance {
 
 export const generatorOptions: Generator[] = [
 	{
-		key: "random",
-		name: "Random",
-		description: "Generate completely random sequences",
-	},
-	{
-		key: "uniform-mutation",
+		key: "uniform",
 		name: "Uniform Mutation",
 		description: "Apply uniform mutations across the sequence",
 	},

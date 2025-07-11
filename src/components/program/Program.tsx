@@ -105,7 +105,7 @@ const ProgramContents = () => {
 						<div
 							className={`absolute inset-0 h-full w-full transition-all duration-300 ease-in-out origin-top-left scale-100 opacity-100 [transition-timing-function:cubic-bezier(0.4,0.0,0.2,1)]`}
 						>
-							<StructureViewer animate />
+							<StructureViewer animate isVisible={activeTab === "structure"} />
 						</div>
 					)}
 				</div>

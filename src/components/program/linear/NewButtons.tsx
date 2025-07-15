@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { SettingsAdjust, Chip } from "@carbon/icons-react";
+import { SettingsAdjust } from "@carbon/icons-react";
 import SegmentSymbol from "@/components/program/linear/segment/SegmentSymbol";
 import { useProgram } from "@/context/ProgramContext";
 
@@ -28,10 +28,6 @@ const NewButtons = () => {
 			<NewButton>
 				<SettingsAdjust className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
 				New Constraint
-			</NewButton>
-			<NewButton>
-				<Chip className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
-				New Generator
 			</NewButton>
 			<NewButton onClick={handleNewSegment} disabled={!constructs || constructs.length === 0}>
 				<SegmentSymbol width={18} height={12} className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />

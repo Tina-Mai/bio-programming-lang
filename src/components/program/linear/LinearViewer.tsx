@@ -345,7 +345,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 		}
 
 		if (isDraggingConstraint && draggingConstraintKey && hoveredSegment) {
-			linkConstraintToSegment(draggingConstraintKey, hoveredSegment.id).catch(console.error);
+			const constraintGroup = constraintGroups.get(draggingConstraintKey);
+			if (constraintGroup && !constraintGroup.segments.includes(hoveredSegment.id)) {
+				linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch(console.error);
+			}
 		}
 
 		// reset drag state
@@ -534,9 +537,9 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 			}
 
 			if (isDraggingConstraint && draggingConstraintKey && hoveredSegment) {
-				const constraint = constraintGroups.get(draggingConstraintKey);
-				if (constraint && !constraint.segments.includes(hoveredSegment.id)) {
-					linkConstraintToSegment(draggingConstraintKey, hoveredSegment.id).catch(console.error);
+				const constraintGroup = constraintGroups.get(draggingConstraintKey);
+				if (constraintGroup && !constraintGroup.segments.includes(hoveredSegment.id)) {
+					linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch(console.error);
 				}
 			}
 

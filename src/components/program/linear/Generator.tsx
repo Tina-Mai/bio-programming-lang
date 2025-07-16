@@ -17,7 +17,7 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ segment }) => {
 	const { updateGeneratorForSegment } = useProgram();
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredGenerators = generatorOptions.filter((g) => g.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-	const isClicked = !!segment.generator.key && clickedGeneratorKey === segment.generator.key;
+	const isClicked = clickedGeneratorKey === segment.generator.id;
 
 	const hasKey = !!segment.generator.key;
 	const currentGeneratorName = generatorOptions.find((g) => g.key === segment.generator.key)?.name || "Select a generator";
@@ -27,7 +27,7 @@ const GeneratorBox: React.FC<GeneratorBoxProps> = ({ segment }) => {
 			className={`w-[180px] bg-system-blue/30 border rounded-md text-xs backdrop-blur-sm transition-all duration-200 ${
 				isClicked ? "border-slate-500/70 border-2" : "border-slate-300 hover:border-slate-400/70"
 			}`}
-			onClick={() => setClickedGeneratorKey(isClicked ? null : segment.generator.key || null)}
+			onClick={() => setClickedGeneratorKey(isClicked ? null : segment.generator.id)}
 		>
 			<div className="horizontal bg-system-slate/65 text-slate-500 px-3 py-2 items-center font-mono border-b border-slate-300 gap-2 capitalize rounded-t-md">
 				<Chip className="text-zinc-500/70" size={16} />

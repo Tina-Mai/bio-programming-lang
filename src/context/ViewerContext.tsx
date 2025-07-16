@@ -168,13 +168,9 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 					constraintKeys.add(constraint.key);
 				}
 			});
-			generators.forEach((generator) => {
-				const generatorKey = generator.key || "default";
-				const segment = getSegmentForGenerator(generator.id); // Helper needed
-				if (segment && segment.id === clickedSegment.id) {
-					generatorKeys.add(generatorKey);
-				}
-			});
+			if (clickedSegment.generator?.id) {
+				generatorKeys.add(clickedSegment.generator.id);
+			}
 		}
 
 		// Clicked constraint
@@ -190,15 +186,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// Clicked generator
 		if (clickedGeneratorKey) {
 			generatorKeys.add(clickedGeneratorKey);
-			generators.forEach((generator) => {
-				const generatorKey = generator.key || "default";
-				if (generatorKey === clickedGeneratorKey) {
-					const segment = getSegmentForGenerator(generator.id); // Helper needed
-					if (segment) {
-						segmentIds.add(segment.id);
-					}
-				}
-			});
+			const segment = getSegmentForGenerator(clickedGeneratorKey);
+			if (segment) {
+				segmentIds.add(segment.id);
+			}
 		}
 
 		// If a constraint is hovered, highlight its segments
@@ -214,15 +205,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// If a generator is hovered, highlight its segments
 		if (hoveredGeneratorKey) {
 			generatorKeys.add(hoveredGeneratorKey);
-			generators.forEach((generator) => {
-				const generatorKey = generator.key || "default";
-				if (generatorKey === hoveredGeneratorKey) {
-					const segment = getSegmentForGenerator(generator.id);
-					if (segment) {
-						segmentIds.add(segment.id);
-					}
-				}
-			});
+			const segment = getSegmentForGenerator(hoveredGeneratorKey);
+			if (segment) {
+				segmentIds.add(segment.id);
+			}
 		}
 
 		// If a segment is hovered, highlight its constraints and generators
@@ -237,16 +223,13 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 			});
 
 			// Find all generators that include this segment
-			generators.forEach((generator) => {
-				const segment = getSegmentForGenerator(generator.id);
-				if (segment && segment.id === hoveredSegment.id && generator.key) {
-					generatorKeys.add(generator.key);
-				}
-			});
+			if (hoveredSegment.generator?.id) {
+				generatorKeys.add(hoveredSegment.generator.id);
+			}
 		}
 
 		return { highlightedSegmentIds: segmentIds, highlightedConstraintKeys: constraintKeys, highlightedGeneratorKeys: generatorKeys };
-	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, generators, getSegmentForGenerator]);
+	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, getSegmentForGenerator]);
 
 	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
 	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;

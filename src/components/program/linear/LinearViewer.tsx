@@ -1018,8 +1018,12 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 										const boxX = generatorPositions.get(segment.id);
 										if (boxX === undefined) return null;
 
-										const generatorKey = segment.generator.key || "default";
-										const shouldDim = shouldDimElement("generator", generatorKey);
+										const isGeneratorHovered = hoveredGeneratorKey === segment.generator.id;
+										const isThisSegmentHovered = hoveredSegment?.id === segment.id;
+										const isGeneratorClicked = clickedGeneratorKey === segment.generator.id;
+										const isSegmentClicked = clickedSegment?.id === segment.id;
+										const isHighlighted = isGeneratorHovered || isThisSegmentHovered || isGeneratorClicked || isSegmentClicked;
+										const shouldDim = (hasAnyHover || hasAnyClick) && !isHighlighted;
 
 										return (
 											<div
@@ -1031,7 +1035,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 													top: "80px",
 													opacity: shouldDim ? 0.4 : 1,
 												}}
-												onMouseEnter={() => setHoveredGeneratorKey(generatorKey)}
+												onMouseEnter={() => setHoveredGeneratorKey(segment.generator.id)}
 												onMouseLeave={() => setHoveredGeneratorKey(null)}
 											>
 												<GeneratorBox segment={segment} />
@@ -1071,10 +1075,9 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											const endY = SEGMENT_HEIGHT - 10;
 											const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
 
-											const generatorKey = segment.generator.key || "default";
-											const isGeneratorHovered = hoveredGeneratorKey === generatorKey;
+											const isGeneratorHovered = hoveredGeneratorKey === segment.generator.id;
 											const isThisSegmentHovered = hoveredSegment?.id === segment.id;
-											const isGeneratorClicked = clickedGeneratorKey === generatorKey;
+											const isGeneratorClicked = clickedGeneratorKey === segment.generator.id;
 											const isSegmentClicked = clickedSegment?.id === segment.id;
 											const isLineHighlighted = isGeneratorHovered || isThisSegmentHovered || isGeneratorClicked || isSegmentClicked;
 											const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;

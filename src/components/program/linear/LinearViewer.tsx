@@ -365,7 +365,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 
 	// calculate positions considering drag preview
 	const displaySegmentPositions = new Map<string, number>();
-	const displaySegments = [...segments];
+	const displaySegments = [...segmentsState];
 	if (isDragging && draggedSegmentIndex !== null && dropPreviewIndex !== null && draggedSegmentIndex !== dropPreviewIndex) {
 		const [removed] = displaySegments.splice(draggedSegmentIndex, 1);
 		displaySegments.splice(dropPreviewIndex, 0, removed);
@@ -712,21 +712,21 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							let previousEndX = -Infinity;
 
 							constraintArray.sort((a, b) => {
-								const posA = a.segments.map((id) => segmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
-								const posB = b.segments.map((id) => segmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+								const posA = a.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+								const posB = b.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
 								return posA - posB;
 							});
 
 							constraintArray.forEach((group) => {
 								const segmentsInGroup = group.segments
-									.map((segId) => segmentsState.find((s) => s.id === segId))
+									.map((segId) => displaySegments.find((s) => s.id === segId))
 									.filter((s): s is Segment => !!s)
-									.sort((a, b) => (segmentPositions.get(a.id) || 0) - (segmentPositions.get(b.id) || 0));
+									.sort((a, b) => (displaySegmentPositions.get(a.id) || 0) - (displaySegmentPositions.get(b.id) || 0));
 
 								if (segmentsInGroup.length === 0) return;
 
 								const firstSegment = segmentsInGroup[0];
-								const position = segmentPositions.get(firstSegment.id) || 0;
+								const position = displaySegmentPositions.get(firstSegment.id) || 0;
 								const segmentCenterAbs = calculateAbsoluteX(position, firstSegment.length, nucleotideWidth);
 								const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
 
@@ -787,9 +787,9 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											const startY = CONSTRAINT_BOX_DISTANCE;
 
 											return group.segments.map((segmentId: string) => {
-												const segment = segmentsState.find((s) => s.id === segmentId);
+												const segment = displaySegments.find((s) => s.id === segmentId);
 												if (!segment) return null;
-												const segmentPosition = segmentPositions.get(segment.id) || 0;
+												const segmentPosition = displaySegmentPositions.get(segment.id) || 0;
 												const segmentLength = segment.length;
 												const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
 												const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);
@@ -985,20 +985,20 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 					{/* Generators */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							const allSegmentsWithGenerators = segmentsState.filter((s) => s.generator);
+							const allSegmentsWithGenerators = displaySegments.filter((s) => s.generator);
 							if (allSegmentsWithGenerators.length === 0) return null;
 
 							const generatorPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
 							const sortedSegments = [...allSegmentsWithGenerators].sort((a, b) => {
-								const posA = segmentPositions.get(a.id) || 0;
-								const posB = segmentPositions.get(b.id) || 0;
+								const posA = displaySegmentPositions.get(a.id) || 0;
+								const posB = displaySegmentPositions.get(b.id) || 0;
 								return posA - posB;
 							});
 
 							sortedSegments.forEach((segment) => {
-								const position = segmentPositions.get(segment.id) || 0;
+								const position = displaySegmentPositions.get(segment.id) || 0;
 								const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
 								const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
 								const screenIdealX = idealX - offset;
@@ -1062,7 +1062,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											const startY = CONSTRAINT_BOX_DISTANCE + SEGMENT_HEIGHT - 2;
 
 											if (!segment) return null;
-											const segmentPosition = segmentPositions.get(segment.id) || 0;
+											const segmentPosition = displaySegmentPositions.get(segment.id) || 0;
 											const segmentLength = segment.length;
 											const segmentCenterAbs = calculateAbsoluteX(segmentPosition, segmentLength, nucleotideWidth);
 											const segmentCenterScreen = toScreenX(segmentCenterAbs, offset);

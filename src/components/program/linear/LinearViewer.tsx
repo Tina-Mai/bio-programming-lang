@@ -49,7 +49,7 @@ const toScreenX = (absoluteX: number, offset: number) => {
 };
 
 const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], constructId }) => {
-	const { reorderSegments, updateSegmentLength, deleteSegment } = useProgram();
+	const { reorderSegments, updateSegmentLength, deleteSegment, deleteConstraint } = useProgram();
 	const {
 		hoveredSegment,
 		setHoveredSegment,
@@ -776,7 +776,12 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 												onMouseEnter={() => setHoveredConstraintKey(key)}
 												onMouseLeave={() => setHoveredConstraintKey(null)}
 											>
-												<ConstraintBox constraint={group.instance} isFreeFloating={isFreeFloating} />
+												<ConstraintBox
+													constraint={group.instance}
+													isFreeFloating={isFreeFloating}
+													onDelete={() => deleteConstraint(group.instance.id)}
+													onDuplicate={() => console.log("duplicate constraint")}
+												/>
 											</div>
 										);
 									})}

@@ -229,6 +229,14 @@ export async function deleteConstruct(supabase: SupabaseClient, constructId: str
 	}
 }
 
+export async function deleteConstraint(supabase: SupabaseClient, constraintId: string): Promise<void> {
+	const { error } = await supabase.from("constraints").delete().eq("id", constraintId);
+
+	if (error) {
+		throw new Error(`Failed to delete constraint: ${error.message}`);
+	}
+}
+
 export async function deleteSegment(supabase: SupabaseClient, segmentId: string): Promise<void> {
 	const { error } = await supabase.from("segments").delete().eq("id", segmentId);
 

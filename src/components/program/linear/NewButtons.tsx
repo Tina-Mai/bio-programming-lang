@@ -10,7 +10,7 @@ const NewButton = (props: React.ComponentProps<typeof Button>) => {
 };
 
 const NewButtons = () => {
-	const { constructs, createSegment } = useProgram();
+	const { constructs, createSegment, createConstraint } = useProgram();
 
 	const handleNewSegment = async () => {
 		if (constructs && constructs.length > 0) {
@@ -23,9 +23,17 @@ const NewButtons = () => {
 		}
 	};
 
+	const handleNewConstraint = async () => {
+		try {
+			await createConstraint();
+		} catch (error) {
+			console.error("Failed to create new constraint", error);
+		}
+	};
+
 	return (
 		<div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-50">
-			<NewButton>
+			<NewButton onClick={handleNewConstraint}>
 				<SettingsAdjust className="text-zinc-500/70 group-hover:!text-zinc-500 transition-colors duration-200" />
 				New Constraint
 			</NewButton>

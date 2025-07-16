@@ -21,8 +21,8 @@ export interface SupabaseSegment extends Omit<Segment, "generator"> {
 	generators: GeneratorInstance | null;
 }
 
-export interface SupabaseConstraint extends ConstraintInstance {
-	segmentLinks?: SupabaseConstraintSegmentLink[];
+export interface SupabaseConstraint extends Omit<ConstraintInstance, "segments"> {
+	constraint_segment_links: { segment_id: string }[];
 }
 
 export interface SupabaseConstraintSegmentLink {
@@ -49,11 +49,18 @@ export function parseOutputMetadata(rawMetadata: Record<string, unknown> | undef
 }
 
 // transform constraint data with segment links
-export function transformConstraintWithSegments(constraint: SupabaseConstraint, segmentLinks: SupabaseConstraintSegmentLink[]): ConstraintInstance {
-	const linkedSegmentIds = segmentLinks.filter((link) => link.constraint_id === constraint.id).map((link) => link.segment_id);
+export function transformConstraintWithSegments(constraint: SupabaseConstraint): ConstraintInstance {
+	const linkedSegmentIds = constraint.constraint_segment_links?.map((link) => link.segment_id) || [];
+
+	const { id, program_id, key, label, created_at, updated_at } = constraint;
 
 	return {
-		...constraint,
+		id,
+		program_id,
+		key,
+		label,
+		created_at,
+		updated_at,
 		segments: linkedSegmentIds,
 	};
 }

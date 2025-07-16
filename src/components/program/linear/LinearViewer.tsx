@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Segment, ConstraintInstance, GeneratorInstance, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
+import { Segment, ConstraintInstance, SEGMENT_ARROW_WIDTH, getSegmentColors } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
 import { ViewerProvider, useViewer } from "@/context/ViewerContext";
 import ConstraintBox from "@/components/program/linear/Constraint";
@@ -12,7 +12,11 @@ import Portal from "@/components/global/Portal";
 interface LinearViewerProps {
 	segments: Segment[];
 	constraints: ConstraintInstance[];
-	generators: GeneratorInstance[];
+	constructId?: string;
+}
+
+interface LinearViewerInnerProps {
+	segments: Segment[];
 	constructId?: string;
 }
 
@@ -44,7 +48,7 @@ const toScreenX = (absoluteX: number, offset: number) => {
 	return absoluteX - offset;
 };
 
-const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constructId }) => {
+const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], constructId }) => {
 	const { reorderSegments, updateSegmentLength, deleteSegment } = useProgram();
 	const {
 		hoveredSegment,
@@ -704,20 +708,28 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 					{/* Constraints */}
 					<div className="relative h-40 w-full">
 						{(() => {
-							const constraintArray = Array.from(constraintGroups.values());
+							const constraintArray = Array.from(constraintGroups.entries());
 							if (constraintArray.length === 0) return null;
 
-							// position each constraint box based on its first segment
+							// position each constraint box
 							const constraintPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
+							let freeFloatingCount = 0;
 
-							constraintArray.sort((a, b) => {
-								const posA = a.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
-								const posB = b.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+							const sortedConstraints = constraintArray.sort(([, groupA], [, groupB]) => {
+								const posA = groupA.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
+								const posB = groupB.segments.map((id) => displaySegmentPositions.get(id) || 0).reduce((min, p) => Math.min(min, p), Infinity);
 								return posA - posB;
 							});
 
-							constraintArray.forEach((group) => {
+							sortedConstraints.forEach(([key, group]) => {
+								if (group.segments.length === 0) {
+									const x = 20 + freeFloatingCount * (CONSTRAINT_BOX_WIDTH + CONSTRAINT_BOX_GAP);
+									constraintPositions.set(key, x + offset);
+									freeFloatingCount++;
+									return;
+								}
+
 								const segmentsInGroup = group.segments
 									.map((segId) => displaySegments.find((s) => s.id === segId))
 									.filter((s): s is Segment => !!s)
@@ -737,22 +749,23 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 								const totalContentWidth = totalLength * nucleotideWidth;
 								actualX = Math.max(20, Math.min(actualX, 20 + totalContentWidth - CONSTRAINT_BOX_WIDTH));
 
-								constraintPositions.set(group.constraint.key, actualX);
+								constraintPositions.set(key, actualX);
 								previousEndX = actualScreenX + CONSTRAINT_BOX_WIDTH;
 							});
 
 							return (
 								<>
 									{/* Constraint boxes */}
-									{constraintArray.map((group) => {
-										const boxX = constraintPositions.get(group.constraint.key);
+									{sortedConstraints.map(([key, group]) => {
+										const boxX = constraintPositions.get(key);
 										if (boxX === undefined) return null;
 
-										const shouldDim = shouldDimElement("constraint", group.constraint.key);
+										const isFreeFloating = group.segments.length === 0;
+										const shouldDim = shouldDimElement("constraint", key);
 
 										return (
 											<div
-												key={`constraint-${group.constraint.key}`}
+												key={`constraint-${key}`}
 												data-constraint-box
 												className="absolute transition-opacity duration-200"
 												style={{
@@ -760,10 +773,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 													bottom: `${CONSTRAINT_BOX_DISTANCE}px`,
 													opacity: shouldDim ? 0.4 : 1,
 												}}
-												onMouseEnter={() => setHoveredConstraintKey(group.constraint.key)}
+												onMouseEnter={() => setHoveredConstraintKey(key)}
 												onMouseLeave={() => setHoveredConstraintKey(null)}
 											>
-												<ConstraintBox constraint={group.instance} />
+												<ConstraintBox constraint={group.instance} isFreeFloating={isFreeFloating} />
 											</div>
 										);
 									})}
@@ -779,8 +792,10 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											overflow: "visible",
 										}}
 									>
-										{constraintArray.map((group) => {
-											const boxX = constraintPositions.get(group.constraint.key);
+										{constraintArray.map(([key, group]) => {
+											if (group.segments.length === 0) return null;
+
+											const boxX = constraintPositions.get(key);
 											if (boxX === undefined) return null;
 
 											const boxCenterX = boxX + CONSTRAINT_BOX_WIDTH / 2 - offset;
@@ -801,15 +816,15 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 												const endX = segmentCenterScreen;
 												const endY = CONSTRAINT_BOX_DISTANCE * 2;
 												const pathData = generateConnectionPath([boxCenterX, startY], [endX, endY]);
-												const isConstraintHovered = hoveredConstraintKey === group.constraint.key;
+												const isConstraintHovered = hoveredConstraintKey === key;
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
-												const isConstraintClicked = clickedConstraintKey === group.constraint.key;
+												const isConstraintClicked = clickedConstraintKey === key;
 												const isSegmentClicked = clickedSegment?.id === segmentId;
 												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered || isConstraintClicked || isSegmentClicked;
 												const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
 
 												return (
-													<g key={`constraint-${group.constraint.key}-segment-${segmentId}`}>
+													<g key={`constraint-${key}-segment-${segmentId}`}>
 														<path
 															d={pathData}
 															fill="none"
@@ -1145,10 +1160,9 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 };
 
 const LinearViewer: React.FC<LinearViewerProps> = ({ segments, constraints, constructId }) => {
-	const allGenerators = segments.map((s) => s.generator);
 	return (
-		<ViewerProvider constraints={constraints} generators={allGenerators}>
-			<LinearViewerInner segments={segments} constructId={constructId} constraints={constraints} generators={allGenerators} />
+		<ViewerProvider constraints={constraints}>
+			<LinearViewerInner segments={segments} constructId={constructId} />
 		</ViewerProvider>
 	);
 };

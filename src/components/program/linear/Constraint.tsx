@@ -10,24 +10,26 @@ import { cn } from "@/lib/utils";
 
 interface ConstraintBoxProps {
 	constraint: ConstraintInstance;
+	isFreeFloating: boolean;
 }
 
-const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
+const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint, isFreeFloating }) => {
 	const { clickedConstraintKey, setClickedConstraintKey } = useViewer();
 	const { updateConstraintKey } = useProgram();
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredConstraints = constraintOptions.filter((c) => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-	const isClicked = !!constraint.key && clickedConstraintKey === constraint.key;
+	const constraintGroupKey = constraint.key || constraint.id;
+	const isClicked = clickedConstraintKey === constraintGroupKey;
 
 	const hasKey = !!constraint.key;
 	const currentConstraintName = constraintOptions.find((c) => c.key === constraint.key)?.name || "Select a constraint";
 
+	const borderStyle = isClicked ? "border-slate-500/70 border-2" : isFreeFloating ? "border-slate-400 border-dashed" : "border-slate-300 hover:border-slate-400/70";
+
 	return (
 		<div
-			className={`w-[180px] bg-system-yellow/30 border rounded-md text-xs backdrop-blur-sm transition-all duration-200 ${
-				isClicked ? "border-slate-500/70 border-2" : "border-slate-300 hover:border-slate-400/70"
-			}`}
-			onClick={() => setClickedConstraintKey(isClicked ? null : constraint.key || null)}
+			className={`w-[180px] bg-system-yellow/30 border rounded-md text-xs backdrop-blur-sm transition-all duration-200 ${borderStyle}`}
+			onClick={() => setClickedConstraintKey(isClicked ? null : constraintGroupKey)}
 		>
 			<div className="horizontal justify-between bg-system-yellow/70 text-slate-500 px-3 py-2 items-center border-b border-slate-300 rounded-t-md">
 				<div className="horizontal items-center gap-2 font-mono capitalize">

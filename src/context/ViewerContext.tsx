@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useMemo, ReactNode, useCallback } from "react";
-import { Segment, ConstraintInstance, GeneratorInstance, Constraint, constraintOptions } from "@/types";
+import { Segment, ConstraintInstance, Constraint, constraintOptions } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
 
 interface ViewerContextType {
@@ -47,7 +47,7 @@ interface ViewerContextType {
 	constraintGroups: Map<
 		string,
 		{
-			constraint: Constraint;
+			constraint?: Constraint;
 			segments: string[];
 			instance: ConstraintInstance;
 		}
@@ -65,10 +65,9 @@ const ViewerContext = createContext<ViewerContextType | undefined>(undefined);
 interface ViewerProviderProps {
 	children: ReactNode;
 	constraints: ConstraintInstance[];
-	generators: GeneratorInstance[];
 }
 
-export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constraints, generators }) => {
+export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constraints }) => {
 	const { constructs } = useProgram(); // get constructs to find segment for generator
 	// Hover states
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
@@ -123,16 +122,16 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		const groups = new Map<
 			string,
 			{
-				constraint: Constraint;
+				constraint?: Constraint;
 				segments: string[];
 				instance: ConstraintInstance;
 			}
 		>();
 
 		constraints.forEach((constraint) => {
-			if (!constraint.key) return;
+			const groupKey = constraint.key || constraint.id;
+			const existing = groups.get(groupKey);
 
-			const existing = groups.get(constraint.key);
 			if (existing) {
 				constraint.segments.forEach((segId) => {
 					if (!existing.segments.includes(segId)) {
@@ -140,14 +139,12 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 					}
 				});
 			} else {
-				const constraintDef = constraintOptions.find((c: Constraint) => c.key === constraint.key);
-				if (constraintDef) {
-					groups.set(constraint.key, {
-						constraint: constraintDef,
-						segments: [...constraint.segments],
-						instance: constraint,
-					});
-				}
+				const constraintDef = constraint.key ? constraintOptions.find((c: Constraint) => c.key === constraint.key) : undefined;
+				groups.set(groupKey, {
+					constraint: constraintDef,
+					segments: [...constraint.segments],
+					instance: constraint,
+				});
 			}
 		});
 
@@ -176,11 +173,7 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// Clicked constraint
 		if (clickedConstraintKey) {
 			constraintKeys.add(clickedConstraintKey);
-			constraints.forEach((constraint) => {
-				if (constraint.key === clickedConstraintKey) {
-					constraint.segments.forEach((segId) => segmentIds.add(segId));
-				}
-			});
+			constraintGroups.get(clickedConstraintKey)?.segments.forEach((segId) => segmentIds.add(segId));
 		}
 
 		// Clicked generator
@@ -195,11 +188,7 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// If a constraint is hovered, highlight its segments
 		if (hoveredConstraintKey) {
 			constraintKeys.add(hoveredConstraintKey);
-			constraints.forEach((constraint) => {
-				if (constraint.key === hoveredConstraintKey) {
-					constraint.segments.forEach((segId) => segmentIds.add(segId));
-				}
-			});
+			constraintGroups.get(hoveredConstraintKey)?.segments.forEach((segId) => segmentIds.add(segId));
 		}
 
 		// If a generator is hovered, highlight its segments
@@ -216,9 +205,9 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 			segmentIds.add(hoveredSegment.id);
 
 			// Find all constraints that include this segment
-			constraints.forEach((constraint) => {
-				if (constraint.key && constraint.segments.includes(hoveredSegment.id)) {
-					constraintKeys.add(constraint.key);
+			constraintGroups.forEach((group, key) => {
+				if (group.segments.includes(hoveredSegment.id)) {
+					constraintKeys.add(key);
 				}
 			});
 
@@ -229,7 +218,7 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		}
 
 		return { highlightedSegmentIds: segmentIds, highlightedConstraintKeys: constraintKeys, highlightedGeneratorKeys: generatorKeys };
-	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, getSegmentForGenerator]);
+	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, getSegmentForGenerator, constraintGroups]);
 
 	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
 	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;

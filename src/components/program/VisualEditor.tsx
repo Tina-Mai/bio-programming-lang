@@ -1,5 +1,5 @@
 import LinearViewer from "@/components/program/linear/LinearViewer";
-import { ConstraintInstance, GeneratorInstance, Construct } from "@/types";
+import { ConstraintInstance, Construct } from "@/types";
 import { Draggable } from "@carbon/icons-react";
 import { useProgram } from "@/context/ProgramContext";
 import { Button } from "@/components/ui/button";
@@ -17,15 +17,7 @@ const VisualEditor = () => {
 		}
 	};
 
-	const ConstructInstance = ({
-		construct,
-		constructConstraints,
-		constructGenerators,
-	}: {
-		construct: Construct;
-		constructConstraints: ConstraintInstance[];
-		constructGenerators: GeneratorInstance[];
-	}) => {
+	const ConstructInstance = ({ construct, constructConstraints }: { construct: Construct; constructConstraints: ConstraintInstance[] }) => {
 		const segments = construct.segments || [];
 		const totalLength = segments.reduce((sum, segment) => sum + segment.length, 0);
 
@@ -41,7 +33,7 @@ const VisualEditor = () => {
 						<Draggable size={18} className="text-slate-400 hover:!text-slate-700" />
 					</div>
 				</div>
-				<LinearViewer segments={segments} constraints={constructConstraints} generators={constructGenerators} constructId={construct.id} />
+				<LinearViewer segments={segments} constraints={constructConstraints} constructId={construct.id} />
 			</div>
 		);
 	};
@@ -70,10 +62,9 @@ const VisualEditor = () => {
 					<div className="vertical w-full h-full justify-start overflow-y-auto flex-1">
 						{constructs.map((construct) => {
 							const segmentIds = (construct.segments || []).map((s) => s.id);
-							const constructConstraints = constraints.filter((c) => (c.segments || []).some((segId) => segmentIds.includes(segId)));
-							const constructGenerators = (construct.segments || []).map((s) => s.generator).filter((g): g is GeneratorInstance => !!g);
+							const constructConstraints = constraints.filter((c) => c.segments.length === 0 || (c.segments || []).some((segId) => segmentIds.includes(segId)));
 
-							return <ConstructInstance key={construct.id} construct={construct} constructConstraints={constructConstraints} constructGenerators={constructGenerators} />;
+							return <ConstructInstance key={construct.id} construct={construct} constructConstraints={constructConstraints} />;
 						})}
 					</div>
 				</div>

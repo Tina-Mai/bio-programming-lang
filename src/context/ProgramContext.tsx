@@ -1,17 +1,9 @@
 import React, { createContext, useCallback, useContext, ReactNode, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
-import {
-	SupabaseProgram,
-	SupabaseConstruct,
-	SupabaseConstraint,
-	SupabaseConstructSegmentOrder,
-	SupabaseConstraintSegmentLink,
-	transformConstructWithSegments,
-	transformConstraintWithSegments,
-} from "@/lib/utils/program";
+import { SupabaseProgram, SupabaseConstruct, SupabaseConstraint, SupabaseConstructSegmentOrder, transformConstructWithSegments, transformConstraintWithSegments } from "@/lib/utils/program";
 import { Construct, ConstraintInstance, GeneratorInstance, Segment } from "@/types";
-import { createConstruct as dbCreateConstruct, createSegment as dbCreateSegment, deleteSegment as dbDeleteSegment } from "@/lib/utils/database";
+import { createConstruct as dbCreateConstruct, createSegment as dbCreateSegment, deleteSegment as dbDeleteSegment, createConstraint as dbCreateConstraint } from "@/lib/utils/database";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -34,6 +26,7 @@ interface ProgramContextProps {
 	deleteSegment: (segmentId: string) => Promise<void>;
 	updateConstraintKey: (constraintId: string, newKey: string) => Promise<void>;
 	updateGeneratorForSegment: (segmentId: string, newKey: string) => Promise<void>;
+	createConstraint: () => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -66,7 +59,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			// fetch constructs, constraints, and generators
 			const [constructsResult, constraintsResult] = await Promise.all([
 				supabase.from("constructs").select("*").eq("program_id", programId),
-				supabase.from("constraints").select("*").eq("program_id", programId),
+				supabase.from("constraints").select("*, constraint_segment_links(segment_id)").eq("program_id", programId),
 			]);
 
 			if (constructsResult.error) throw new Error(`Failed to fetch constructs: ${constructsResult.error.message}`);
@@ -90,20 +83,9 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.log("Fetched segment orders:", segmentOrders);
 			}
 
-			// fetch constraint segment links
-			let constraintLinks: SupabaseConstraintSegmentLink[] = [];
-
-			if (fetchedConstraints.length > 0) {
-				const constraintIds = fetchedConstraints.map((c) => c.id);
-				const { data: linkData, error: linkError } = await supabase.from("constraint_segment_links").select("*").in("constraint_id", constraintIds);
-
-				if (linkError) throw new Error(`Failed to fetch constraint links: ${linkError.message}`);
-				constraintLinks = linkData || [];
-			}
-
 			// transform the data
 			const transformedConstructs = fetchedConstructs.map((construct) => transformConstructWithSegments(construct, segmentOrders));
-			const transformedConstraints = fetchedConstraints.map((constraint) => transformConstraintWithSegments(constraint, constraintLinks));
+			const transformedConstraints = fetchedConstraints.map((constraint) => transformConstraintWithSegments(constraint));
 
 			const allGenerators = transformedConstructs.flatMap((c) => c.segments?.map((s) => s.generator)).filter((g): g is GeneratorInstance => !!g);
 			const uniqueGenerators = Array.from(new Map(allGenerators.map((g) => [g.id, g])).values());
@@ -303,6 +285,23 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		}
 	}, [currentProgram, supabase, fetchProgramData]);
 
+	const createConstraint = useCallback(async () => {
+		if (!currentProgram?.id) {
+			throw new Error("No current program to add constraint to");
+		}
+
+		try {
+			const newConstraint = await dbCreateConstraint(supabase, currentProgram.id);
+			console.log("Successfully created new constraint:", newConstraint.id);
+			setConstraints((prev) => [...prev, newConstraint]);
+		} catch (err) {
+			console.error("Error creating constraint:", err);
+			const errorMessage = err instanceof Error ? err.message : "Failed to create constraint";
+			setError(errorMessage);
+			throw err;
+		}
+	}, [currentProgram, supabase]);
+
 	const createSegment = useCallback(
 		async (constructId: string) => {
 			if (!currentProgram?.id) {
@@ -389,6 +388,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		deleteSegment,
 		updateConstraintKey,
 		updateGeneratorForSegment,
+		createConstraint,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ProjectJSON } from "@/context/GlobalContext";
 import { SupabaseProgram } from "./program";
-import { Segment, GeneratorInstance } from "@/types";
+import { Segment, GeneratorInstance, ConstraintInstance } from "@/types";
 
 export async function createProject(
 	supabase: SupabaseClient,
@@ -120,6 +120,23 @@ export async function createConstruct(supabase: SupabaseClient, programId: strin
 	}
 
 	return constructData;
+}
+
+export async function createConstraint(supabase: SupabaseClient, programId: string): Promise<ConstraintInstance> {
+	const { data, error } = await supabase.from("constraints").insert({ program_id: programId, key: null, label: null }).select().single();
+
+	if (error) {
+		throw new Error(`Failed to create constraint: ${error.message}`);
+	}
+
+	if (!data) {
+		throw new Error("Failed to create constraint, no data returned");
+	}
+
+	return {
+		...data,
+		segments: [],
+	};
 }
 
 export async function createSegment(supabase: SupabaseClient, constructId: string): Promise<Segment> {

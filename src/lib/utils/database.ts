@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ProjectJSON } from "@/context/GlobalContext";
 import { SupabaseProgram } from "./program";
-import { Segment } from "@/types";
+import { Segment, GeneratorInstance } from "@/types";
 
 export async function createProject(
 	supabase: SupabaseClient,
@@ -132,7 +132,7 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 	const programId = constructData.program_id;
 
 	// 2. Create a default generator for the new segment
-	const { data: generatorData, error: generatorError } = await supabase.from("generators").insert({ program_id: programId, key: null, label: "default" }).select().single();
+	const { data: generatorData, error: generatorError } = await supabase.from("generators").insert({ program_id: programId, key: null, label: null }).select().single();
 
 	if (generatorError || !generatorData?.id) {
 		throw new Error(`Failed to create default generator or retrieve its ID. Error: ${generatorError?.message}`);
@@ -152,6 +152,7 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 
 	const newOrderIdx = (maxOrderData?.[0]?.order_idx ?? -1) + 1;
 
+	// The 'generator' field here is just the ID
 	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100, generator: generatorData.id }).select("*").single();
 
 	if (segmentError) {
@@ -171,11 +172,19 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 	});
 
 	if (linkError) {
+		// Rollback segment and generator creation
 		await supabase.from("segments").delete().eq("id", segmentData.id);
+		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to link segment to construct: ${linkError.message}`);
 	}
 
-	return segmentData;
+	// Combine segment data with the full generator object
+	const newSegment: Segment = {
+		...segmentData,
+		generator: generatorData as GeneratorInstance,
+	};
+
+	return newSegment;
 }
 
 export async function deleteProject(supabase: SupabaseClient, projectId: string): Promise<void> {

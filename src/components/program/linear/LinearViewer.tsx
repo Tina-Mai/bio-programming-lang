@@ -74,7 +74,6 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 		isSegmentHighlighted,
 		shouldDimElement,
 		constraintGroups,
-		generatorGroups,
 	} = useViewer();
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -992,7 +991,13 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							const generatorPositions = new Map<string, number>();
 							let previousEndX = -Infinity;
 
-							allSegmentsWithGenerators.forEach((segment) => {
+							const sortedSegments = [...allSegmentsWithGenerators].sort((a, b) => {
+								const posA = segmentPositions.get(a.id) || 0;
+								const posB = segmentPositions.get(b.id) || 0;
+								return posA - posB;
+							});
+
+							sortedSegments.forEach((segment) => {
 								const position = segmentPositions.get(segment.id) || 0;
 								const segmentCenterAbs = calculateAbsoluteX(position, segment.length, nucleotideWidth);
 								const idealX = segmentCenterAbs - CONSTRAINT_BOX_WIDTH / 2;
@@ -1009,7 +1014,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 							return (
 								<>
 									{/* Generator boxes */}
-									{allSegmentsWithGenerators.map((segment) => {
+									{sortedSegments.map((segment) => {
 										const boxX = generatorPositions.get(segment.id);
 										if (boxX === undefined) return null;
 
@@ -1045,7 +1050,7 @@ const LinearViewerInner: React.FC<LinearViewerProps> = ({ segments = [], constru
 											overflow: "visible",
 										}}
 									>
-										{allSegmentsWithGenerators.map((segment) => {
+										{sortedSegments.map((segment) => {
 											const boxX = generatorPositions.get(segment.id);
 											if (boxX === undefined) return null;
 

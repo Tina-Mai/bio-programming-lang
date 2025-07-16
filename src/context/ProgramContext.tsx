@@ -308,19 +308,33 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			if (!currentProgram?.id) {
 				throw new Error("No current program to add segment to");
 			}
+			const originalConstructs = constructs;
 
 			try {
-				await dbCreateSegment(supabase, constructId);
+				const newSegment = await dbCreateSegment(supabase, constructId);
 				console.log("Successfully created new segment for construct:", constructId);
-				await fetchProgramData();
+
+				setConstructs((prevConstructs) =>
+					prevConstructs.map((c) => {
+						if (c.id === constructId) {
+							return {
+								...c,
+								segments: [...(c.segments || []), newSegment],
+							};
+						}
+						return c;
+					})
+				);
+				setGenerators((prev) => [...prev, newSegment.generator]);
 			} catch (err) {
+				setConstructs(originalConstructs);
 				console.error("Error creating segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to create segment";
 				setError(errorMessage);
 				throw err;
 			}
 		},
-		[currentProgram, supabase, fetchProgramData]
+		[currentProgram, supabase, constructs]
 	);
 
 	const deleteSegment = useCallback(

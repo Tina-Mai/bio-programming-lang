@@ -12,6 +12,7 @@ import {
 	linkConstraintToSegment as dbLinkConstraintToSegment,
 	unlinkConstraintFromSegment as dbUnlinkConstraintFromSegment,
 } from "@/lib/utils/database";
+import { toast } from "sonner";
 
 interface ProgramProviderProps {
 	children: ReactNode;
@@ -107,7 +108,9 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			setGenerators(uniqueGenerators);
 		} catch (error: unknown) {
 			console.error("ProgramProvider: Error fetching program data:", error);
-			setError(error instanceof Error ? error.message : "An unknown error occurred");
+			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+			setError(errorMessage);
+			toast.error(`Error loading program data: ${errorMessage}`);
 			setConstructs([]);
 			setConstraints([]);
 			setGenerators([]);
@@ -139,6 +142,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error updating constraint key:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to update constraint key";
 				setError(errorMessage);
+				toast.error(`Error updating constraint: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -202,6 +206,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error updating generator for segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to update generator for segment";
 				setError(errorMessage);
+				toast.error(`Error updating generator: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -244,6 +249,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error reordering segments:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to reorder segments";
 				setError(errorMessage);
+				toast.error(`Error reordering segments: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -273,6 +279,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error updating segment length:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to update segment length";
 				setError(errorMessage);
+				toast.error(`Error updating segment length: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -292,6 +299,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			console.error("Error creating construct:", err);
 			const errorMessage = err instanceof Error ? err.message : "Failed to create construct";
 			setError(errorMessage);
+			toast.error(`Error creating construct: ${errorMessage}`);
 			throw err;
 		}
 	}, [currentProgram, supabase, fetchProgramData]);
@@ -309,6 +317,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error deleting constraint:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to delete constraint";
 				setError(errorMessage);
+				toast.error(`Error deleting constraint: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -337,6 +346,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error linking constraint to segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to link constraint to segment";
 				setError(errorMessage);
+				toast.error(`Error linking constraint to segment: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -365,6 +375,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error unlinking constraint from segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to unlink constraint from segment";
 				setError(errorMessage);
+				toast.error(`Error unlinking constraint from segment: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -384,6 +395,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			console.error("Error creating constraint:", err);
 			const errorMessage = err instanceof Error ? err.message : "Failed to create constraint";
 			setError(errorMessage);
+			toast.error(`Error creating constraint: ${errorMessage}`);
 			throw err;
 		}
 	}, [currentProgram, supabase]);
@@ -416,6 +428,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error creating segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to create segment";
 				setError(errorMessage);
+				toast.error(`Error creating segment: ${errorMessage}`);
 				throw err;
 			}
 		},
@@ -449,6 +462,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.error("Error deleting segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to delete segment";
 				setError(errorMessage);
+				toast.error(`Error deleting segment: ${errorMessage}`);
 				throw err;
 			}
 		},

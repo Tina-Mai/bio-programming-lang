@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ProgramProvider, useProgram } from "./ProgramContext";
 import { createProgram as dbCreateProgram } from "@/lib/utils/database";
+import { toast } from "sonner";
 
 interface ProjectContextProps {
 	currentProgram: SupabaseProgram | null;
@@ -73,7 +74,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 			}
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "An unknown error occurred";
-			setProjectProgramsError(`Failed to load project programs: ${message}`);
+			const errorMessage = `Failed to load project programs: ${message}`;
+			setProjectProgramsError(errorMessage);
+			toast.error(errorMessage);
 			setCurrentProgram(null);
 			setProjectPrograms([]);
 		} finally {
@@ -122,17 +125,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
 	const createProgram = useCallback(async (): Promise<SupabaseProgram> => {
 		if (!currentProject?.id) {
-			throw new Error("No current project to create program for");
+			const errorMessage = "No current project to create program for";
+			toast.error(errorMessage);
+			throw new Error(errorMessage);
 		}
 
 		try {
 			const result = await dbCreateProgram(supabase, currentProject.id);
-
 			await fetchProjectPrograms();
-
 			return result.program;
 		} catch (error) {
 			console.error("Error creating program:", error);
+			const errorMessage = error instanceof Error ? error.message : "Failed to create program";
+			toast.error(`Error creating program: ${errorMessage}`);
 			throw error;
 		}
 	}, [currentProject, supabase, fetchProjectPrograms]);

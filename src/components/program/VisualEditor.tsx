@@ -3,17 +3,18 @@ import { ConstraintInstance, Construct } from "@/types";
 import { Draggable } from "@carbon/icons-react";
 import { useProgram } from "@/context/ProgramContext";
 import { Button } from "@/components/ui/button";
-import { AddLarge, WarningAlt } from "@carbon/icons-react";
+import { AddLarge } from "@carbon/icons-react";
 import ConstructConfig from "@/components/program/linear/ConstructConfig";
 
 const VisualEditor = () => {
-	const { constructs, constraints, isLoading, error, createConstruct } = useProgram();
+	const { constructs, constraints, isLoading, createConstruct } = useProgram();
 
 	const handleCreateConstruct = async () => {
 		try {
 			await createConstruct();
 		} catch (err) {
 			console.error("Failed to create construct:", err);
+			// Error is now handled via toast in the ProgramContext
 		}
 	};
 
@@ -43,11 +44,6 @@ const VisualEditor = () => {
 			{isLoading ? (
 				<div className="h-full w-full flex items-center justify-center">
 					<div className="text-slate-500">Loading program data...</div>
-				</div>
-			) : error ? (
-				<div className="h-full w-full flex items-center justify-center gap-3">
-					<WarningAlt size={20} className="text-rose-500" />
-					<div className="text-rose-500">Error: {error}</div>
 				</div>
 			) : constructs.length === 0 ? (
 				<div className="vertical h-full w-full items-center justify-center gap-3">

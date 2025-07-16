@@ -304,7 +304,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 		// if resizing
 		if (isResizing && resizingSegment) {
 			if (resizingSegment.length > 0) {
-				updateSegmentLength(resizingSegment.id, resizingSegment.length).catch(console.error);
+				updateSegmentLength(resizingSegment.id, resizingSegment.length).catch((err) => {
+					// Error handled by toast in ProgramContext
+					console.error("Error updating segment length:", err);
+				});
 			}
 			setIsResizing(false);
 			setResizingSegment(null);
@@ -345,14 +348,20 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 					console.error("Duplicate segment IDs detected!");
 				}
 
-				reorderSegments(constructId, segmentIds).catch(console.error);
+				reorderSegments(constructId, segmentIds).catch((err) => {
+					// Error handled by toast in ProgramContext
+					console.error("Error reordering segments:", err);
+				});
 			}
 		}
 
 		if (isDraggingConstraint && draggingConstraintKey && hoveredSegment) {
 			const constraintGroup = constraintGroups.get(draggingConstraintKey);
 			if (constraintGroup && !constraintGroup.segments.includes(hoveredSegment.id)) {
-				linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch(console.error);
+				linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch((err) => {
+					// Error handled by toast in ProgramContext
+					console.error("Error linking constraint to segment:", err);
+				});
 			}
 		}
 
@@ -529,7 +538,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 		const handleGlobalMouseUp = () => {
 			if (isResizing && resizingSegment) {
 				if (resizingSegment.length > 0) {
-					updateSegmentLength(resizingSegment.id, resizingSegment.length).catch(console.error);
+					updateSegmentLength(resizingSegment.id, resizingSegment.length).catch((err) => {
+						// Error handled by toast in ProgramContext
+						console.error("Error updating segment length:", err);
+					});
 				}
 				setIsResizing(false);
 				setResizingSegment(null);
@@ -544,7 +556,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 			if (isDraggingConstraint && draggingConstraintKey && hoveredSegment) {
 				const constraintGroup = constraintGroups.get(draggingConstraintKey);
 				if (constraintGroup && !constraintGroup.segments.includes(hoveredSegment.id)) {
-					linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch(console.error);
+					linkConstraintToSegment(constraintGroup.instance.id, hoveredSegment.id).catch((err) => {
+						// Error handled by toast in ProgramContext
+						console.error("Error linking constraint to segment:", err);
+					});
 				}
 			}
 
@@ -554,7 +569,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 					const [removed] = newSegments.splice(draggedSegmentIndex, 1);
 					newSegments.splice(dropPreviewIndex, 0, removed);
 					const segmentIds = newSegments.map((s) => s.id);
-					reorderSegments(constructId, segmentIds).catch(console.error);
+					reorderSegments(constructId, segmentIds).catch((err) => {
+						// Error handled by toast in ProgramContext
+						console.error("Error reordering segments:", err);
+					});
 				}
 			}
 

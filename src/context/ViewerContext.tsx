@@ -3,6 +3,11 @@ import React, { createContext, useContext, useState, useMemo, ReactNode, useCall
 import { Segment, ConstraintInstance, Constraint, constraintOptions } from "@/types";
 import { useProgram } from "@/context/ProgramContext";
 
+export interface ClickedEdge {
+	constraintKey: string;
+	segmentId: string;
+}
+
 interface ViewerContextType {
 	// Hover states
 	hoveredSegment: Segment | null;
@@ -11,6 +16,8 @@ interface ViewerContextType {
 	setHoveredConstraintKey: (key: string | null) => void;
 	hoveredGeneratorKey: string | null;
 	setHoveredGeneratorKey: (key: string | null) => void;
+	hoveredEdge: ClickedEdge | null;
+	setHoveredEdge: (edge: ClickedEdge | null) => void;
 
 	// Click states
 	clickedSegment: Segment | null;
@@ -19,6 +26,8 @@ interface ViewerContextType {
 	setClickedConstraintKey: (key: string | null) => void;
 	clickedGeneratorKey: string | null;
 	setClickedGeneratorKey: (key: string | null) => void;
+	clickedEdge: ClickedEdge | null;
+	setClickedEdge: (edge: ClickedEdge | null) => void;
 
 	// Drag states
 	draggedSegment: Segment | null;
@@ -83,11 +92,13 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [hoveredConstraintKey, setHoveredConstraintKey] = useState<string | null>(null);
 	const [hoveredGeneratorKey, setHoveredGeneratorKey] = useState<string | null>(null);
+	const [hoveredEdge, setHoveredEdge] = useState<ClickedEdge | null>(null);
 
 	// Click states
 	const [clickedSegment, setClickedSegmentState] = useState<Segment | null>(null);
 	const [clickedConstraintKey, setClickedConstraintKeyState] = useState<string | null>(null);
 	const [clickedGeneratorKey, setClickedGeneratorKeyState] = useState<string | null>(null);
+	const [clickedEdge, setClickedEdgeState] = useState<ClickedEdge | null>(null);
 
 	// Drag states
 	const [draggedSegment, setDraggedSegment] = useState<Segment | null>(null);
@@ -121,18 +132,28 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		setClickedSegmentState(segment);
 		setClickedConstraintKeyState(null);
 		setClickedGeneratorKeyState(null);
+		setClickedEdgeState(null);
 	};
 
 	const setClickedConstraintKey = (key: string | null) => {
 		setClickedSegmentState(null);
 		setClickedConstraintKeyState(key);
 		setClickedGeneratorKeyState(null);
+		setClickedEdgeState(null);
 	};
 
 	const setClickedGeneratorKey = (key: string | null) => {
 		setClickedSegmentState(null);
 		setClickedConstraintKeyState(null);
 		setClickedGeneratorKeyState(key);
+		setClickedEdgeState(null);
+	};
+
+	const setClickedEdge = (edge: ClickedEdge | null) => {
+		setClickedSegmentState(null);
+		setClickedConstraintKeyState(null);
+		setClickedGeneratorKeyState(null);
+		setClickedEdgeState(edge);
 	};
 
 	// Group constraints and generators by key to avoid duplicates
@@ -177,6 +198,16 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 
 		if (isDraggingConstraint && hoveredSegment) {
 			segmentIds.add(hoveredSegment.id);
+		}
+
+		if (hoveredEdge) {
+			constraintKeys.add(hoveredEdge.constraintKey);
+			segmentIds.add(hoveredEdge.segmentId);
+		}
+
+		if (clickedEdge) {
+			constraintKeys.add(clickedEdge.constraintKey);
+			segmentIds.add(clickedEdge.segmentId);
 		}
 
 		// Clicked segment
@@ -251,10 +282,12 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		getSegmentForGenerator,
 		constraintGroups,
 		isDraggingConstraint,
+		clickedEdge,
+		hoveredEdge,
 	]);
 
-	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
-	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;
+	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null || hoveredEdge !== null;
+	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null || clickedEdge !== null;
 	const isAnySegmentDragging = isDragging;
 	const isAnySegmentResizing = isResizing;
 
@@ -285,6 +318,8 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		setHoveredConstraintKey,
 		hoveredGeneratorKey,
 		setHoveredGeneratorKey,
+		hoveredEdge,
+		setHoveredEdge,
 
 		// Click states
 		clickedSegment,
@@ -293,6 +328,8 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		setClickedConstraintKey,
 		clickedGeneratorKey,
 		setClickedGeneratorKey,
+		clickedEdge,
+		setClickedEdge,
 
 		// Drag states
 		draggedSegment,

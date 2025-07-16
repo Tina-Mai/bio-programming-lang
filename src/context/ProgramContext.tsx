@@ -10,6 +10,7 @@ import {
 	createConstraint as dbCreateConstraint,
 	deleteConstraint as dbDeleteConstraint,
 	linkConstraintToSegment as dbLinkConstraintToSegment,
+	unlinkConstraintFromSegment as dbUnlinkConstraintFromSegment,
 } from "@/lib/utils/database";
 
 interface ProgramProviderProps {
@@ -36,6 +37,7 @@ interface ProgramContextProps {
 	createConstraint: () => Promise<void>;
 	deleteConstraint: (constraintId: string) => Promise<void>;
 	linkConstraintToSegment: (constraintId: string, segmentId: string) => Promise<void>;
+	unlinkConstraintFromSegment: (constraintId: string, segmentId: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -341,6 +343,34 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		[constraints, supabase]
 	);
 
+	const unlinkConstraintFromSegment = useCallback(
+		async (constraintId: string, segmentId: string) => {
+			const originalConstraints = constraints;
+			setConstraints((prev) =>
+				prev.map((c) => {
+					if (c.id === constraintId) {
+						if (!c.segments.includes(segmentId)) {
+							return c;
+						}
+						return { ...c, segments: c.segments.filter((sId) => sId !== segmentId) };
+					}
+					return c;
+				})
+			);
+
+			try {
+				await dbUnlinkConstraintFromSegment(supabase, constraintId, segmentId);
+			} catch (err) {
+				setConstraints(originalConstraints);
+				console.error("Error unlinking constraint from segment:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to unlink constraint from segment";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[constraints, supabase]
+	);
+
 	const createConstraint = useCallback(async () => {
 		if (!currentProgram?.id) {
 			throw new Error("No current program to add constraint to");
@@ -447,6 +477,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		createConstraint,
 		deleteConstraint,
 		linkConstraintToSegment,
+		unlinkConstraintFromSegment,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

@@ -142,6 +142,14 @@ export async function linkConstraintToSegment(supabase: SupabaseClient, constrai
 	}
 }
 
+export async function unlinkConstraintFromSegment(supabase: SupabaseClient, constraintId: string, segmentId: string): Promise<void> {
+	const { error } = await supabase.from("constraint_segment_links").delete().match({ constraint_id: constraintId, segment_id: segmentId });
+
+	if (error) {
+		throw new Error(`Failed to unlink constraint from segment: ${error.message}`);
+	}
+}
+
 export async function createConstraint(supabase: SupabaseClient, programId: string): Promise<ConstraintInstance> {
 	const { data, error } = await supabase.from("constraints").insert({ program_id: programId, key: null, label: null }).select().single();
 

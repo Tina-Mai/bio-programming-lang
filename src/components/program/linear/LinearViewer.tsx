@@ -8,6 +8,7 @@ import GeneratorBox from "@/components/program/linear/Generator";
 import SegmentComponent from "@/components/program/linear/segment/Segment";
 import NewButtons from "@/components/program/linear/NewButtons";
 import Portal from "@/components/global/Portal";
+import { CloseLarge } from "@carbon/icons-react";
 
 interface LinearViewerProps {
 	segments: Segment[];
@@ -49,7 +50,7 @@ const toScreenX = (absoluteX: number, offset: number) => {
 };
 
 const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], constructId }) => {
-	const { reorderSegments, updateSegmentLength, deleteSegment, deleteConstraint, linkConstraintToSegment } = useProgram();
+	const { reorderSegments, updateSegmentLength, deleteSegment, deleteConstraint, linkConstraintToSegment, unlinkConstraintFromSegment } = useProgram();
 	const {
 		hoveredSegment,
 		setHoveredSegment,
@@ -84,6 +85,10 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 		setDraggingConstraintKey,
 		dragLineEndPos,
 		setDragLineEndPos,
+		clickedEdge,
+		setClickedEdge,
+		hoveredEdge,
+		setHoveredEdge,
 	} = useViewer();
 	const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 	const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -939,20 +944,71 @@ const LinearViewerInner: React.FC<LinearViewerInnerProps> = ({ segments = [], co
 												const isThisSegmentHovered = hoveredSegment?.id === segmentId;
 												const isConstraintClicked = clickedConstraintKey === key;
 												const isSegmentClicked = clickedSegment?.id === segmentId;
-												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered || isConstraintClicked || isSegmentClicked;
+												const isEdgeClicked = clickedEdge?.constraintKey === key && clickedEdge?.segmentId === segmentId;
+												const isEdgeHovered = hoveredEdge?.constraintKey === key && hoveredEdge?.segmentId === segmentId;
+
+												const isLineHighlighted = isConstraintHovered || isThisSegmentHovered || isConstraintClicked || isSegmentClicked || isEdgeClicked || isEdgeHovered;
+
 												const shouldDimLine = (hasAnyHover || hasAnyClick) && !isLineHighlighted;
+												const showDeleteButton = isEdgeClicked || isEdgeHovered;
+
+												const strokeColor = isLineHighlighted ? (isEdgeClicked ? "#64748b" : "#94a3b8") : "#94a3b8";
+												const strokeW = isLineHighlighted ? "2" : "1.5";
+												const strokeDasharray = isLineHighlighted ? "none" : "4, 4";
 
 												return (
-													<g key={`constraint-${key}-segment-${segmentId}`}>
+													<g
+														key={`constraint-${key}-segment-${segmentId}`}
+														onMouseEnter={() => setHoveredEdge({ constraintKey: key, segmentId })}
+														onMouseLeave={() => setHoveredEdge(null)}
+														onMouseDown={(e) => e.stopPropagation()}
+														onClick={(e) => {
+															e.stopPropagation();
+															if (isEdgeClicked) {
+																setClickedEdge(null);
+															} else {
+																setClickedEdge({ constraintKey: key, segmentId });
+															}
+														}}
+														style={{ cursor: "pointer", pointerEvents: "auto" }}
+													>
+														<path d={pathData} fill="none" stroke="transparent" strokeWidth="12" />
 														<path
 															d={pathData}
 															fill="none"
-															stroke={isLineHighlighted ? "#909EB0" : "#94A3B8"}
-															strokeWidth={isLineHighlighted ? "2" : "1.5"}
-															strokeDasharray={isLineHighlighted ? "none" : "4, 4"}
+															stroke={strokeColor}
+															strokeWidth={strokeW}
+															strokeDasharray={strokeDasharray}
 															className={isLineHighlighted ? "" : "stroke-dash-anim"}
 															opacity={shouldDimLine ? 0.25 : isLineHighlighted ? 1 : 0.7}
 														/>
+														{showDeleteButton &&
+															(() => {
+																const [x0, y0] = [boxCenterX, startY];
+																const [x1, y1] = [endX, endY];
+																const y_c = (y0 + y1) / 2;
+																const midX = 0.5 * x0 + 0.5 * x1;
+																const midY = 0.125 * y0 + 0.75 * y_c + 0.125 * y1;
+																return (
+																	<foreignObject x={midX - 8} y={midY - 8} width="16" height="16">
+																		<button
+																			className={`rounded-full text-white hover:bg-slate-700 focus:outline-none flex items-center justify-center w-full h-full ${
+																				isEdgeClicked ? "bg-slate-500" : "bg-slate-400"
+																			}`}
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				const constraintGroup = constraintGroups.get(key);
+																				if (constraintGroup) {
+																					unlinkConstraintFromSegment(constraintGroup.instance.id, segmentId).catch(console.error);
+																				}
+																				setClickedEdge(null);
+																			}}
+																		>
+																			<CloseLarge size={12} className="-m-1" />
+																		</button>
+																	</foreignObject>
+																);
+															})()}
 													</g>
 												);
 											});

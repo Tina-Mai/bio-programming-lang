@@ -148,13 +148,6 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 	}
 	const programId = constructData.program_id;
 
-	// 2. Create a default generator for the new segment
-	const { data: generatorData, error: generatorError } = await supabase.from("generators").insert({ program_id: programId, key: null, label: null }).select().single();
-
-	if (generatorError || !generatorData?.id) {
-		throw new Error(`Failed to create default generator or retrieve its ID. Error: ${generatorError?.message}`);
-	}
-
 	const { data: maxOrderData, error: maxOrderError } = await supabase
 		.from("construct_segment_order")
 		.select("order_idx")
@@ -163,23 +156,29 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 		.limit(1);
 
 	if (maxOrderError) {
-		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to get max order index for construct: ${maxOrderError.message}`);
 	}
 
 	const newOrderIdx = (maxOrderData?.[0]?.order_idx ?? -1) + 1;
 
-	// The 'generator' field here is just the ID
-	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100, generator: generatorData.id }).select("*").single();
+	// Create segment first
+	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100 }).select("*").single();
 
 	if (segmentError) {
-		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to create segment: ${segmentError.message}`);
 	}
 
 	if (!segmentData) {
-		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error("Failed to create segment, no data returned");
+	}
+
+	// Create a default generator for the new segment, linking it via segment_id
+	const { data: generatorData, error: generatorError } = await supabase.from("generators").insert({ program_id: programId, segment_id: segmentData.id, key: null, label: null }).select().single();
+
+	if (generatorError || !generatorData?.id) {
+		// Rollback segment creation if generator creation fails
+		await supabase.from("segments").delete().eq("id", segmentData.id);
+		throw new Error(`Failed to create default generator. Error: ${generatorError?.message}`);
 	}
 
 	const { error: linkError } = await supabase.from("construct_segment_order").insert({
@@ -191,7 +190,9 @@ export async function createSegment(supabase: SupabaseClient, constructId: strin
 	if (linkError) {
 		// Rollback segment and generator creation
 		await supabase.from("segments").delete().eq("id", segmentData.id);
-		await supabase.from("generators").delete().eq("id", generatorData.id);
+		// The generator should be deleted by cascade if the foreign key is set up correctly.
+		// If not, we might need to delete it manually:
+		// await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to link segment to construct: ${linkError.message}`);
 	}
 

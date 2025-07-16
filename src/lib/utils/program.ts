@@ -18,7 +18,7 @@ export interface SupabaseConstructSegmentOrder {
 }
 
 export interface SupabaseSegment extends Omit<Segment, "generator"> {
-	generators: GeneratorInstance | null;
+	generators: GeneratorInstance[] | null;
 }
 
 export interface SupabaseConstraint extends Omit<ConstraintInstance, "segments"> {
@@ -75,15 +75,17 @@ export function transformConstructWithSegments(construct: SupabaseConstruct, seg
 			if (!supabaseSegment) return undefined;
 
 			const { generators, ...segmentData } = supabaseSegment;
+			const generator = generators?.[0];
 
-			if (!generators) {
+			if (!generator) {
 				console.error(`Segment ${segmentData.id} has no generator, this should not happen.`);
 				// Provide a fallback generator to avoid crashing the UI
 				return {
 					...segmentData,
 					generator: {
-						id: "error-no-generator",
+						id: `error-no-generator-${segmentData.id}`,
 						program_id: construct.program_id,
+						segment_id: segmentData.id,
 						key: "unknown",
 						label: "Unknown",
 						created_at: new Date().toISOString(),
@@ -93,7 +95,7 @@ export function transformConstructWithSegments(construct: SupabaseConstruct, seg
 
 			const segment: Segment = {
 				...segmentData,
-				generator: generators,
+				generator: generator,
 			};
 			return segment;
 		})

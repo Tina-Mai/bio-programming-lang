@@ -24,7 +24,7 @@ const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint, isFreeFloatin
 	const hasKey = !!constraint.key;
 	const currentConstraintName = constraintOptions.find((c) => c.key === constraint.key)?.name || "Select a constraint";
 
-	const borderStyle = isClicked ? "border-slate-500/70 border-2" : isFreeFloating ? "border-slate-400 border-dashed" : "border-slate-300 hover:border-slate-400/70";
+	const borderStyle = isClicked ? "border-slate-500/70 border-2" : isFreeFloating ? "border-slate-400/70 border-dashed" : "border-slate-300 hover:border-slate-400/70";
 
 	return (
 		<div

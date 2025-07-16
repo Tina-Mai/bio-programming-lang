@@ -12,8 +12,9 @@ export interface Generator {
 export interface GeneratorInstance {
 	id: string;
 	program_id: string;
-	key?: string;
-	label?: string;
+	segment_id: string;
+	key: string | null;
+	label: string | null;
 	created_at: string;
 	updated_at?: string;
 }

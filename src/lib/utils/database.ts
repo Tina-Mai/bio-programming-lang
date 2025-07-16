@@ -123,27 +123,44 @@ export async function createConstruct(supabase: SupabaseClient, programId: strin
 }
 
 export async function createSegment(supabase: SupabaseClient, constructId: string): Promise<Segment> {
+	// 1. Get program_id from construct
+	const { data: constructData, error: constructError } = await supabase.from("constructs").select("program_id").eq("id", constructId).single();
+
+	if (constructError || !constructData) {
+		throw new Error(`Failed to find construct with id ${constructId}: ${constructError?.message}`);
+	}
+	const programId = constructData.program_id;
+
+	// 2. Create a default generator for the new segment
+	const { data: generatorData, error: generatorError } = await supabase.from("generators").insert({ program_id: programId, key: null, label: "default" }).select().single();
+
+	if (generatorError || !generatorData?.id) {
+		throw new Error(`Failed to create default generator or retrieve its ID. Error: ${generatorError?.message}`);
+	}
+
 	const { data: maxOrderData, error: maxOrderError } = await supabase
 		.from("construct_segment_order")
 		.select("order_idx")
 		.eq("construct_id", constructId)
 		.order("order_idx", { ascending: false })
-		.limit(1)
-		.single();
+		.limit(1);
 
-	if (maxOrderError && maxOrderError.code !== "PGRST116") {
+	if (maxOrderError) {
+		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to get max order index for construct: ${maxOrderError.message}`);
 	}
 
-	const newOrderIdx = (maxOrderData?.order_idx ?? -1) + 1;
+	const newOrderIdx = (maxOrderData?.[0]?.order_idx ?? -1) + 1;
 
-	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100 }).select("*").single();
+	const { data: segmentData, error: segmentError } = await supabase.from("segments").insert({ label: "Segment", length: 100, generator: generatorData.id }).select("*").single();
 
 	if (segmentError) {
+		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error(`Failed to create segment: ${segmentError.message}`);
 	}
 
 	if (!segmentData) {
+		await supabase.from("generators").delete().eq("id", generatorData.id);
 		throw new Error("Failed to create segment, no data returned");
 	}
 

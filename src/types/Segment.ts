@@ -1,8 +1,11 @@
+import { GeneratorInstance } from "@/types";
+
 // a Segment is a part/subset of a Construct
 export interface Segment {
 	id: string;
 	label: string;
 	length: number;
+	generator: GeneratorInstance;
 	sequence?: string;
 	type?: string;
 	created_at: string;

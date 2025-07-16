@@ -5,13 +5,10 @@ import {
 	SupabaseProgram,
 	SupabaseConstruct,
 	SupabaseConstraint,
-	SupabaseGenerator,
 	SupabaseConstructSegmentOrder,
 	SupabaseConstraintSegmentLink,
-	SupabaseGeneratorSegmentLink,
 	transformConstructWithSegments,
 	transformConstraintWithSegments,
-	transformGeneratorWithSegments,
 } from "@/lib/utils/program";
 import { Construct, ConstraintInstance, GeneratorInstance, Segment } from "@/types";
 import { createConstruct as dbCreateConstruct, createSegment as dbCreateSegment, deleteSegment as dbDeleteSegment } from "@/lib/utils/database";
@@ -67,19 +64,16 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			console.log(`ProgramProvider: Fetching data for program ID: ${programId}`);
 
 			// fetch constructs, constraints, and generators
-			const [constructsResult, constraintsResult, generatorsResult] = await Promise.all([
+			const [constructsResult, constraintsResult] = await Promise.all([
 				supabase.from("constructs").select("*").eq("program_id", programId),
 				supabase.from("constraints").select("*").eq("program_id", programId),
-				supabase.from("generators").select("*").eq("program_id", programId),
 			]);
 
 			if (constructsResult.error) throw new Error(`Failed to fetch constructs: ${constructsResult.error.message}`);
 			if (constraintsResult.error) throw new Error(`Failed to fetch constraints: ${constraintsResult.error.message}`);
-			if (generatorsResult.error) throw new Error(`Failed to fetch generators: ${generatorsResult.error.message}`);
 
 			const fetchedConstructs = (constructsResult.data as SupabaseConstruct[]) || [];
 			const fetchedConstraints = (constraintsResult.data as SupabaseConstraint[]) || [];
-			const fetchedGenerators = (generatorsResult.data as SupabaseGenerator[]) || [];
 
 			// fetch segment data for constructs
 			let segmentOrders: SupabaseConstructSegmentOrder[] = [];
@@ -87,7 +81,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				const constructIds = fetchedConstructs.map((c) => c.id);
 				const { data: orderData, error: orderError } = await supabase
 					.from("construct_segment_order")
-					.select("*, segments!inner(*)")
+					.select("*, segments!inner(*, generators(*))")
 					.in("construct_id", constructIds)
 					.order("order_idx", { ascending: true });
 
@@ -96,9 +90,8 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				console.log("Fetched segment orders:", segmentOrders);
 			}
 
-			// fetch constraint and generator segment links
+			// fetch constraint segment links
 			let constraintLinks: SupabaseConstraintSegmentLink[] = [];
-			let generatorLinks: SupabaseGeneratorSegmentLink[] = [];
 
 			if (fetchedConstraints.length > 0) {
 				const constraintIds = fetchedConstraints.map((c) => c.id);
@@ -108,22 +101,17 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				constraintLinks = linkData || [];
 			}
 
-			if (fetchedGenerators.length > 0) {
-				const generatorIds = fetchedGenerators.map((g) => g.id);
-				const { data: linkData, error: linkError } = await supabase.from("generator_segment_links").select("*").in("generator_id", generatorIds);
-
-				if (linkError) throw new Error(`Failed to fetch generator links: ${linkError.message}`);
-				generatorLinks = linkData || [];
-			}
-
 			// transform the data
 			const transformedConstructs = fetchedConstructs.map((construct) => transformConstructWithSegments(construct, segmentOrders));
 			const transformedConstraints = fetchedConstraints.map((constraint) => transformConstraintWithSegments(constraint, constraintLinks));
-			const transformedGenerators = fetchedGenerators.map((generator) => transformGeneratorWithSegments(generator, generatorLinks));
+
+			const allGenerators = transformedConstructs.flatMap((c) => c.segments?.map((s) => s.generator)).filter((g): g is GeneratorInstance => !!g);
+			const uniqueGenerators = Array.from(new Map(allGenerators.map((g) => [g.id, g])).values());
+
 			console.log("Transformed constructs:", transformedConstructs);
 			setConstructs(transformedConstructs);
 			setConstraints(transformedConstraints);
-			setGenerators(transformedGenerators);
+			setGenerators(uniqueGenerators);
 		} catch (error: unknown) {
 			console.error("ProgramProvider: Error fetching program data:", error);
 			setError(error instanceof Error ? error.message : "An unknown error occurred");
@@ -166,68 +154,57 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 
 	const updateGeneratorForSegment = useCallback(
 		async (segmentId: string, newKey: string) => {
-			if (!currentProgram?.id) {
-				throw new Error("Cannot update generator without a program");
+			const originalConstructs = constructs;
+			let originalGenerators = generators;
+
+			let targetSegment: Segment | undefined;
+			let targetConstruct: Construct | undefined;
+
+			for (const construct of constructs) {
+				const segment = construct.segments?.find((s) => s.id === segmentId);
+				if (segment) {
+					targetSegment = segment;
+					targetConstruct = construct;
+					break;
+				}
 			}
 
-			const originalGenerators = generators;
-			const oldGenerator = originalGenerators.find((g) => g.segments.includes(segmentId));
-			if (!oldGenerator) {
-				console.error(`Could not find a generator instance for segment ${segmentId}`);
-				return;
+			if (!targetSegment || !targetConstruct) {
+				throw new Error("Segment not found");
 			}
+			const generatorToUpdate = targetSegment.generator;
+			originalGenerators = JSON.parse(JSON.stringify(generators));
 
 			// Optimistic update
-			const newTempId = `temp-${Date.now()}`;
-			setGenerators((prev) => {
-				const updatedGenerators = prev.map((g) => {
-					if (g.id === oldGenerator.id) {
-						// Remove segment from old generator
-						return { ...g, segments: g.segments.filter((s) => s !== segmentId) };
+			setConstructs((prevConstructs) =>
+				prevConstructs.map((c) => {
+					if (c.id === targetConstruct?.id) {
+						return {
+							...c,
+							segments: c.segments?.map((s) => {
+								if (s.id === segmentId) {
+									return {
+										...s,
+										generator: { ...s.generator, key: newKey, label: newKey },
+									};
+								}
+								return s;
+							}),
+						};
 					}
-					return g;
-				});
-
-				// Add new generator optimistically
-				updatedGenerators.push({
-					id: newTempId,
-					program_id: currentProgram.id,
-					key: newKey,
-					label: newKey,
-					created_at: new Date().toISOString(),
-					segments: [segmentId],
-				});
-				return updatedGenerators;
-			});
+					return c;
+				})
+			);
+			setGenerators((prevGens) => prevGens.map((g) => (g.id === generatorToUpdate.id ? { ...g, key: newKey, label: newKey } : g)));
 
 			try {
-				// 1. Create a new generator instance
-				const { data: newGenerator, error: createError } = await supabase.from("generators").insert({ program_id: currentProgram.id, key: newKey, label: newKey }).select().single();
+				const { error } = await supabase.from("generators").update({ key: newKey, label: newKey }).eq("id", generatorToUpdate.id);
 
-				if (createError) throw new Error(`Failed to create new generator: ${createError.message}`);
-
-				// 2. Remove the link from the old generator to this segment
-				const { error: deleteLinkError } = await supabase.from("generator_segment_links").delete().match({ generator_id: oldGenerator.id, segment_id: segmentId });
-
-				if (deleteLinkError) throw new Error(`Failed to unlink old generator: ${deleteLinkError.message}`);
-
-				// 3. Link the new generator to the segment
-				const { error: createLinkError } = await supabase.from("generator_segment_links").insert({ generator_id: newGenerator.id, segment_id: segmentId });
-
-				if (createLinkError) throw new Error(`Failed to link new generator: ${createLinkError.message}`);
-
-				// 4. If the old generator has no more segments, delete it
-				const { data: remainingLinks, error: checkError } = await supabase.from("generator_segment_links").select("segment_id").eq("generator_id", oldGenerator.id);
-
-				if (checkError) {
-					console.warn(`Could not check for orphaned generator: ${checkError.message}`);
-				} else if (remainingLinks && remainingLinks.length === 0) {
-					const { error: deleteGenError } = await supabase.from("generators").delete().eq("id", oldGenerator.id);
-					if (deleteGenError) console.warn(`Failed to delete orphaned generator: ${deleteGenError.message}`);
+				if (error) {
+					throw new Error(`Failed to update generator: ${error.message}`);
 				}
-
-				await fetchProgramData();
 			} catch (err) {
+				setConstructs(originalConstructs);
 				setGenerators(originalGenerators);
 				console.error("Error updating generator for segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to update generator for segment";
@@ -235,7 +212,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				throw err;
 			}
 		},
-		[generators, currentProgram, supabase, fetchProgramData]
+		[constructs, generators, supabase]
 	);
 
 	const reorderSegments = useCallback(
@@ -333,19 +310,9 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 			}
 
 			try {
-				const newSegment = await dbCreateSegment(supabase, constructId);
+				await dbCreateSegment(supabase, constructId);
 				console.log("Successfully created new segment for construct:", constructId);
-				setConstructs((prevConstructs) =>
-					prevConstructs.map((c) => {
-						if (c.id === constructId) {
-							return {
-								...c,
-								segments: c.segments ? [...c.segments, newSegment] : [newSegment],
-							};
-						}
-						return c;
-					})
-				);
+				await fetchProgramData();
 			} catch (err) {
 				console.error("Error creating segment:", err);
 				const errorMessage = err instanceof Error ? err.message : "Failed to create segment";
@@ -353,18 +320,28 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 				throw err;
 			}
 		},
-		[currentProgram, supabase]
+		[currentProgram, supabase, fetchProgramData]
 	);
 
 	const deleteSegment = useCallback(
 		async (segmentId: string) => {
 			const originalConstructs = constructs;
+			let segmentToDelete: Segment | undefined;
+			for (const c of originalConstructs) {
+				segmentToDelete = c.segments?.find((s) => s.id === segmentId);
+				if (segmentToDelete) break;
+			}
+
 			setConstructs((prevConstructs) =>
 				prevConstructs.map((c) => ({
 					...c,
 					segments: c.segments ? c.segments.filter((s) => s.id !== segmentId) : [],
 				}))
 			);
+			if (segmentToDelete?.generator) {
+				setGenerators((prev) => prev.filter((g) => g.id !== segmentToDelete?.generator.id));
+			}
+
 			try {
 				await dbDeleteSegment(supabase, segmentId);
 				console.log("Successfully deleted segment:", segmentId);

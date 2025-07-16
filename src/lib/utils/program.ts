@@ -17,7 +17,9 @@ export interface SupabaseConstructSegmentOrder {
 	segments?: SupabaseSegment;
 }
 
-export type SupabaseSegment = Segment;
+export interface SupabaseSegment extends Omit<Segment, "generator"> {
+	generators: GeneratorInstance | null;
+}
 
 export interface SupabaseConstraint extends ConstraintInstance {
 	segmentLinks?: SupabaseConstraintSegmentLink[];
@@ -28,14 +30,7 @@ export interface SupabaseConstraintSegmentLink {
 	segment_id: string;
 }
 
-export interface SupabaseGenerator extends GeneratorInstance {
-	segmentLinks?: SupabaseGeneratorSegmentLink[];
-}
-
-export interface SupabaseGeneratorSegmentLink {
-	generator_id: string;
-	segment_id: string;
-}
+export type SupabaseGenerator = GeneratorInstance;
 
 export type SupabaseOutput = Output;
 
@@ -63,23 +58,39 @@ export function transformConstraintWithSegments(constraint: SupabaseConstraint, 
 	};
 }
 
-// transform generator data with segment links
-export function transformGeneratorWithSegments(generator: SupabaseGenerator, segmentLinks: SupabaseGeneratorSegmentLink[]): GeneratorInstance {
-	const linkedSegmentIds = segmentLinks.filter((link) => link.generator_id === generator.id).map((link) => link.segment_id);
-
-	return {
-		...generator,
-		segments: linkedSegmentIds,
-	};
-}
-
 // transform construct data with ordered segments
 export function transformConstructWithSegments(construct: SupabaseConstruct, segmentOrder: SupabaseConstructSegmentOrder[]): Construct {
-	const orderedSegments = segmentOrder
+	const orderedSegments: Segment[] = segmentOrder
 		.filter((order) => order.construct_id === construct.id)
 		.sort((a, b) => a.order_idx - b.order_idx)
-		.map((order) => order.segments)
-		.filter((segment): segment is SupabaseSegment => segment !== undefined);
+		.map((order) => {
+			const supabaseSegment = order.segments;
+			if (!supabaseSegment) return undefined;
+
+			const { generators, ...segmentData } = supabaseSegment;
+
+			if (!generators) {
+				console.error(`Segment ${segmentData.id} has no generator, this should not happen.`);
+				// Provide a fallback generator to avoid crashing the UI
+				return {
+					...segmentData,
+					generator: {
+						id: "error-no-generator",
+						program_id: construct.program_id,
+						key: "unknown",
+						label: "Unknown",
+						created_at: new Date().toISOString(),
+					},
+				};
+			}
+
+			const segment: Segment = {
+				...segmentData,
+				generator: generators,
+			};
+			return segment;
+		})
+		.filter((segment): segment is Segment => !!segment);
 
 	return {
 		...construct,

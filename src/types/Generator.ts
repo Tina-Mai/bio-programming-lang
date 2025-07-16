@@ -16,7 +16,6 @@ export interface GeneratorInstance {
 	label?: string;
 	created_at: string;
 	updated_at?: string;
-	segments: string[]; // segment IDs that this generator applies to
 }
 
 export const generatorOptions: Generator[] = [

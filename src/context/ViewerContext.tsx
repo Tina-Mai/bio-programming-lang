@@ -1,6 +1,7 @@
 "use client";
-import React, { createContext, useContext, useState, useMemo, ReactNode } from "react";
-import { Segment, ConstraintInstance, GeneratorInstance, Constraint, Generator, constraintOptions, generatorOptions } from "@/types";
+import React, { createContext, useContext, useState, useMemo, ReactNode, useCallback } from "react";
+import { Segment, ConstraintInstance, GeneratorInstance, Constraint, constraintOptions } from "@/types";
+import { useProgram } from "@/context/ProgramContext";
 
 interface ViewerContextType {
 	// Hover states
@@ -51,14 +52,6 @@ interface ViewerContextType {
 			instance: ConstraintInstance;
 		}
 	>;
-	generatorGroups: Map<
-		string,
-		{
-			generator: Generator;
-			segments: string[];
-			instance: GeneratorInstance;
-		}
-	>;
 
 	// Helper functions
 	isSegmentHighlighted: (segmentId: string) => boolean;
@@ -76,6 +69,7 @@ interface ViewerProviderProps {
 }
 
 export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constraints, generators }) => {
+	const { constructs } = useProgram(); // get constructs to find segment for generator
 	// Hover states
 	const [hoveredSegment, setHoveredSegment] = useState<Segment | null>(null);
 	const [hoveredConstraintKey, setHoveredConstraintKey] = useState<string | null>(null);
@@ -94,6 +88,17 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	// Resize states
 	const [resizingSegment, setResizingSegment] = useState<Segment | null>(null);
 	const [isResizing, setIsResizing] = useState<boolean>(false);
+
+	const getSegmentForGenerator = useCallback(
+		(generatorId: string): Segment | undefined => {
+			for (const construct of constructs) {
+				const segment = construct.segments?.find((s) => s.generator.id === generatorId);
+				if (segment) return segment;
+			}
+			return undefined;
+		},
+		[constructs]
+	);
 
 	const setClickedSegment = (segment: Segment | null) => {
 		setClickedSegmentState(segment);
@@ -149,41 +154,6 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		return groups;
 	}, [constraints]);
 
-	const generatorGroups = useMemo(() => {
-		const groups = new Map<
-			string,
-			{
-				generator: Generator;
-				segments: string[];
-				instance: GeneratorInstance;
-			}
-		>();
-
-		generators.forEach((generator) => {
-			if (!generator.key) return;
-
-			const existing = groups.get(generator.key);
-			if (existing) {
-				generator.segments.forEach((segId) => {
-					if (!existing.segments.includes(segId)) {
-						existing.segments.push(segId);
-					}
-				});
-			} else {
-				const generatorDef = generatorOptions.find((g: Generator) => g.key === generator.key);
-				if (generatorDef) {
-					groups.set(generator.key, {
-						generator: generatorDef,
-						segments: [...generator.segments],
-						instance: generator,
-					});
-				}
-			}
-		});
-
-		return groups;
-	}, [generators]);
-
 	// Calculate highlighted elements based on hover states
 	const { highlightedSegmentIds, highlightedConstraintKeys, highlightedGeneratorKeys } = useMemo(() => {
 		const segmentIds = new Set<string>();
@@ -199,8 +169,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 				}
 			});
 			generators.forEach((generator) => {
-				if (generator.key && generator.segments.includes(clickedSegment.id)) {
-					generatorKeys.add(generator.key);
+				const generatorKey = generator.key || "default";
+				const segment = getSegmentForGenerator(generator.id); // Helper needed
+				if (segment && segment.id === clickedSegment.id) {
+					generatorKeys.add(generatorKey);
 				}
 			});
 		}
@@ -219,8 +191,12 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		if (clickedGeneratorKey) {
 			generatorKeys.add(clickedGeneratorKey);
 			generators.forEach((generator) => {
-				if (generator.key === clickedGeneratorKey) {
-					generator.segments.forEach((segId) => segmentIds.add(segId));
+				const generatorKey = generator.key || "default";
+				if (generatorKey === clickedGeneratorKey) {
+					const segment = getSegmentForGenerator(generator.id); // Helper needed
+					if (segment) {
+						segmentIds.add(segment.id);
+					}
 				}
 			});
 		}
@@ -239,8 +215,12 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		if (hoveredGeneratorKey) {
 			generatorKeys.add(hoveredGeneratorKey);
 			generators.forEach((generator) => {
-				if (generator.key === hoveredGeneratorKey) {
-					generator.segments.forEach((segId) => segmentIds.add(segId));
+				const generatorKey = generator.key || "default";
+				if (generatorKey === hoveredGeneratorKey) {
+					const segment = getSegmentForGenerator(generator.id);
+					if (segment) {
+						segmentIds.add(segment.id);
+					}
 				}
 			});
 		}
@@ -258,14 +238,15 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 
 			// Find all generators that include this segment
 			generators.forEach((generator) => {
-				if (generator.key && generator.segments.includes(hoveredSegment.id)) {
+				const segment = getSegmentForGenerator(generator.id);
+				if (segment && segment.id === hoveredSegment.id && generator.key) {
 					generatorKeys.add(generator.key);
 				}
 			});
 		}
 
 		return { highlightedSegmentIds: segmentIds, highlightedConstraintKeys: constraintKeys, highlightedGeneratorKeys: generatorKeys };
-	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, generators]);
+	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, generators, getSegmentForGenerator]);
 
 	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
 	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;
@@ -333,7 +314,6 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 
 		// Grouped data
 		constraintGroups,
-		generatorGroups,
 
 		// Helper functions
 		isSegmentHighlighted,

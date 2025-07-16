@@ -7,7 +7,7 @@ import { AddLarge, WarningAlt } from "@carbon/icons-react";
 import ConstructConfig from "@/components/program/linear/ConstructConfig";
 
 const VisualEditor = () => {
-	const { constructs, constraints, generators, isLoading, error, createConstruct } = useProgram();
+	const { constructs, constraints, isLoading, error, createConstruct } = useProgram();
 
 	const handleCreateConstruct = async () => {
 		try {
@@ -70,8 +70,8 @@ const VisualEditor = () => {
 					<div className="vertical w-full h-full justify-start overflow-y-auto flex-1">
 						{constructs.map((construct) => {
 							const segmentIds = (construct.segments || []).map((s) => s.id);
-							const constructConstraints = constraints.filter((c) => c.segments.some((segId) => segmentIds.includes(segId)));
-							const constructGenerators = generators.filter((g) => g.segments.some((segId) => segmentIds.includes(segId)));
+							const constructConstraints = constraints.filter((c) => (c.segments || []).some((segId) => segmentIds.includes(segId)));
+							const constructGenerators = (construct.segments || []).map((s) => s.generator).filter((g): g is GeneratorInstance => !!g);
 
 							return <ConstructInstance key={construct.id} construct={construct} constructConstraints={constructConstraints} constructGenerators={constructGenerators} />;
 						})}

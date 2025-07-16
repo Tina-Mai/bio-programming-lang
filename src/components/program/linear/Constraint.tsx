@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useViewer } from "@/context/ViewerContext";
 import { useProgram } from "@/context/ProgramContext";
+import { cn } from "@/lib/utils";
 
 interface ConstraintBoxProps {
 	constraint: ConstraintInstance;
@@ -16,9 +17,10 @@ const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
 	const { updateConstraintKey } = useProgram();
 	const [searchTerm, setSearchTerm] = useState("");
 	const filteredConstraints = constraintOptions.filter((c) => c.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-	const isClicked = clickedConstraintKey === constraint.key;
+	const isClicked = !!constraint.key && clickedConstraintKey === constraint.key;
 
-	const currentConstraint = constraintOptions.find((c) => c.key === constraint.key) || { name: "Unknown" };
+	const hasKey = !!constraint.key;
+	const currentConstraintName = constraintOptions.find((c) => c.key === constraint.key)?.name || "Select a constraint";
 
 	return (
 		<div
@@ -43,8 +45,8 @@ const ConstraintBox: React.FC<ConstraintBoxProps> = ({ constraint }) => {
 				>
 					<DropdownMenuTrigger asChild className="w-full" onClick={(e) => e.stopPropagation()}>
 						<Button size="sm" variant="outline" className="w-full bg-slate-50/40 hover:bg-slate-50 hover:border-slate-400/70">
-							<div className="horizontal w-full justify-between items-center gap-1 text-slate-900">
-								<div className="truncate text-xs">{currentConstraint.name}</div>
+							<div className={cn("horizontal w-full justify-between items-center gap-1", hasKey ? "text-slate-900" : "text-slate-400")}>
+								<div className="truncate text-xs">{currentConstraintName}</div>
 								<ChevronDown />
 							</div>
 						</Button>

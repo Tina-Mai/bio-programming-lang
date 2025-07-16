@@ -86,41 +86,19 @@ export function parseProgram(constructs: Construct[], constraints: ConstraintIns
 		};
 	});
 
-	// Parse generators - need to split if multiple segments
+	// Parse generators
 	const parsedGenerators: ParsedGenerator[] = [];
-
-	generators.forEach((generator) => {
-		const segmentIds = generator.segments || [];
-
-		if (segmentIds.length === 0) {
-			// No segments, still include the generator
-			parsedGenerators.push({
-				id: generator.id,
-				key: generator.key || "",
-				config: getGeneratorConfig(generator.key || "", 0),
-				targets: [],
-			});
-		} else {
-			// Create separate generator instance for each segment
-			segmentIds.forEach((segmentId: string, index: number) => {
-				// Find the segment to get its length
-				let segmentLength = 20; // default
-				for (const construct of constructs) {
-					const segment = construct.segments?.find((s) => s.id === segmentId);
-					if (segment) {
-						segmentLength = segment.length || 20;
-						break;
-					}
-				}
-
+	constructs.forEach((construct) => {
+		(construct.segments || []).forEach((segment) => {
+			if (segment.generator) {
 				parsedGenerators.push({
-					id: index === 0 ? generator.id : `${generator.id}_${index}`,
-					key: generator.key || "",
-					config: getGeneratorConfig(generator.key || "", segmentLength),
-					targets: [segmentId],
+					id: segment.generator.id,
+					key: segment.generator.key || "uniform-mutation",
+					config: getGeneratorConfig(segment.generator.key || "uniform-mutation", segment.length || 20),
+					targets: [segment.id],
 				});
-			});
-		}
+			}
+		});
 	});
 
 	return {

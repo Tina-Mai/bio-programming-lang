@@ -213,11 +213,14 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		// Clicked segment
 		if (clickedSegment) {
 			segmentIds.add(clickedSegment.id);
-			constraints.forEach((constraint) => {
-				if (constraint.key && constraint.segments.includes(clickedSegment.id)) {
-					constraintKeys.add(constraint.key);
+			// Find all constraints that include this segment
+			constraintGroups.forEach((group, key) => {
+				if (group.segments.includes(clickedSegment.id)) {
+					constraintKeys.add(key);
 				}
 			});
+
+			// Find all generators that include this segment
 			if (clickedSegment.generator?.id) {
 				generatorKeys.add(clickedSegment.generator.id);
 			}

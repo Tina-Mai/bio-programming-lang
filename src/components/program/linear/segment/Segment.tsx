@@ -22,6 +22,7 @@ interface SegmentComponentProps {
 	isAnySegmentResizing?: boolean;
 	isHighlightedByBox?: boolean;
 	hasBoxHover?: boolean;
+	isConstraintDragTarget?: boolean;
 	onDragStart?: (e: React.MouseEvent) => void;
 	onResizeStart?: (e: React.MouseEvent) => void;
 	baseLeftOffset?: number;
@@ -45,6 +46,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 	isAnySegmentResizing = false,
 	isHighlightedByBox: isHighlightedByBoxProp = false,
 	hasBoxHover: hasBoxHoverProp = false,
+	isConstraintDragTarget = false,
 	onDragStart,
 	onResizeStart,
 	baseLeftOffset = 20,
@@ -109,7 +111,7 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 			<div
 				key={`segment-${index}`}
 				data-segment-component
-				className={`group absolute ${isDragging ? "opacity-50" : shouldDim ? "opacity-60" : ""}`}
+				className={`group absolute transition-all duration-100 ${isDragging ? "opacity-50" : shouldDim ? "opacity-60" : ""}`}
 				style={{
 					left: `${segmentLeft}px`,
 					width: `${segmentPixelWidth + SEGMENT_ARROW_WIDTH}px`,
@@ -145,7 +147,12 @@ const SegmentComponent: React.FC<SegmentComponentProps> = ({
 				}}
 			>
 				<svg width="100%" height="40" viewBox={`0 0 ${segmentPixelWidth + SEGMENT_ARROW_WIDTH} 40`} preserveAspectRatio="none" className="overflow-visible">
-					<polygon points={polygonPoints} fill={colors.fill} stroke={isClicked || isResizing ? colors.highlight : colors.stroke} strokeWidth={isClicked || isResizing ? "3" : "2"} />
+					<polygon
+						points={polygonPoints}
+						fill={colors.fill}
+						stroke={isClicked || isResizing || isConstraintDragTarget ? colors.highlight : colors.stroke}
+						strokeWidth={isClicked || isResizing || isConstraintDragTarget ? "3" : "2"}
+					/>
 				</svg>
 				<div
 					className={`absolute inset-0 flex items-center text-slate-950/70 text-xs font-medium justify-start`}

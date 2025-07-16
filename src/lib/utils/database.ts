@@ -122,6 +122,26 @@ export async function createConstruct(supabase: SupabaseClient, programId: strin
 	return constructData;
 }
 
+export async function deleteConstraint(supabase: SupabaseClient, constraintId: string): Promise<void> {
+	const { error } = await supabase.from("constraints").delete().eq("id", constraintId);
+
+	if (error) {
+		throw new Error(`Failed to delete constraint: ${error.message}`);
+	}
+}
+
+export async function linkConstraintToSegment(supabase: SupabaseClient, constraintId: string, segmentId: string): Promise<void> {
+	const { error } = await supabase.from("constraint_segment_links").insert({ constraint_id: constraintId, segment_id: segmentId });
+
+	if (error) {
+		if (error.code === "23505") {
+			console.log("Link already exists.");
+			return;
+		}
+		throw new Error(`Failed to link constraint to segment: ${error.message}`);
+	}
+}
+
 export async function createConstraint(supabase: SupabaseClient, programId: string): Promise<ConstraintInstance> {
 	const { data, error } = await supabase.from("constraints").insert({ program_id: programId, key: null, label: null }).select().single();
 
@@ -226,14 +246,6 @@ export async function deleteConstruct(supabase: SupabaseClient, constructId: str
 
 	if (error) {
 		throw new Error(`Failed to delete construct: ${error.message}`);
-	}
-}
-
-export async function deleteConstraint(supabase: SupabaseClient, constraintId: string): Promise<void> {
-	const { error } = await supabase.from("constraints").delete().eq("id", constraintId);
-
-	if (error) {
-		throw new Error(`Failed to delete constraint: ${error.message}`);
 	}
 }
 

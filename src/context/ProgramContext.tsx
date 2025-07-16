@@ -9,6 +9,7 @@ import {
 	deleteSegment as dbDeleteSegment,
 	createConstraint as dbCreateConstraint,
 	deleteConstraint as dbDeleteConstraint,
+	linkConstraintToSegment as dbLinkConstraintToSegment,
 } from "@/lib/utils/database";
 
 interface ProgramProviderProps {
@@ -34,6 +35,7 @@ interface ProgramContextProps {
 	updateGeneratorForSegment: (segmentId: string, newKey: string) => Promise<void>;
 	createConstraint: () => Promise<void>;
 	deleteConstraint: (constraintId: string) => Promise<void>;
+	linkConstraintToSegment: (constraintId: string, segmentId: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextProps | undefined>(undefined);
@@ -292,6 +294,53 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		}
 	}, [currentProgram, supabase, fetchProgramData]);
 
+	const deleteConstraint = useCallback(
+		async (constraintId: string) => {
+			const originalConstraints = constraints;
+			setConstraints((prev) => prev.filter((c) => c.id !== constraintId));
+
+			try {
+				await dbDeleteConstraint(supabase, constraintId);
+				console.log("Successfully deleted constraint:", constraintId);
+			} catch (err) {
+				setConstraints(originalConstraints);
+				console.error("Error deleting constraint:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to delete constraint";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[constraints, supabase]
+	);
+
+	const linkConstraintToSegment = useCallback(
+		async (constraintId: string, segmentId: string) => {
+			const originalConstraints = constraints;
+			setConstraints((prev) =>
+				prev.map((c) => {
+					if (c.id === constraintId) {
+						if (c.segments.includes(segmentId)) {
+							return c;
+						}
+						return { ...c, segments: [...c.segments, segmentId] };
+					}
+					return c;
+				})
+			);
+
+			try {
+				await dbLinkConstraintToSegment(supabase, constraintId, segmentId);
+			} catch (err) {
+				setConstraints(originalConstraints);
+				console.error("Error linking constraint to segment:", err);
+				const errorMessage = err instanceof Error ? err.message : "Failed to link constraint to segment";
+				setError(errorMessage);
+				throw err;
+			}
+		},
+		[constraints, supabase]
+	);
+
 	const createConstraint = useCallback(async () => {
 		if (!currentProgram?.id) {
 			throw new Error("No current program to add constraint to");
@@ -376,24 +425,6 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		[supabase, constructs]
 	);
 
-	const deleteConstraint = useCallback(
-		async (constraintId: string) => {
-			const originalConstraints = constraints;
-			setConstraints((prevConstraints) => prevConstraints.filter((c) => c.id !== constraintId));
-			try {
-				await dbDeleteConstraint(supabase, constraintId);
-				console.log("Successfully deleted constraint:", constraintId);
-			} catch (err) {
-				setConstraints(originalConstraints);
-				console.error("Error deleting constraint:", err);
-				const errorMessage = err instanceof Error ? err.message : "Failed to delete constraint";
-				setError(errorMessage);
-				throw err;
-			}
-		},
-		[supabase, constraints]
-	);
-
 	// fetch data when program changes
 	useEffect(() => {
 		fetchProgramData();
@@ -415,6 +446,7 @@ export const ProgramProvider = ({ children, currentProgram }: ProgramProviderPro
 		updateGeneratorForSegment,
 		createConstraint,
 		deleteConstraint,
+		linkConstraintToSegment,
 	};
 
 	return <ProgramContext.Provider value={value}>{children}</ProgramContext.Provider>;

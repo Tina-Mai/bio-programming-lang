@@ -34,6 +34,14 @@ interface ViewerContextType {
 	isResizing: boolean;
 	setIsResizing: (isResizing: boolean) => void;
 
+	// Constraint drag states
+	draggingConstraintKey: string | null;
+	setDraggingConstraintKey: (key: string | null) => void;
+	isDraggingConstraint: boolean;
+	setIsDraggingConstraint: (isDragging: boolean) => void;
+	dragLineEndPos: { x: number; y: number } | null;
+	setDragLineEndPos: (pos: { x: number; y: number } | null) => void;
+
 	// Computed states
 	highlightedSegmentIds: Set<string>;
 	highlightedConstraintKeys: Set<string>;
@@ -42,6 +50,8 @@ interface ViewerContextType {
 	hasAnyClick: boolean;
 	isAnySegmentDragging: boolean;
 	isAnySegmentResizing: boolean;
+	isHoveringSegment: boolean;
+	setIsHoveringSegment: (isHovering: boolean) => void;
 
 	// Grouped data
 	constraintGroups: Map<
@@ -87,6 +97,14 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 	// Resize states
 	const [resizingSegment, setResizingSegment] = useState<Segment | null>(null);
 	const [isResizing, setIsResizing] = useState<boolean>(false);
+
+	// Constraint drag states
+	const [draggingConstraintKey, setDraggingConstraintKey] = useState<string | null>(null);
+	const [isDraggingConstraint, setIsDraggingConstraint] = useState<boolean>(false);
+	const [dragLineEndPos, setDragLineEndPos] = useState<{ x: number; y: number } | null>(null);
+
+	// to check if hovering over any segment
+	const [isHoveringSegment, setIsHoveringSegment] = useState<boolean>(false);
 
 	const getSegmentForGenerator = useCallback(
 		(generatorId: string): Segment | undefined => {
@@ -157,6 +175,10 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		const constraintKeys = new Set<string>();
 		const generatorKeys = new Set<string>();
 
+		if (isDraggingConstraint && hoveredSegment) {
+			segmentIds.add(hoveredSegment.id);
+		}
+
 		// Clicked segment
 		if (clickedSegment) {
 			segmentIds.add(clickedSegment.id);
@@ -218,7 +240,18 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		}
 
 		return { highlightedSegmentIds: segmentIds, highlightedConstraintKeys: constraintKeys, highlightedGeneratorKeys: generatorKeys };
-	}, [hoveredSegment, hoveredConstraintKey, hoveredGeneratorKey, clickedSegment, clickedConstraintKey, clickedGeneratorKey, constraints, getSegmentForGenerator, constraintGroups]);
+	}, [
+		hoveredSegment,
+		hoveredConstraintKey,
+		hoveredGeneratorKey,
+		clickedSegment,
+		clickedConstraintKey,
+		clickedGeneratorKey,
+		constraints,
+		getSegmentForGenerator,
+		constraintGroups,
+		isDraggingConstraint,
+	]);
 
 	const hasAnyHover = hoveredSegment !== null || hoveredConstraintKey !== null || hoveredGeneratorKey !== null;
 	const hasAnyClick = clickedSegment !== null || clickedConstraintKey !== null || clickedGeneratorKey !== null;
@@ -275,6 +308,14 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		isResizing,
 		setIsResizing,
 
+		// Constraint drag states
+		draggingConstraintKey,
+		setDraggingConstraintKey,
+		isDraggingConstraint,
+		setIsDraggingConstraint,
+		dragLineEndPos,
+		setDragLineEndPos,
+
 		// Computed states
 		highlightedSegmentIds,
 		highlightedConstraintKeys,
@@ -283,6 +324,8 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, constr
 		hasAnyClick,
 		isAnySegmentDragging,
 		isAnySegmentResizing,
+		isHoveringSegment,
+		setIsHoveringSegment,
 
 		// Grouped data
 		constraintGroups,

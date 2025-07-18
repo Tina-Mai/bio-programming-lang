@@ -1,6 +1,9 @@
 import { Construct, ConstraintInstance, GeneratorInstance } from "@/types";
 
-// Hardcoded values - move these to a config file later
+type ConfigValue = string | number | boolean | string[] | number[];
+type ProgramConfig = Record<string, ConfigValue>;
+
+// hardcoded values - move these to a config file later
 const DEFAULT_VERSION = "1.0";
 const DEFAULT_OPTIMIZATION = {
 	method: "mcmc",
@@ -24,6 +27,16 @@ const DEFAULT_UNIFORM_MUTATION_CONFIG = {
 	batch_size: 1,
 };
 
+const DEFAULT_EVO_2_CONFIG = {
+    prompt_seqs: ["+~GAGTTTTA"],
+    evo2_type: "evo2_7b_phage_12k_gen",
+    evo2_local_path: "/scratch/hielab/gbrixi/evo2/vortex_interleaved/7b_phage/iter_12000.pt",
+    sequence_length: 5500,
+    temperature: 0.9,
+    batch_size: 10,
+    prepend_prompt: true,
+};
+
 interface ParsedConstruct {
 	id: string;
 	type: "dna";
@@ -35,14 +48,14 @@ interface ParsedConstruct {
 interface ParsedConstraint {
 	id: string;
 	key: string;
-	config: Record<string, number>;
+	config: ProgramConfig;
 	targets: string[];
 }
 
 interface ParsedGenerator {
 	id: string;
 	key: string;
-	config: Record<string, number>;
+	config: ProgramConfig;
 	targets: string[];
 }
 
@@ -68,7 +81,7 @@ export function parseProgram(constructs: Construct[], constraints: ConstraintIns
 
 	// Parse constraints
 	const parsedConstraints: ParsedConstraint[] = constraints.map((constraint) => {
-		let config: Record<string, number> = {};
+		let config: ProgramConfig = {};
 
 		// Add config based on constraint key
 		if (constraint.key === "gc-content") {
@@ -112,10 +125,15 @@ export function parseProgram(constructs: Construct[], constraints: ConstraintIns
 	};
 }
 
-function getGeneratorConfig(key: string, sequenceLength: number): Record<string, number> {
+function getGeneratorConfig(key: string, sequenceLength: number): ProgramConfig {
 	if (key === "uniform-mutation") {
 		return {
 			...DEFAULT_UNIFORM_MUTATION_CONFIG,
+			sequence_length: sequenceLength,
+		};
+	} else if (key === "evo-2") {
+		return {
+			...DEFAULT_EVO_2_CONFIG,
 			sequence_length: sequenceLength,
 		};
 	}
